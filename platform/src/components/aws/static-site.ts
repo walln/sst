@@ -22,7 +22,7 @@ import {
   buildApp,
   prepare,
 } from "../base/base-static-site.js";
-import { cloudfront, s3 } from "@pulumi/aws";
+import { cloudfront, getRegionOutput, s3 } from "@pulumi/aws";
 import { URL_UNAVAILABLE } from "./linkable.js";
 import { OriginAccessControl } from "./providers/origin-access-control.js";
 import { physicalName } from "../naming.js";
@@ -125,41 +125,41 @@ export interface StaticSiteArgs extends BaseStaticSiteArgs {
     viewerRequest?: Input<
       | string
       | {
-        /**
-         * The code to inject into the viewer request function.
-         *
-         * @example
-         * To add a custom header to all requests.
-         *
-         * ```js
-         * {
-         *   edge: {
-         *     viewerRequest: {
-         *       injection: `event.request.headers["x-foo"] = "bar";`
-         *     }
-         *   }
-         * }
-         * ```
-         */
-        injection: Input<string>;
-        /**
-         * The KV stores to associate with the viewer request function.
-         *
-         * Takes a list of CloudFront KeyValueStore ARNs.
-         *
-         * @example
-         * ```js
-         * {
-         *   edge: {
-         *     viewerRequest: {
-         *       kvStores: ["arn:aws:cloudfront::123456789012:key-value-store/my-store"]
-         *     }
-         *   }
-         * }
-         * ```
-         */
-        kvStores?: Input<Input<string>[]>;
-      }
+          /**
+           * The code to inject into the viewer request function.
+           *
+           * @example
+           * To add a custom header to all requests.
+           *
+           * ```js
+           * {
+           *   edge: {
+           *     viewerRequest: {
+           *       injection: `event.request.headers["x-foo"] = "bar";`
+           *     }
+           *   }
+           * }
+           * ```
+           */
+          injection: Input<string>;
+          /**
+           * The KV stores to associate with the viewer request function.
+           *
+           * Takes a list of CloudFront KeyValueStore ARNs.
+           *
+           * @example
+           * ```js
+           * {
+           *   edge: {
+           *     viewerRequest: {
+           *       kvStores: ["arn:aws:cloudfront::123456789012:key-value-store/my-store"]
+           *     }
+           *   }
+           * }
+           * ```
+           */
+          kvStores?: Input<Input<string>[]>;
+        }
     >;
     /**
      * Configure the viewer response function.
@@ -211,41 +211,41 @@ export interface StaticSiteArgs extends BaseStaticSiteArgs {
     viewerResponse?: Input<
       | string
       | {
-        /**
-         * The code to inject into the viewer response function.
-         *
-         * @example
-         * To add a custom header to all responses.
-         *
-         * ```js
-         * {
-         *   edge: {
-         *     viewerResponse: {
-         *       injection: `event.response.headers["x-foo"] = "bar";`
-         *     }
-         *   }
-         * }
-         * ```
-         */
-        injection: Input<string>;
-        /**
-         * The KV stores to associate with the viewer response function.
-         *
-         * Takes a list of CloudFront KeyValueStore ARNs.
-         *
-         * @example
-         * ```js
-         * {
-         *   edge: {
-         *     viewerResponse: {
-         *       kvStores: ["arn:aws:cloudfront::123456789012:key-value-store/my-store"]
-         *     }
-         *   }
-         * }
-         * ```
-         */
-        kvStores?: Input<Input<string>[]>;
-      }
+          /**
+           * The code to inject into the viewer response function.
+           *
+           * @example
+           * To add a custom header to all responses.
+           *
+           * ```js
+           * {
+           *   edge: {
+           *     viewerResponse: {
+           *       injection: `event.response.headers["x-foo"] = "bar";`
+           *     }
+           *   }
+           * }
+           * ```
+           */
+          injection: Input<string>;
+          /**
+           * The KV stores to associate with the viewer response function.
+           *
+           * Takes a list of CloudFront KeyValueStore ARNs.
+           *
+           * @example
+           * ```js
+           * {
+           *   edge: {
+           *     viewerResponse: {
+           *       kvStores: ["arn:aws:cloudfront::123456789012:key-value-store/my-store"]
+           *     }
+           *   }
+           * }
+           * ```
+           */
+          kvStores?: Input<Input<string>[]>;
+        }
     >;
   }>;
   /**
@@ -408,46 +408,46 @@ export interface StaticSiteArgs extends BaseStaticSiteArgs {
   invalidation?: Input<
     | false
     | {
-      /**
-       * Configure if `sst deploy` should wait for the CloudFront cache invalidation to finish.
-       *
-       * :::tip
-       * For non-prod environments it might make sense to pass in `false`.
-       * :::
-       *
-       * Waiting for the CloudFront cache invalidation process to finish ensures that the new content will be served once the deploy finishes. However, this process can sometimes take more than 5 mins.
-       * @default `false`
-       * @example
-       * ```js
-       * {
-       *   invalidation: {
-       *     wait: true
-       *   }
-       * }
-       * ```
-       */
-      wait?: Input<boolean>;
-      /**
-       * The paths to invalidate.
-       *
-       * You can either pass in an array of glob patterns to invalidate specific files. Or you can use the built-in option `all` to invalidation all files when any file changes.
-       *
-       * :::note
-       * Invalidating `all` counts as one invalidation, while each glob pattern counts as a single invalidation path.
-       * :::
-       * @default `"all"`
-       * @example
-       * Invalidate the `index.html` and all files under the `products/` route.
-       * ```js
-       * {
-       *   invalidation: {
-       *     paths: ["/index.html", "/products/*"]
-       *   }
-       * }
-       * ```
-       */
-      paths?: Input<"all" | string[]>;
-    }
+        /**
+         * Configure if `sst deploy` should wait for the CloudFront cache invalidation to finish.
+         *
+         * :::tip
+         * For non-prod environments it might make sense to pass in `false`.
+         * :::
+         *
+         * Waiting for the CloudFront cache invalidation process to finish ensures that the new content will be served once the deploy finishes. However, this process can sometimes take more than 5 mins.
+         * @default `false`
+         * @example
+         * ```js
+         * {
+         *   invalidation: {
+         *     wait: true
+         *   }
+         * }
+         * ```
+         */
+        wait?: Input<boolean>;
+        /**
+         * The paths to invalidate.
+         *
+         * You can either pass in an array of glob patterns to invalidate specific files. Or you can use the built-in option `all` to invalidation all files when any file changes.
+         *
+         * :::note
+         * Invalidating `all` counts as one invalidation, while each glob pattern counts as a single invalidation path.
+         * :::
+         * @default `"all"`
+         * @example
+         * Invalidate the `index.html` and all files under the `products/` route.
+         * ```js
+         * {
+         *   invalidation: {
+         *     paths: ["/index.html", "/products/*"]
+         *   }
+         * }
+         * ```
+         */
+        paths?: Input<"all" | string[]>;
+      }
   >;
   /**
    * [Transform](/docs/components#transform) how this component creates its underlying
@@ -689,8 +689,8 @@ export class StaticSite extends Component implements Link.Linkable {
         ...args.assets,
         path: args.assets?.path
           ? output(args.assets?.path).apply((v) =>
-            v.replace(/^\//, "").replace(/\/$/, ""),
-          )
+              v.replace(/^\//, "").replace(/\/$/, ""),
+            )
           : undefined,
         purge: args.assets?.purge ?? true,
       };
@@ -721,8 +721,8 @@ export class StaticSite extends Component implements Link.Linkable {
       const s3Bucket = bucket
         ? bucket.nodes.bucket
         : s3.BucketV2.get(`${name}Assets`, assets.bucket!, undefined, {
-          parent,
-        });
+            parent,
+          });
 
       return {
         bucketName: s3Bucket.bucket,
@@ -790,6 +790,7 @@ export class StaticSite extends Component implements Link.Linkable {
             bucketName,
             files: bucketFiles,
             purge: assets.purge,
+            region: getRegionOutput(undefined, { parent }).name,
           },
           { parent },
         );
@@ -814,29 +815,29 @@ export class StaticSite extends Component implements Link.Linkable {
             defaultRootObject: indexPage,
             customErrorResponses: args.errorPage
               ? [
-                {
-                  errorCode: 403,
-                  responsePagePath: interpolate`/${args.errorPage}`,
-                  responseCode: 403,
-                },
-                {
-                  errorCode: 404,
-                  responsePagePath: interpolate`/${args.errorPage}`,
-                  responseCode: 404,
-                },
-              ]
+                  {
+                    errorCode: 403,
+                    responsePagePath: interpolate`/${args.errorPage}`,
+                    responseCode: 403,
+                  },
+                  {
+                    errorCode: 404,
+                    responsePagePath: interpolate`/${args.errorPage}`,
+                    responseCode: 404,
+                  },
+                ]
               : [
-                {
-                  errorCode: 403,
-                  responsePagePath: interpolate`/${indexPage}`,
-                  responseCode: 200,
-                },
-                {
-                  errorCode: 404,
-                  responsePagePath: interpolate`/${indexPage}`,
-                  responseCode: 200,
-                },
-              ],
+                  {
+                    errorCode: 403,
+                    responsePagePath: interpolate`/${indexPage}`,
+                    responseCode: 200,
+                  },
+                  {
+                    errorCode: 404,
+                    responsePagePath: interpolate`/${indexPage}`,
+                    responseCode: 200,
+                  },
+                ],
             defaultCacheBehavior: {
               targetOriginId: "s3",
               viewerProtocolPolicy: "redirect-to-https",
@@ -852,11 +853,11 @@ export class StaticSite extends Component implements Link.Linkable {
                 },
                 ...(edge?.viewerResponse
                   ? [
-                    {
-                      eventType: "viewer-response",
-                      functionArn: createCloudfrontResponseFunction(),
-                    },
-                  ]
+                      {
+                        eventType: "viewer-response",
+                        functionArn: createCloudfrontResponseFunction(),
+                      },
+                    ]
                   : []),
               ]),
             },
