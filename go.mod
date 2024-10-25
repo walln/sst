@@ -32,7 +32,6 @@ require (
 	github.com/manifoldco/promptui v0.9.0
 	github.com/posthog/posthog-go v0.0.0-20240221135834-4944045455b4
 	github.com/pulumi/pulumi/sdk/v3 v3.136.1
-	github.com/shirou/gopsutil/v3 v3.24.5
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.9.0
 	github.com/twitchtv/twirp v8.1.3+incompatible
@@ -52,17 +51,10 @@ require (
 	github.com/go-chi/cors v1.2.1 // indirect
 	github.com/go-chi/render v1.0.3 // indirect
 	github.com/go-gost/relay v0.5.0 // indirect
-	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/google/btree v1.1.3 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/gorilla/schema v1.4.1 // indirect
-	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
-	github.com/shoenig/go-m1cpu v0.1.6 // indirect
-	github.com/tklauser/go-sysconf v0.3.12 // indirect
-	github.com/tklauser/numcpus v0.6.1 // indirect
-	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
 	golang.zx2c4.com/wintun v0.0.0-20230126152724-0fa3db229ce2 // indirect
