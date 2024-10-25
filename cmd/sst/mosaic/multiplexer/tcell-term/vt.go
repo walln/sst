@@ -458,11 +458,11 @@ func (vt *VT) scrollDown(n int) {
 }
 
 func (vt *VT) Close() {
-	vt.mu.Lock()
-	defer vt.mu.Unlock()
 	if vt.cmd != nil && vt.cmd.Process != nil {
 		process.Kill(vt.cmd.Process)
 	}
+	vt.mu.Lock()
+	defer vt.mu.Unlock()
 	vt.pty.Close()
 }
 
