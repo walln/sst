@@ -78,17 +78,17 @@ export interface RedisArgs {
    * ```
    */
   vpc:
-  | Vpc
-  | Input<{
-    /**
-     * A list of subnet IDs in the VPC to deploy the Redis cluster in.
-     */
-    subnets: Input<Input<string>[]>;
-    /**
-     * A list of VPC security group IDs.
-     */
-    securityGroups: Input<Input<string>[]>;
-  }>;
+    | Vpc
+    | Input<{
+        /**
+         * A list of subnet IDs in the VPC to deploy the Redis cluster in.
+         */
+        subnets: Input<Input<string>[]>;
+        /**
+         * A list of VPC security group IDs.
+         */
+        securityGroups: Input<Input<string>[]>;
+      }>;
   /**
    * [Transform](/docs/components#transform) how this component creates its underlying
    * resources.
@@ -327,6 +327,7 @@ export class Redis extends Component implements Link.Linkable {
    *
    * @param name The name of the component.
    * @param clusterID The id of the existing Redis cluster.
+   * @param opts? Resource options.
    *
    * @example
    * Imagine you create a cluster in the `dev` stage. And in your personal stage `frank`,
@@ -347,10 +348,16 @@ export class Redis extends Component implements Link.Linkable {
    * };
    * ```
    */
-  public static get(name: string, clusterID: Input<string>) {
+  public static get(
+    name: string,
+    clusterID: Input<string>,
+    opts?: ComponentResourceOptions,
+  ) {
     const cluster = elasticache.ReplicationGroup.get(
       `${name}Cluster`,
       clusterID,
+      undefined,
+      opts,
     );
     return new Redis(name, { ref: true, cluster } as unknown as RedisArgs);
   }

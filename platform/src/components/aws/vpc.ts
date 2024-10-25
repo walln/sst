@@ -72,29 +72,29 @@ export interface VpcArgs {
     | "ec2"
     | "managed"
     | {
-      /**
-       * Configures the NAT EC2 instance.
-       * @default `{instance: "t4g.nano"}`
-       * @example
-       * ```ts
-       * {
-       *   nat: {
-       *     ec2: {
-       *       instance: "t4g.large"
-       *     }
-       *   }
-       * }
-       * ```
-       */
-      ec2: Input<{
         /**
-         * The type of instance to use for the NAT.
-         *
-         * @default `"t4g.nano"`
+         * Configures the NAT EC2 instance.
+         * @default `{instance: "t4g.nano"}`
+         * @example
+         * ```ts
+         * {
+         *   nat: {
+         *     ec2: {
+         *       instance: "t4g.large"
+         *     }
+         *   }
+         * }
+         * ```
          */
-        instance: Input<string>;
-      }>;
-    }
+        ec2: Input<{
+          /**
+           * The type of instance to use for the NAT.
+           *
+           * @default `"t4g.nano"`
+           */
+          instance: Input<string>;
+        }>;
+      }
   >;
   /**
    * Configures a bastion host that can be used to connect to resources in the VPC.
@@ -306,8 +306,7 @@ export class Vpc extends Component implements Link.Linkable {
       _message: [
         `There is a new version of "Vpc" that has breaking changes.`,
         ``,
-        `To continue using the previous version, rename "Vpc" to "Vpc.v${$cli.state.version[name]
-        }". Or recreate this component to update - https://sst.dev/docs/components/#versioning`,
+        `To continue using the previous version, rename "Vpc" to "Vpc.v${$cli.state.version[name]}". Or recreate this component to update - https://sst.dev/docs/components/#versioning`,
       ].join("\n"),
     });
 
@@ -394,7 +393,7 @@ export class Vpc extends Component implements Link.Linkable {
       return all([zones, args?.az ?? 2]).apply(([zones, az]) =>
         Array(az)
           .fill(0)
-          .map((_, i) => zones.names[i])
+          .map((_, i) => zones.names[i]),
       );
     }
 
@@ -628,7 +627,7 @@ export class Vpc extends Component implements Link.Linkable {
               },
               { parent },
             );
-          })
+          }),
         );
       });
     }
@@ -677,7 +676,7 @@ export class Vpc extends Component implements Link.Linkable {
           );
 
           return { subnet, routeTable };
-        })
+        }),
       );
 
       return {
@@ -712,20 +711,20 @@ export class Vpc extends Component implements Link.Linkable {
                   ([natGateways, natInstances]) => [
                     ...(natGateways[i]
                       ? [
-                        {
-                          cidrBlock: "0.0.0.0/0",
-                          natGatewayId: natGateways[i].id,
-                        },
-                      ]
+                          {
+                            cidrBlock: "0.0.0.0/0",
+                            natGatewayId: natGateways[i].id,
+                          },
+                        ]
                       : []),
                     ...(natInstances[i]
                       ? [
-                        {
-                          cidrBlock: "0.0.0.0/0",
-                          networkInterfaceId:
-                            natInstances[i].primaryNetworkInterfaceId,
-                        },
-                      ]
+                          {
+                            cidrBlock: "0.0.0.0/0",
+                            networkInterfaceId:
+                              natInstances[i].primaryNetworkInterfaceId,
+                          },
+                        ]
                       : []),
                   ],
                 ),
@@ -744,7 +743,7 @@ export class Vpc extends Component implements Link.Linkable {
           );
 
           return { subnet, routeTable };
-        })
+        }),
       );
 
       return {
@@ -873,7 +872,7 @@ export class Vpc extends Component implements Link.Linkable {
    */
   public get publicSubnets() {
     return this._publicSubnets.apply((subnets) =>
-      subnets.map((subnet) => subnet.id)
+      subnets.map((subnet) => subnet.id),
     );
   }
 
@@ -882,7 +881,7 @@ export class Vpc extends Component implements Link.Linkable {
    */
   public get privateSubnets() {
     return this._privateSubnets.apply((subnets) =>
-      subnets.map((subnet) => subnet.id)
+      subnets.map((subnet) => subnet.id),
     );
   }
 
@@ -974,6 +973,7 @@ export class Vpc extends Component implements Link.Linkable {
    *
    * @param name The name of the component.
    * @param vpcId The ID of the existing VPC.
+   * @param opts? Resource options.
    *
    * @example
    * Imagine you create a VPC in the `dev` stage. And in your personal stage `frank`,
@@ -994,81 +994,119 @@ export class Vpc extends Component implements Link.Linkable {
    * };
    * ```
    */
-  public static get(name: string, vpcId: Input<string>) {
-    const vpc = ec2.Vpc.get(`${name}Vpc`, vpcId);
+  public static get(
+    name: string,
+    vpcId: Input<string>,
+    opts?: ComponentResourceOptions,
+  ) {
+    const vpc = ec2.Vpc.get(`${name}Vpc`, vpcId, undefined, opts);
     const internetGateway = ec2.InternetGateway.get(
       `${name}InstanceGateway`,
-      ec2.getInternetGatewayOutput({
-        filters: [{ name: "attachment.vpc-id", values: [vpc.id] }],
-      }).internetGatewayId,
+      ec2.getInternetGatewayOutput(
+        {
+          filters: [{ name: "attachment.vpc-id", values: [vpc.id] }],
+        },
+        opts,
+      ).internetGatewayId,
+      undefined,
+      opts,
     );
     const securityGroup = ec2.SecurityGroup.get(
       `${name}SecurityGroup`,
       ec2
-        .getSecurityGroupsOutput({
-          filters: [
-            { name: "group-name", values: ["default"] },
-            { name: "vpc-id", values: [vpc.id] },
-          ],
-        })
+        .getSecurityGroupsOutput(
+          {
+            filters: [
+              { name: "group-name", values: ["default"] },
+              { name: "vpc-id", values: [vpc.id] },
+            ],
+          },
+          opts,
+        )
         .ids.apply((ids) => {
           if (!ids.length) {
             throw new VisibleError(`Security group not found in VPC ${vpcId}`);
           }
           return ids[0];
         }),
+      undefined,
+      opts,
     );
     const privateSubnets = ec2
-      .getSubnetsOutput({
-        filters: [
-          { name: "vpc-id", values: [vpc.id] },
-          { name: "tag:Name", values: ["*Private*"] },
-        ],
-      })
+      .getSubnetsOutput(
+        {
+          filters: [
+            { name: "vpc-id", values: [vpc.id] },
+            { name: "tag:Name", values: ["*Private*"] },
+          ],
+        },
+        opts,
+      )
       .ids.apply((ids) =>
-        ids.map((id, i) => ec2.Subnet.get(`${name}PrivateSubnet${i + 1}`, id))
+        ids.map((id, i) =>
+          ec2.Subnet.get(`${name}PrivateSubnet${i + 1}`, id, undefined, opts),
+        ),
       );
     const privateRouteTables = privateSubnets.apply((subnets) =>
       subnets.map((subnet, i) =>
         ec2.RouteTable.get(
           `${name}PrivateRouteTable${i + 1}`,
-          ec2.getRouteTableOutput({ subnetId: subnet.id }).routeTableId,
-        )
-      )
+          ec2.getRouteTableOutput({ subnetId: subnet.id }, opts).routeTableId,
+          undefined,
+          opts,
+        ),
+      ),
     );
     const publicSubnets = ec2
-      .getSubnetsOutput({
-        filters: [
-          { name: "vpc-id", values: [vpc.id] },
-          { name: "tag:Name", values: ["*Public*"] },
-        ],
-      })
+      .getSubnetsOutput(
+        {
+          filters: [
+            { name: "vpc-id", values: [vpc.id] },
+            { name: "tag:Name", values: ["*Public*"] },
+          ],
+        },
+        opts,
+      )
       .ids.apply((ids) =>
-        ids.map((id, i) => ec2.Subnet.get(`${name}PublicSubnet${i + 1}`, id))
+        ids.map((id, i) =>
+          ec2.Subnet.get(`${name}PublicSubnet${i + 1}`, id, undefined, opts),
+        ),
       );
     const publicRouteTables = publicSubnets.apply((subnets) =>
       subnets.map((subnet, i) =>
         ec2.RouteTable.get(
           `${name}PublicRouteTable${i + 1}`,
-          ec2.getRouteTableOutput({ subnetId: subnet.id }).routeTableId,
-        )
-      )
+          ec2.getRouteTableOutput({ subnetId: subnet.id }, opts).routeTableId,
+          undefined,
+          opts,
+        ),
+      ),
     );
     const natGateways = publicSubnets.apply((subnets) => {
       const natGatewayIds = subnets.map((subnet, i) =>
         ec2
-          .getNatGatewaysOutput({
-            filters: [
-              { name: "subnet-id", values: [subnet.id] },
-              { name: "state", values: ["available"] },
-            ],
-          })
-          .ids.apply((ids) => ids[0])
+          .getNatGatewaysOutput(
+            {
+              filters: [
+                { name: "subnet-id", values: [subnet.id] },
+                { name: "state", values: ["available"] },
+              ],
+            },
+            opts,
+          )
+          .ids.apply((ids) => ids[0]),
       );
       return output(natGatewayIds).apply((ids) =>
         ids
           .filter((id) => id)
-          .map((id, i) => ec2.NatGateway.get(`${name}NatGateway${i + 1}`, id))
+          .map((id, i) =>
+            ec2.NatGateway.get(
+              `${name}NatGateway${i + 1}`,
+              id,
+              undefined,
+              opts,
+            ),
+          ),
       );
     });
     const elasticIps = natGateways.apply((nats) =>
@@ -1076,32 +1114,47 @@ export class Vpc extends Component implements Link.Linkable {
         ec2.Eip.get(
           `${name}ElasticIp${i + 1}`,
           nat.allocationId as Output<string>,
-        )
-      )
+          undefined,
+          opts,
+        ),
+      ),
     );
     const natInstances = ec2
-      .getInstancesOutput({
-        filters: [
-          { name: "tag:sst:lookup-type", values: ["nat"] },
-          { name: "vpc-id", values: [vpc.id] },
-        ],
-      })
+      .getInstancesOutput(
+        {
+          filters: [
+            { name: "tag:sst:lookup-type", values: ["nat"] },
+            { name: "vpc-id", values: [vpc.id] },
+          ],
+        },
+        opts,
+      )
       .ids.apply((ids) =>
-        ids.map((id, i) => ec2.Instance.get(`${name}NatInstance${i + 1}`, id))
+        ids.map((id, i) =>
+          ec2.Instance.get(`${name}NatInstance${i + 1}`, id, undefined, opts),
+        ),
       );
     const bastionInstance = natInstances.apply((instances) => {
       if (instances.length) return output(instances[0]);
       return ec2
-        .getInstancesOutput({
-          filters: [
-            { name: "tag:sst:lookup-type", values: ["bastion"] },
-            { name: "vpc-id", values: [vpc.id] },
-          ],
-        })
+        .getInstancesOutput(
+          {
+            filters: [
+              { name: "tag:sst:lookup-type", values: ["bastion"] },
+              { name: "vpc-id", values: [vpc.id] },
+            ],
+          },
+          opts,
+        )
         .ids.apply((ids) =>
           ids.length
-            ? ec2.Instance.get(`${name}BastionInstance`, ids[0])
-            : undefined
+            ? ec2.Instance.get(
+                `${name}BastionInstance`,
+                ids[0],
+                undefined,
+                opts,
+              )
+            : undefined,
         );
     });
 
@@ -1116,11 +1169,14 @@ export class Vpc extends Component implements Link.Linkable {
     // there are multiple results. Even though `getDnsNamespaceOutput()` takes tags in args,
     // the tags are not used for lookup.
     const zone = output(vpcId).apply((vpcId) =>
-      route53.getZone({
-        name: "sst",
-        privateZone: true,
-        vpcId,
-      })
+      route53.getZone(
+        {
+          name: "sst",
+          privateZone: true,
+          vpcId,
+        },
+        opts,
+      ),
     );
     const namespaceId = zone.linkedServiceDescription.apply((description) => {
       const match = description.match(/:namespace\/(ns-[a-z1-9]*)/)?.[1];
@@ -1135,6 +1191,7 @@ export class Vpc extends Component implements Link.Linkable {
       `${name}CloudmapNamespace`,
       namespaceId,
       { vpc: vpcId },
+      opts,
     );
 
     const privateKeyValue = bastionInstance.apply((v) => {
@@ -1142,29 +1199,28 @@ export class Vpc extends Component implements Link.Linkable {
       const param = ssm.Parameter.get(
         `${name}PrivateKey`,
         interpolate`/sst/vpc/${vpc.id}/private-key`,
+        undefined,
+        opts,
       );
       return param.value;
     });
 
-    return new Vpc(
-      name,
-      {
-        ref: true,
-        vpc,
-        internetGateway,
-        securityGroup,
-        privateSubnets,
-        privateRouteTables,
-        publicSubnets,
-        publicRouteTables,
-        natGateways,
-        natInstances,
-        elasticIps,
-        bastionInstance,
-        cloudmapNamespace,
-        privateKeyValue: output(privateKeyValue),
-      } satisfies VpcRef as VpcArgs,
-    );
+    return new Vpc(name, {
+      ref: true,
+      vpc,
+      internetGateway,
+      securityGroup,
+      privateSubnets,
+      privateRouteTables,
+      publicSubnets,
+      publicRouteTables,
+      natGateways,
+      natInstances,
+      elasticIps,
+      bastionInstance,
+      cloudmapNamespace,
+      privateKeyValue: output(privateKeyValue),
+    } satisfies VpcRef as VpcArgs);
   }
 
   /** @internal */
