@@ -52,6 +52,7 @@ func (r *BucketFiles) Create(input *BucketFilesInputs, output *CreateResult[Buck
 			BucketName: input.BucketName,
 			Files:      input.Files,
 			Purge:      input.Purge,
+			Region:     input.Region,
 		},
 	}
 	return nil
@@ -85,6 +86,7 @@ func (r *BucketFiles) Update(input *UpdateInput[BucketFilesInputs, BucketFilesOu
 			BucketName: input.News.BucketName,
 			Files:      input.News.Files,
 			Purge:      input.News.Purge,
+			Region:     input.News.Region,
 		},
 	}
 	return nil
@@ -99,7 +101,10 @@ func (r *BucketFiles) Delete(input *DeleteInput[BucketFilesOutputs], output *int
 	if err != nil {
 		return err
 	}
-	cfg.Region = input.Outs.Region
+	// input.Outs.Region can be empty if last deployed in version is 3.2.59 or earlier
+	if input.Outs.Region != "" {
+		cfg.Region = input.Outs.Region
+	}
 	s3Client := s3.NewFromConfig(cfg)
 
 	return r.purge(s3Client, input.Outs.BucketName, nil, input.Outs.Files)
