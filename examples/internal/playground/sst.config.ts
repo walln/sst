@@ -22,6 +22,8 @@ export default $config({
     //const postgres = addPostgres();
     //const redis = addRedis();
     //const cron = addCron();
+    //const queue = addQueue();
+    //const topic = addTopic();
 
     return ret;
 
@@ -76,18 +78,6 @@ export default $config({
       ret.email = email.sender;
       ret.emailConfig = email.configSet;
       return ret;
-    }
-
-    function addCron() {
-      const cron = new sst.aws.Cron("MyCron", {
-        schedule: "rate(1 minute)",
-        job: {
-          handler: "functions/handler-example/index.handler",
-          link: [bucket],
-        },
-      });
-      ret.cron = cron.nodes.job.name;
-      return cron;
     }
 
     function addApiV1() {
@@ -155,6 +145,38 @@ export default $config({
         link: [redis],
       });
       return redis;
+    }
+
+    function addCron() {
+      const cron = new sst.aws.Cron("MyCron", {
+        schedule: "rate(1 minute)",
+        job: {
+          handler: "functions/handler-example/index.handler",
+          link: [bucket],
+        },
+      });
+      ret.cron = cron.nodes.job.name;
+      return cron;
+    }
+
+    function addQueue() {
+      const queue = new sst.aws.Queue("MyQueue");
+      return queue;
+    }
+
+    function addTopic() {
+      const topic = new sst.aws.SnsTopic("MyTopic");
+
+      const fn = new sst.aws.Function("MyTopicSubscriber", {
+        handler: "functions/topic/index.handler",
+      });
+      topic.subscribe(fn.arn, {
+        filter: {
+          color: ["red"],
+        },
+      });
+
+      return topic;
     }
   },
 });
