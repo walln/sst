@@ -75,9 +75,9 @@ func (s *Multiplexer) resize(width int, height int) {
 
 func (s *Multiplexer) Start() {
 	defer func() {
-		for _, p := range s.processes {
-			p.Kill()
-		}
+		// for _, p := range s.processes {
+		// 	p.Kill()
+		// }
 		s.screen.Fini()
 	}()
 
