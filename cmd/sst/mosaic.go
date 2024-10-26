@@ -202,8 +202,8 @@ func CmdMosaic(c *cli.Cli) error {
 			fmt.Sprintf("SST_SERVER=http://localhost:%v", server.Port),
 			"SST_STAGE="+p.App().Stage,
 		)
-		multi.AddProcess("deploy", []string{currentExecutable, "ui", "--filter=sst"}, "⑆", "SST", "", false, true, multiEnv...)
-		multi.AddProcess("function", []string{currentExecutable, "ui", "--filter=function"}, "λ", "Functions", "", false, true, multiEnv...)
+		multi.AddProcess("deploy", []string{currentExecutable, "ui", "--filter=sst"}, "⑆", "SST", "", false, true, append(multiEnv, "SST_LOG="+p.PathLog("ui-deploy"))...)
+		multi.AddProcess("function", []string{currentExecutable, "ui", "--filter=function"}, "λ", "Functions", "", false, true, append(multiEnv, "SST_LOG="+p.PathLog("ui-function"))...)
 		wg.Go(func() error {
 			defer c.Cancel()
 			multi.Start()
@@ -240,8 +240,10 @@ func CmdMosaic(c *cli.Cli) error {
 								append([]string{"SST_CHILD=" + d.Name}, multiEnv...)...,
 							)
 						}
-						for range evt.Tunnels {
-							multi.AddProcess("tunnel", []string{currentExecutable, "tunnel", "--stage", p.App().Stage}, "⇌", "Tunnel", "", true, true, os.Environ()...)
+						for name := range evt.Tunnels {
+							multi.AddProcess("tunnel", []string{currentExecutable, "tunnel", "--stage", p.App().Stage}, "⇌", "Tunnel", "", true, true, append(os.Environ(),
+								"SST_LOG="+p.PathLog("tunnel_"+name),
+							)...)
 						}
 						break
 					}
