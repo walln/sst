@@ -45,8 +45,9 @@ export interface VpcArgs {
    * For `"managed"`, a NAT Gateway is created in each AZ. All the traffic from
    * the private subnets are routed to the NAT Gateway in the same AZ.
    *
-   * NAT Gateways are billed per hour and per gigabyte of data processed. Each NAT Gateway
-   * roughly costs $33 per month. Make sure to [review the pricing](https://aws.amazon.com/vpc/pricing/).
+   * NAT Gateways are billed per hour and per gigabyte of data processed. A NAT Gateway for
+   * two AZs costs $65 per month. This is relatively expensive but it automatically scales
+   * based on the traffic.
    *
    * For `"ec2"`, an EC2 instance of type `t4g.nano` will be launched in each AZ
    * with the [fck-nat](https://github.com/AndrewGuenther/fck-nat) AMI. All the traffic from
@@ -72,29 +73,29 @@ export interface VpcArgs {
     | "ec2"
     | "managed"
     | {
+      /**
+       * Configures the NAT EC2 instance.
+       * @default `{instance: "t4g.nano"}`
+       * @example
+       * ```ts
+       * {
+       *   nat: {
+       *     ec2: {
+       *       instance: "t4g.large"
+       *     }
+       *   }
+       * }
+       * ```
+       */
+      ec2: Input<{
         /**
-         * Configures the NAT EC2 instance.
-         * @default `{instance: "t4g.nano"}`
-         * @example
-         * ```ts
-         * {
-         *   nat: {
-         *     ec2: {
-         *       instance: "t4g.large"
-         *     }
-         *   }
-         * }
-         * ```
+         * The type of instance to use for the NAT.
+         *
+         * @default `"t4g.nano"`
          */
-        ec2: Input<{
-          /**
-           * The type of instance to use for the NAT.
-           *
-           * @default `"t4g.nano"`
-           */
-          instance: Input<string>;
-        }>;
-      }
+        instance: Input<string>;
+      }>;
+    }
   >;
   /**
    * Configures a bastion host that can be used to connect to resources in the VPC.
@@ -306,7 +307,8 @@ export class Vpc extends Component implements Link.Linkable {
       _message: [
         `There is a new version of "Vpc" that has breaking changes.`,
         ``,
-        `To continue using the previous version, rename "Vpc" to "Vpc.v${$cli.state.version[name]}". Or recreate this component to update - https://sst.dev/docs/components/#versioning`,
+        `To continue using the previous version, rename "Vpc" to "Vpc.v${$cli.state.version[name]
+        }". Or recreate this component to update - https://sst.dev/docs/components/#versioning`,
       ].join("\n"),
     });
 
@@ -393,7 +395,7 @@ export class Vpc extends Component implements Link.Linkable {
       return all([zones, args?.az ?? 2]).apply(([zones, az]) =>
         Array(az)
           .fill(0)
-          .map((_, i) => zones.names[i]),
+          .map((_, i) => zones.names[i])
       );
     }
 
@@ -627,7 +629,7 @@ export class Vpc extends Component implements Link.Linkable {
               },
               { parent },
             );
-          }),
+          })
         );
       });
     }
@@ -676,7 +678,7 @@ export class Vpc extends Component implements Link.Linkable {
           );
 
           return { subnet, routeTable };
-        }),
+        })
       );
 
       return {
@@ -711,20 +713,20 @@ export class Vpc extends Component implements Link.Linkable {
                   ([natGateways, natInstances]) => [
                     ...(natGateways[i]
                       ? [
-                          {
-                            cidrBlock: "0.0.0.0/0",
-                            natGatewayId: natGateways[i].id,
-                          },
-                        ]
+                        {
+                          cidrBlock: "0.0.0.0/0",
+                          natGatewayId: natGateways[i].id,
+                        },
+                      ]
                       : []),
                     ...(natInstances[i]
                       ? [
-                          {
-                            cidrBlock: "0.0.0.0/0",
-                            networkInterfaceId:
-                              natInstances[i].primaryNetworkInterfaceId,
-                          },
-                        ]
+                        {
+                          cidrBlock: "0.0.0.0/0",
+                          networkInterfaceId:
+                            natInstances[i].primaryNetworkInterfaceId,
+                        },
+                      ]
                       : []),
                   ],
                 ),
@@ -743,7 +745,7 @@ export class Vpc extends Component implements Link.Linkable {
           );
 
           return { subnet, routeTable };
-        }),
+        })
       );
 
       return {
@@ -872,7 +874,7 @@ export class Vpc extends Component implements Link.Linkable {
    */
   public get publicSubnets() {
     return this._publicSubnets.apply((subnets) =>
-      subnets.map((subnet) => subnet.id),
+      subnets.map((subnet) => subnet.id)
     );
   }
 
@@ -881,7 +883,7 @@ export class Vpc extends Component implements Link.Linkable {
    */
   public get privateSubnets() {
     return this._privateSubnets.apply((subnets) =>
-      subnets.map((subnet) => subnet.id),
+      subnets.map((subnet) => subnet.id)
     );
   }
 
@@ -1044,8 +1046,8 @@ export class Vpc extends Component implements Link.Linkable {
       )
       .ids.apply((ids) =>
         ids.map((id, i) =>
-          ec2.Subnet.get(`${name}PrivateSubnet${i + 1}`, id, undefined, opts),
-        ),
+          ec2.Subnet.get(`${name}PrivateSubnet${i + 1}`, id, undefined, opts)
+        )
       );
     const privateRouteTables = privateSubnets.apply((subnets) =>
       subnets.map((subnet, i) =>
@@ -1054,8 +1056,8 @@ export class Vpc extends Component implements Link.Linkable {
           ec2.getRouteTableOutput({ subnetId: subnet.id }, opts).routeTableId,
           undefined,
           opts,
-        ),
-      ),
+        )
+      )
     );
     const publicSubnets = ec2
       .getSubnetsOutput(
@@ -1069,8 +1071,8 @@ export class Vpc extends Component implements Link.Linkable {
       )
       .ids.apply((ids) =>
         ids.map((id, i) =>
-          ec2.Subnet.get(`${name}PublicSubnet${i + 1}`, id, undefined, opts),
-        ),
+          ec2.Subnet.get(`${name}PublicSubnet${i + 1}`, id, undefined, opts)
+        )
       );
     const publicRouteTables = publicSubnets.apply((subnets) =>
       subnets.map((subnet, i) =>
@@ -1079,8 +1081,8 @@ export class Vpc extends Component implements Link.Linkable {
           ec2.getRouteTableOutput({ subnetId: subnet.id }, opts).routeTableId,
           undefined,
           opts,
-        ),
-      ),
+        )
+      )
     );
     const natGateways = publicSubnets.apply((subnets) => {
       const natGatewayIds = subnets.map((subnet, i) =>
@@ -1094,7 +1096,7 @@ export class Vpc extends Component implements Link.Linkable {
             },
             opts,
           )
-          .ids.apply((ids) => ids[0]),
+          .ids.apply((ids) => ids[0])
       );
       return output(natGatewayIds).apply((ids) =>
         ids
@@ -1105,8 +1107,8 @@ export class Vpc extends Component implements Link.Linkable {
               id,
               undefined,
               opts,
-            ),
-          ),
+            )
+          )
       );
     });
     const elasticIps = natGateways.apply((nats) =>
@@ -1116,8 +1118,8 @@ export class Vpc extends Component implements Link.Linkable {
           nat.allocationId as Output<string>,
           undefined,
           opts,
-        ),
-      ),
+        )
+      )
     );
     const natInstances = ec2
       .getInstancesOutput(
@@ -1131,8 +1133,8 @@ export class Vpc extends Component implements Link.Linkable {
       )
       .ids.apply((ids) =>
         ids.map((id, i) =>
-          ec2.Instance.get(`${name}NatInstance${i + 1}`, id, undefined, opts),
-        ),
+          ec2.Instance.get(`${name}NatInstance${i + 1}`, id, undefined, opts)
+        )
       );
     const bastionInstance = natInstances.apply((instances) => {
       if (instances.length) return output(instances[0]);
@@ -1149,12 +1151,12 @@ export class Vpc extends Component implements Link.Linkable {
         .ids.apply((ids) =>
           ids.length
             ? ec2.Instance.get(
-                `${name}BastionInstance`,
-                ids[0],
-                undefined,
-                opts,
-              )
-            : undefined,
+              `${name}BastionInstance`,
+              ids[0],
+              undefined,
+              opts,
+            )
+            : undefined
         );
     });
 
@@ -1176,7 +1178,7 @@ export class Vpc extends Component implements Link.Linkable {
           vpcId,
         },
         opts,
-      ),
+      )
     );
     const namespaceId = zone.linkedServiceDescription.apply((description) => {
       const match = description.match(/:namespace\/(ns-[a-z1-9]*)/)?.[1];
@@ -1205,22 +1207,25 @@ export class Vpc extends Component implements Link.Linkable {
       return param.value;
     });
 
-    return new Vpc(name, {
-      ref: true,
-      vpc,
-      internetGateway,
-      securityGroup,
-      privateSubnets,
-      privateRouteTables,
-      publicSubnets,
-      publicRouteTables,
-      natGateways,
-      natInstances,
-      elasticIps,
-      bastionInstance,
-      cloudmapNamespace,
-      privateKeyValue: output(privateKeyValue),
-    } satisfies VpcRef as VpcArgs);
+    return new Vpc(
+      name,
+      {
+        ref: true,
+        vpc,
+        internetGateway,
+        securityGroup,
+        privateSubnets,
+        privateRouteTables,
+        publicSubnets,
+        publicRouteTables,
+        natGateways,
+        natInstances,
+        elasticIps,
+        bastionInstance,
+        cloudmapNamespace,
+        privateKeyValue: output(privateKeyValue),
+      } satisfies VpcRef as VpcArgs,
+    );
   }
 
   /** @internal */
