@@ -78,17 +78,17 @@ export interface RedisArgs {
    * ```
    */
   vpc:
-    | Vpc
-    | Input<{
-        /**
-         * A list of subnet IDs in the VPC to deploy the Redis cluster in.
-         */
-        subnets: Input<Input<string>[]>;
-        /**
-         * A list of VPC security group IDs.
-         */
-        securityGroups: Input<Input<string>[]>;
-      }>;
+  | Vpc
+  | Input<{
+    /**
+     * A list of subnet IDs in the VPC to deploy the Redis cluster in.
+     */
+    subnets: Input<Input<string>[]>;
+    /**
+     * A list of VPC security group IDs.
+     */
+    securityGroups: Input<Input<string>[]>;
+  }>;
   /**
    * [Transform](/docs/components#transform) how this component creates its underlying
    * resources.
@@ -160,9 +160,9 @@ interface RedisRef {
  * ### Cost
  *
  * By default this component uses _On-demand nodes_ with a single `cache.t4g.micro` instance;
- * $0.0128 per hour.
+ * $0.016 per hour.
  *
- * That works out to $0.0128 x 24 x 30 or **$9 per month**.
+ * That works out to $0.016 x 24 x 30 or **$12 per month**.
  *
  * Adjust this for the `instance` type and number of `nodes` you are using.
  *
