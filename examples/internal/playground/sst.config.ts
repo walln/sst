@@ -166,14 +166,16 @@ export default $config({
 
     function addTopic() {
       const topic = new sst.aws.SnsTopic("MyTopic");
-
-      const fn = new sst.aws.Function("MyTopicSubscriber", {
-        handler: "functions/topic/index.handler",
-      });
-      topic.subscribe(fn.arn, {
+      topic.subscribe("functions/topic/index.handler", {
         filter: {
           color: ["red"],
         },
+      });
+
+      new sst.aws.Function("MyTopicPublisher", {
+        handler: "functions/topic/index.publisher",
+        link: [topic],
+        url: true,
       });
 
       return topic;
