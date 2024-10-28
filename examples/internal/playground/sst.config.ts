@@ -24,6 +24,7 @@ export default $config({
     //const cron = addCron();
     //const queue = addQueue();
     //const topic = addTopic();
+    //const bus = addBus();
 
     return ret;
 
@@ -161,12 +162,13 @@ export default $config({
 
     function addQueue() {
       const queue = new sst.aws.Queue("MyQueue");
+      queue.subscribe("functions/queue/index.subscriber");
       return queue;
     }
 
     function addTopic() {
       const topic = new sst.aws.SnsTopic("MyTopic");
-      topic.subscribe("functions/topic/index.handler", {
+      topic.subscribe("functions/topic/index.subscriber", {
         filter: {
           color: ["red"],
         },
@@ -179,6 +181,24 @@ export default $config({
       });
 
       return topic;
+    }
+
+    function addBus() {
+      const bus = new sst.aws.Bus("MyBus");
+      bus.subscribe("functions/bus/index.subscriber", {
+        pattern: {
+          source: ["app.myevent"],
+        },
+      });
+      bus.subscribeQueue("test", queue);
+
+      new sst.aws.Function("MyBusPublisher", {
+        handler: "functions/bus/index.publisher",
+        link: [bus],
+        url: true,
+      });
+
+      return bus;
     }
   },
 });

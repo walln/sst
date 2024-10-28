@@ -18,5 +18,5 @@ export const publisher = async () => {
 };
 
 export const subscriber = async () => {
-  return "ok";
+  console.log("topic subscriber: message received");
 };

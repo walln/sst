@@ -608,7 +608,11 @@ export class Queue extends Component implements Link.Linkable {
               principals: [
                 {
                   type: "Service",
-                  identifiers: ["sns.amazonaws.com", "s3.amazonaws.com"],
+                  identifiers: [
+                    "sns.amazonaws.com",
+                    "s3.amazonaws.com",
+                    "events.amazonaws.com",
+                  ],
                 },
               ],
             },
