@@ -263,7 +263,7 @@ func (proj *Project) LoadHome() error {
 		}
 		err := match.Init(proj.app.Name, proj.app.Stage, args.(map[string]interface{}))
 		if err != nil {
-			return util.NewReadableError(err, err.Error())
+			return util.NewReadableError(err, key+": "+err.Error())
 		}
 		env, err := match.Env()
 		if err != nil {

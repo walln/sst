@@ -70,6 +70,9 @@ func main() {
 			msg := readableErr.Error()
 			if msg != "" {
 				ui.Error(readableErr.Error())
+				if readableErr.IsHinted() {
+					fmt.Println("   " + ui.TEXT_DIM.Render(readableErr.Unwrap().Error()))
+				}
 			}
 		} else {
 			slog.Error("exited with error", "err", err)
