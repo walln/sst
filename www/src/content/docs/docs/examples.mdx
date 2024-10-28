@@ -331,6 +331,63 @@ View the [full example](https://github.com/sst/sst/tree/dev/examples/aws-bun-fil
 
 
 ---
+## AWS Cluster private service
+
+Adds a private load balancer to a service by setting the `loadBalancer.public` prop to
+`false`.
+
+This allows you to create internal services that can only be accessed inside a VPC.
+```ts title="sst.config.ts"
+const vpc = new sst.aws.Vpc("MyVpc", { bastion: true });
+
+const cluster = new sst.aws.Cluster("MyCluster", { vpc });
+cluster.addService("MyService", {
+  loadBalancer: {
+    public: false,
+    ports: [{ listen: "80/http" }],
+  },
+});
+```
+
+View the [full example](https://github.com/sst/sst/tree/dev/examples/aws-cluster-internal).
+
+
+---
+## AWS Cluster with API Gateway
+
+Expose a service through API Gateway HTTP API using a VPC link.
+
+This is an alternative to using a load balancer. Since API Gateway is pay per request, it
+works out a lot cheaper for services that don't get a lot of traffic.
+
+You need to specify which port in your service will be exposed through API Gateway.
+
+```ts title="sst.config.ts" {3}
+const service = cluster.addService("MyService", {
+  serviceRegistry: {
+    port: 80,
+  },
+});
+```
+
+Your API Gateway HTTP API also needs to be in the same VPC as the service.
+```ts title="sst.config.ts"
+const vpc = new sst.aws.Vpc("MyVpc");
+const cluster = new sst.aws.Cluster("MyCluster", { vpc });
+const service = cluster.addService("MyService", {
+  serviceRegistry: {
+    port: 80,
+  },
+});
+
+const api = new sst.aws.ApiGatewayV2("MyApi", { vpc });
+api.routePrivate("$default", service.nodes.cloudmapService.arn);
+```
+
+View the [full example](https://github.com/sst/sst/tree/dev/examples/aws-cluster-vpclink).
+
+
+---
 ## Subscribe to queues
 
 Create an SQS queue, subscribe to it, and publish to it from a function.

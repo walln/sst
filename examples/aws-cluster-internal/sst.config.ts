@@ -1,5 +1,13 @@
 /// <reference path="./.sst/platform/config.d.ts" />
 
+/**
+ * ## AWS Cluster private service
+ *
+ * Adds a private load balancer to a service by setting the `loadBalancer.public` prop to
+ * `false`.
+ *
+ * This allows you to create internal services that can only be accessed inside a VPC.
+ */
 export default $config({
   app(input) {
     return {
@@ -10,6 +18,7 @@ export default $config({
   },
   async run() {
     const vpc = new sst.aws.Vpc("MyVpc", { bastion: true });
+
     const cluster = new sst.aws.Cluster("MyCluster", { vpc });
     cluster.addService("MyService", {
       loadBalancer: {
@@ -17,6 +26,5 @@ export default $config({
         ports: [{ listen: "80/http" }],
       },
     });
-    return { bastion: vpc.bastion };
   },
 });
