@@ -228,7 +228,7 @@ Now you can add a service.
 
 ```ts title="sst.config.ts"
 cluster.addService("MyService", {
-  public: {
+  loadBalancer: {
     ports: [{ listen: "80/http", forward: "3000/http" }],
   },
   dev: {
@@ -257,7 +257,7 @@ const vpc = new sst.aws.Vpc("MyVpc");
 
 const cluster = new sst.aws.Cluster("MyCluster", { vpc });
 cluster.addService("MyService", {
-  public: {
+  loadBalancer: {
     ports: [{ listen: "80/http", forward: "3000/http" }],
   },
   dev: {
@@ -287,7 +287,7 @@ Now you can add a service.
 
 ```ts title="sst.config.ts"
 cluster.addService("MyService", {
-  public: {
+  loadBalancer: {
     ports: [{ listen: "80/http", forward: "3000/http" }],
   },
   dev: {
@@ -317,7 +317,7 @@ const vpc = new sst.aws.Vpc("MyVpc");
 
 const cluster = new sst.aws.Cluster("MyCluster", { vpc });
 cluster.addService("MyService", {
-  public: {
+  loadBalancer: {
     ports: [{ listen: "80/http", forward: "3000/http" }],
   },
   dev: {
@@ -627,7 +627,7 @@ new sst.aws.Function("MyFunction", {
 // Create a service that increments the same counter
 const cluster = new sst.aws.Cluster("MyCluster", { vpc });
 cluster.addService("MyService", {
-  public: {
+  loadBalancer: {
     ports: [{ listen: "80/http" }],
   },
   volumes: [
@@ -660,7 +660,7 @@ Now you can add a service.
 
 ```ts title="sst.config.ts"
 cluster.addService("MyService", {
-  public: {
+  loadBalancer: {
     ports: [{ listen: "80/http", forward: "3000/http" }],
   },
   dev: {
@@ -689,7 +689,7 @@ const vpc = new sst.aws.Vpc("MyVpc");
 
 const cluster = new sst.aws.Cluster("MyCluster", { vpc });
 cluster.addService("MyService", {
-  public: {
+  loadBalancer: {
     ports: [{ listen: "80/http" }],
   },
   dev: {
@@ -1649,7 +1649,7 @@ const vpc = new sst.aws.Vpc("MyVpc", { bastion: true });
 const cluster = new sst.aws.Cluster("MyCluster", { vpc });
 
 cluster.addService("MyService", {
-  public: {
+  loadBalancer: {
     ports: [{ listen: "80/http", forward: "3000/http" }],
   },
   dev: {

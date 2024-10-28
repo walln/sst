@@ -72,7 +72,7 @@ Just like the frontend, you can configure backend features _in code_. Like Postg
   const cluster = new sst.aws.Cluster("MyCluster", { vpc });
 
   cluster.addService("MyService", {
-    public: {
+    loadBalancer: {
       ports: [{ listen: "80/http" }]
     }
   });

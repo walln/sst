@@ -113,7 +113,7 @@ export default $config({
     function addService() {
       const cluster = new sst.aws.Cluster("MyCluster", { vpc });
       const service = cluster.addService("MyService", {
-        public: {
+        loadBalancer: {
           ports: [{ listen: "80/http" }],
         },
         image: {
