@@ -98,7 +98,6 @@ export class Service extends Component implements Link.Linkable {
 
     const dev = normalizeDev();
     const cluster = output(args.cluster);
-    const { isSstVpc, vpc } = normalizeVpc();
     const region = normalizeRegion();
     const architecture = normalizeArchitecture();
     const cpu = normalizeCpu();
@@ -107,6 +106,7 @@ export class Service extends Component implements Link.Linkable {
     const scaling = normalizeScaling();
     const containers = normalizeContainers();
     const lbArgs = normalizeLoadBalancer();
+    const { isSstVpc, vpc } = normalizeVpc();
 
     const taskRole = createTaskRole();
 
@@ -167,15 +167,18 @@ export class Service extends Component implements Link.Linkable {
 
       // "vpc" is a Vpc component
       if (args.vpc instanceof Vpc) {
+        const vpc = args.vpc;
         return {
           isSstVpc: true,
           vpc: {
-            id: args.vpc.id,
-            loadBalancerSubnets: args.vpc.publicSubnets,
-            serviceSubnets: args.vpc.publicSubnets,
-            securityGroups: args.vpc.securityGroups,
-            cloudmapNamespaceId: args.vpc.nodes.cloudmapNamespace.id,
-            cloudmapNamespaceName: args.vpc.nodes.cloudmapNamespace.name,
+            id: vpc.id,
+            loadBalancerSubnets: lbArgs?.pub.apply((v) =>
+              v ? vpc.publicSubnets : vpc.privateSubnets,
+            ),
+            serviceSubnets: vpc.publicSubnets,
+            securityGroups: vpc.securityGroups,
+            cloudmapNamespaceId: vpc.nodes.cloudmapNamespace.id,
+            cloudmapNamespaceName: vpc.nodes.cloudmapNamespace.name,
           },
         };
       }
@@ -394,7 +397,10 @@ export class Service extends Component implements Link.Linkable {
         };
       });
 
-      return { ports, domain };
+      // normalize public/private
+      const pub = output(args.loadBalancer).apply((lb) => lb?.public ?? true);
+
+      return { ports, domain, pub };
     }
 
     function createLoadBalancer() {
@@ -432,7 +438,7 @@ export class Service extends Component implements Link.Linkable {
           args.transform?.loadBalancer,
           `${name}LoadBalancer`,
           {
-            internal: false,
+            internal: lbArgs.pub.apply((v) => !v),
             loadBalancerType: lbArgs.ports.apply((ports) =>
               ports[0].listenProtocol.startsWith("http")
                 ? "application"
@@ -792,7 +798,7 @@ export class Service extends Component implements Link.Linkable {
           dnsConfig: {
             namespaceId: vpc.cloudmapNamespaceId,
             dnsRecords: [
-              { ttl: 60, type: "SRV" },
+              ...(args.serviceRegistry ? [{ ttl: 60, type: "SRV" }] : []),
               { ttl: 60, type: "A" },
             ],
           },

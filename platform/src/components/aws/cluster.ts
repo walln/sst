@@ -547,6 +547,23 @@ export interface ClusterServiceArgs {
    */
   loadBalancer?: Input<{
     /**
+     * Configure if the load balancer should be public or private.
+     *
+     * When set to `false`, the load balancer enpoint will only be accessible within the
+     * VPC.
+     *
+     * @default `true`
+     * @example
+     * ```js
+     * {
+     *   loadBalancer: {
+     *     public: false
+     *   }
+     * }
+     * ```
+     */
+    public?: Input<boolean>;
+    /**
      * Set a custom domain for your load balancer endpoint.
      *
      * Automatically manages domains hosted on AWS Route 53, Cloudflare, and Vercel. For other
