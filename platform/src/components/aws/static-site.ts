@@ -625,28 +625,20 @@ export class StaticSite extends Component implements Link.Linkable {
     const { sitePath, environment, indexPage } = prepare(args);
     const dev = normalizeDev();
 
-    this.registerOutputs({
-      _metadata: dev.apply((val) =>
-        val
-          ? {
-              mode: "placeholder",
-              path: sitePath,
-              environment,
-              url: this.url,
-            }
-          : undefined,
-      ),
-      _dev: all([args.dev]).apply(([val]) => {
-        val = !val ? {} : val;
-        return {
+    if ($dev && args.dev !== false) {
+      this.devUrl = dev.url;
+      this.registerOutputs({
+        _metadata: {
+          mode: "placeholder",
+          path: sitePath,
           environment,
-          url: val.url ?? URL_UNAVAILABLE,
-          command: val.command ?? "npm run dev",
-          directory: val.directory ?? sitePath,
-          autostart: val.autostart ?? true,
-        };
-      }),
-    });
+          url: this.url,
+        },
+        _dev: dev,
+      });
+      return;
+    }
+
     const assets = normalizeAsssets();
     const outputPath = buildApp(
       parent,
@@ -672,10 +664,18 @@ export class StaticSite extends Component implements Link.Linkable {
         environment,
         url: this.url,
       },
+      _dev: dev,
     });
 
     function normalizeDev() {
-      return all({ dev: args.dev }).apply((val) => $dev && val.dev !== false);
+      const dev = args.dev === false ? {} : args.dev ?? {};
+      return {
+        ...dev,
+        url: output(dev.url).apply((v) => v ?? URL_UNAVAILABLE),
+        command: output(dev.command).apply((v) => v ?? "npm run dev"),
+        autostart: output(dev.autostart).apply((v) => v ?? true),
+        directory: output(dev.directory).apply((v) => v ?? sitePath),
+      };
     }
 
     function normalizeAsssets() {
