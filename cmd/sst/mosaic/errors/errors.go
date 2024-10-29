@@ -24,7 +24,7 @@ var transformers = []ErrorTransformer{
 	exact(provider.ErrLockExists, ""),
 	exact(project.ErrVersionInvalid, "The version range defined in the config is invalid"),
 	exact(provider.ErrCloudflareMissingAccount, "The Cloudflare Account ID was not able to be determined from this token. Make sure it has permissions to fetch account information or you can set the CLOUDFLARE_DEFAULT_ACCOUNT_ID environment variable to the account id you want to use."),
-	exact(server.ErrServerNotFound, "You are currently trying to run a frontend or some other process on its own - starting from v3 `sst dev` can bring up all of the processes in your application in a single window. Simply run `sst dev` in the same directory as your `sst.config.ts`. If this is not clear check out the monorepo example here: https://github.com/sst/ion/tree/dev/examples/aws-monorepo\n\n   If you prefer running your processes in different terminal windows, you can start just the deploy process by running `sst dev --mode=basic` and then bring up your process with `sst dev -- <command>` in another terminal window."),
+	exact(server.ErrServerNotFound, "Could not find an `sst dev` session to connect to. Since you are running a command outside of the multiplexer be sure to start `sst dev` first."),
 	exact(provider.ErrBucketMissing, "The state bucket is missing, it may have been accidentally deleted. Go to https://console.aws.amazon.com/systems-manager/parameters/%252Fsst%252Fbootstrap/description?tab=Table and check if the state bucket mentioned there exists. If it doesn't you can recreate it or delete the `/sst/bootstrap` key to force recreation."),
 	exact(project.ErrBuildFailed, project.ErrBuildFailed.Error()),
 	exact(project.ErrVersionMismatch, project.ErrVersionMismatch.Error()),
