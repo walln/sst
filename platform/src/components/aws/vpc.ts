@@ -1212,7 +1212,7 @@ export class Vpc extends Component implements Link.Linkable {
     // override version
     return vpc.tags
       .apply((tags) => {
-        $cli.state.version[name] = tags["sst:component-version"]
+        $cli.state.version[name] = tags?.["sst:component-version"]
           ? parseInt(tags["sst:component-version"])
           : $cli.state.version[name];
       })

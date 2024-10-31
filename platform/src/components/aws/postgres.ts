@@ -690,7 +690,7 @@ export class Postgres extends Component implements Link.Linkable {
     // override version
     return instance.tags
       .apply((tags) => {
-        $cli.state.version[name] = tags["sst:component-version"]
+        $cli.state.version[name] = tags?.["sst:component-version"]
           ? parseInt(tags["sst:component-version"])
           : $cli.state.version[name];
       })
