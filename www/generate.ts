@@ -928,6 +928,7 @@ function renderType(
       FunctionPermissionArgs: "function",
       Postgres: "postgres",
       PostgresArgs: "postgres",
+      Queue: "queue",
       QueueLambdaSubscriber: "queue-lambda-subscriber",
       KinesisStreamLambdaSubscriber: "kinesis-stream-lambda-subscriber",
       RealtimeLambdaSubscriber: "realtime-lambda-subscriber",

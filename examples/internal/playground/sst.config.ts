@@ -56,7 +56,10 @@ export default $config({
 
     function addEmail() {
       const topic = new sst.aws.SnsTopic("MyTopic");
-      topic.subscribe("functions/email/index.notification");
+      topic.subscribe(
+        "MyTopicSubscriber",
+        "functions/email/index.notification"
+      );
 
       const email = new sst.aws.Email("MyEmail", {
         sender: "wangfanjie@gmail.com",
@@ -168,7 +171,7 @@ export default $config({
 
     function addTopic() {
       const topic = new sst.aws.SnsTopic("MyTopic");
-      topic.subscribe("functions/topic/index.subscriber", {
+      topic.subscribe("MyTopicSubscriber", "functions/topic/index.subscriber", {
         filter: {
           color: ["red"],
         },
