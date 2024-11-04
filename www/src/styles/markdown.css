@@ -97,9 +97,15 @@
 }
 .custom-aside-video .starlight-aside__title a {
   text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 .custom-aside-video .starlight-aside__title a:hover {
   text-decoration: underline;
+}
+.custom-aside-video .starlight-aside__title a svg {
+  opacity: 0.8;
 }
 
 /**
