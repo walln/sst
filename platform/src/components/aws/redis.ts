@@ -1,6 +1,7 @@
 import {
   ComponentResourceOptions,
   interpolate,
+  jsonStringify,
   Output,
   output,
 } from "@pulumi/pulumi";
@@ -8,9 +9,10 @@ import { RandomPassword } from "@pulumi/random";
 import { Component, Transform, transform } from "../component.js";
 import { Link } from "../link.js";
 import { Input } from "../input.js";
-import { elasticache } from "@pulumi/aws";
+import { elasticache, secretsmanager } from "@pulumi/aws";
 import { Vpc } from "./vpc.js";
 import { physicalName } from "../naming.js";
+import { VisibleError } from "../error.js";
 
 export interface RedisArgs {
   /**
@@ -78,17 +80,17 @@ export interface RedisArgs {
    * ```
    */
   vpc:
-  | Vpc
-  | Input<{
-    /**
-     * A list of subnet IDs in the VPC to deploy the Redis cluster in.
-     */
-    subnets: Input<Input<string>[]>;
-    /**
-     * A list of VPC security group IDs.
-     */
-    securityGroups: Input<Input<string>[]>;
-  }>;
+    | Vpc
+    | Input<{
+        /**
+         * A list of subnet IDs in the VPC to deploy the Redis cluster in.
+         */
+        subnets: Input<Input<string>[]>;
+        /**
+         * A list of VPC security group IDs.
+         */
+        securityGroups: Input<Input<string>[]>;
+      }>;
   /**
    * [Transform](/docs/components#transform) how this component creates its underlying
    * resources.
@@ -108,6 +110,7 @@ export interface RedisArgs {
 interface RedisRef {
   ref: boolean;
   cluster: elasticache.ReplicationGroup;
+  authToken: Output<string>;
 }
 
 /**
@@ -171,6 +174,7 @@ interface RedisRef {
  */
 export class Redis extends Component implements Link.Linkable {
   private cluster: elasticache.ReplicationGroup;
+  private _authToken: Output<string>;
 
   constructor(name: string, args: RedisArgs, opts?: ComponentResourceOptions) {
     super(__pulumiType, name, args, opts);
@@ -178,6 +182,7 @@ export class Redis extends Component implements Link.Linkable {
     if (args && "ref" in args) {
       const ref = args as unknown as RedisRef;
       this.cluster = ref.cluster;
+      this._authToken = ref.authToken;
       return;
     }
 
@@ -187,11 +192,12 @@ export class Redis extends Component implements Link.Linkable {
     const nodes = output(args.nodes).apply((v) => v ?? 1);
     const vpc = normalizeVpc();
 
-    const authToken = createAuthToken();
+    const { authToken, secret } = createAuthToken();
     const subnetGroup = createSubnetGroup();
     const cluster = createCluster();
 
     this.cluster = cluster;
+    this._authToken = authToken;
 
     function normalizeVpc() {
       // "vpc" is a Vpc component
@@ -207,7 +213,7 @@ export class Redis extends Component implements Link.Linkable {
     }
 
     function createAuthToken() {
-      return new RandomPassword(
+      const authToken = new RandomPassword(
         `${name}AuthToken`,
         {
           length: 32,
@@ -215,7 +221,26 @@ export class Redis extends Component implements Link.Linkable {
           overrideSpecial: "!&#$^<>-",
         },
         { parent },
+      ).result;
+
+      const secret = new secretsmanager.Secret(
+        `${name}ProxySecret`,
+        {
+          recoveryWindowInDays: 0,
+        },
+        { parent },
       );
+
+      new secretsmanager.SecretVersion(
+        `${name}ProxySecretVersion`,
+        {
+          secretId: secret.id,
+          secretString: jsonStringify({ authToken }),
+        },
+        { parent },
+      );
+
+      return { secret, authToken };
     }
 
     function createSubnetGroup() {
@@ -253,9 +278,12 @@ export class Redis extends Component implements Link.Linkable {
             atRestEncryptionEnabled: true,
             transitEncryptionEnabled: true,
             transitEncryptionMode: "required",
-            authToken: authToken.result,
+            authToken,
             subnetGroupName: subnetGroup.name,
             securityGroupIds: vpc.securityGroups,
+            tags: {
+              "sst:auth-token-ref": secret.id,
+            },
           },
           { parent },
         ),
@@ -281,7 +309,7 @@ export class Redis extends Component implements Link.Linkable {
    * The password to connect to the Redis cluster.
    */
   public get password() {
-    return this.cluster.authToken.apply((v) => v!);
+    return this._authToken;
   }
 
   /**
@@ -359,7 +387,27 @@ export class Redis extends Component implements Link.Linkable {
       undefined,
       opts,
     );
-    return new Redis(name, { ref: true, cluster } as unknown as RedisArgs);
+    const secret = cluster.tags.apply((tags) =>
+      tags?.["sst:auth-token-ref"]
+        ? secretsmanager.getSecretVersionOutput(
+            {
+              secretId: tags["sst:auth-token-ref"],
+            },
+            opts,
+          )
+        : output(undefined),
+    );
+    const authToken = secret.apply((v) => {
+      if (!v)
+        throw new VisibleError(`Failed to get auth token for Redis ${name}.`);
+      return JSON.parse(v.secretString).authToken as string;
+    });
+
+    return new Redis(name, {
+      ref: true,
+      cluster,
+      authToken,
+    } as unknown as RedisArgs);
   }
 }
 
