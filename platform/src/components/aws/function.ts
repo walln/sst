@@ -1324,6 +1324,7 @@ export class Function extends Component implements Link.Linkable {
       _metadata: {
         handler: args.handler,
         internal: args._skipMetadata,
+        dev: dev,
       },
       _hint: args._skipHint
         ? undefined
@@ -1373,6 +1374,8 @@ export class Function extends Component implements Link.Linkable {
         result.SST_KEY_FILE = "resource.enc";
         if (dev) {
           result.SST_REGION = process.env.SST_AWS_REGION!;
+          result.SST_APPSYNC_HTTP = process.env.SST_APPSYNC_HTTP!;
+          result.SST_APPSYNC_REALTIME = process.env.SST_APPSYNC_REALTIME!;
           result.SST_FUNCTION_ID = name;
           result.SST_APP = $app.name;
           result.SST_STAGE = $app.stage;
@@ -1692,6 +1695,10 @@ export class Function extends Component implements Link.Linkable {
               })),
               ...(dev
                 ? [
+                    {
+                      actions: ["appsync:*"],
+                      resources: ["*"],
+                    },
                     {
                       actions: ["iot:*"],
                       resources: ["*"],
