@@ -83,6 +83,7 @@ export class Service extends Component implements Link.Linkable {
   private readonly taskRole: iam.Role;
   private readonly taskDefinition?: Output<ecs.TaskDefinition>;
   private readonly loadBalancer?: lb.LoadBalancer;
+  private readonly autoScalingTarget?: appautoscaling.Target;
   private readonly domain?: Output<string | undefined>;
   private readonly _url?: Output<string>;
   private readonly devUrl?: Output<string>;
@@ -128,7 +129,7 @@ export class Service extends Component implements Link.Linkable {
     const { loadBalancer, targets } = createLoadBalancer();
     const cloudmapService = createCloudmapService();
     const service = createService();
-    createAutoScaling();
+    const autoScalingTarget = createAutoScaling();
     createDnsRecords();
 
     this._service = service;
@@ -136,6 +137,7 @@ export class Service extends Component implements Link.Linkable {
     this.executionRole = executionRole;
     this.taskDefinition = taskDefinition;
     this.loadBalancer = loadBalancer;
+    this.autoScalingTarget = autoScalingTarget;
     this.domain = lbArgs?.domain
       ? lbArgs.domain.apply((domain) => domain?.name)
       : output(undefined);
@@ -895,50 +897,61 @@ export class Service extends Component implements Link.Linkable {
 
     function createAutoScaling() {
       const target = new appautoscaling.Target(
-        `${name}AutoScalingTarget`,
-        {
-          serviceNamespace: "ecs",
-          scalableDimension: "ecs:service:DesiredCount",
-          resourceId: interpolate`service/${cluster.name}/${service.name}`,
-          maxCapacity: scaling.max,
-          minCapacity: scaling.min,
-        },
-        { parent: self },
+        ...transform(
+          args.transform?.autoScalingTarget,
+          `${name}AutoScalingTarget`,
+          {
+            serviceNamespace: "ecs",
+            scalableDimension: "ecs:service:DesiredCount",
+            resourceId: interpolate`service/${cluster.name}/${service.name}`,
+            maxCapacity: scaling.max,
+            minCapacity: scaling.min,
+          },
+          { parent: self },
+        ),
       );
 
-      new appautoscaling.Policy(
-        `${name}AutoScalingCpuPolicy`,
-        {
-          serviceNamespace: target.serviceNamespace,
-          scalableDimension: target.scalableDimension,
-          resourceId: target.resourceId,
-          policyType: "TargetTrackingScaling",
-          targetTrackingScalingPolicyConfiguration: {
-            predefinedMetricSpecification: {
-              predefinedMetricType: "ECSServiceAverageCPUUtilization",
+      output(scaling.cpuUtilization).apply((cpuUtilization) => {
+        if (cpuUtilization === false) return;
+        new appautoscaling.Policy(
+          `${name}AutoScalingCpuPolicy`,
+          {
+            serviceNamespace: target.serviceNamespace,
+            scalableDimension: target.scalableDimension,
+            resourceId: target.resourceId,
+            policyType: "TargetTrackingScaling",
+            targetTrackingScalingPolicyConfiguration: {
+              predefinedMetricSpecification: {
+                predefinedMetricType: "ECSServiceAverageCPUUtilization",
+              },
+              targetValue: cpuUtilization,
             },
-            targetValue: scaling.cpuUtilization,
           },
-        },
-        { parent: self },
-      );
+          { parent: self },
+        );
+      });
 
-      new appautoscaling.Policy(
-        `${name}AutoScalingMemoryPolicy`,
-        {
-          serviceNamespace: target.serviceNamespace,
-          scalableDimension: target.scalableDimension,
-          resourceId: target.resourceId,
-          policyType: "TargetTrackingScaling",
-          targetTrackingScalingPolicyConfiguration: {
-            predefinedMetricSpecification: {
-              predefinedMetricType: "ECSServiceAverageMemoryUtilization",
+      output(scaling.memoryUtilization).apply((memoryUtilization) => {
+        if (memoryUtilization === false) return;
+        new appautoscaling.Policy(
+          `${name}AutoScalingMemoryPolicy`,
+          {
+            serviceNamespace: target.serviceNamespace,
+            scalableDimension: target.scalableDimension,
+            resourceId: target.resourceId,
+            policyType: "TargetTrackingScaling",
+            targetTrackingScalingPolicyConfiguration: {
+              predefinedMetricSpecification: {
+                predefinedMetricType: "ECSServiceAverageMemoryUtilization",
+              },
+              targetValue: memoryUtilization,
             },
-            targetValue: scaling.memoryUtilization,
           },
-        },
-        { parent: self },
-      );
+          { parent: self },
+        );
+      });
+
+      return target;
     }
 
     function createDnsRecords() {
@@ -1061,6 +1074,16 @@ export class Service extends Component implements Link.Linkable {
             "Cannot access `nodes.loadBalancer` when no public ports are exposed.",
           );
         return self.loadBalancer;
+      },
+      /**
+       * The Amazon Application Auto Scaling target.
+       */
+      get autoScalingTarget() {
+        if (self.dev)
+          throw new VisibleError(
+            "Cannot access `nodes.autoScalingTarget` in dev mode.",
+          );
+        return self.autoScalingTarget!;
       },
       /**
        * The Amazon Cloud Map service.

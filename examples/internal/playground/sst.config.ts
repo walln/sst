@@ -13,6 +13,7 @@ export default $config({
 
     const vpc = addVpc();
     const bucket = addBucket();
+    //const queue = addQueue();
     //const efs = addEfs();
     //const email = addEmail();
     //const apiv1 = addApiV1();
@@ -22,7 +23,6 @@ export default $config({
     //const postgres = addPostgres();
     //const redis = addRedis();
     //const cron = addCron();
-    //const queue = addQueue();
     //const topic = addTopic();
     //const bus = addBus();
 
@@ -37,6 +37,19 @@ export default $config({
       const bucket = new sst.aws.Bucket("MyBucket");
       ret.bucket = bucket.name;
       return bucket;
+    }
+
+    function addQueue() {
+      const queue = new sst.aws.Queue("MyQueue");
+      queue.subscribe("functions/queue/index.subscriber");
+
+      new sst.aws.Function("MyQueuePublisher", {
+        handler: "functions/queue/index.publisher",
+        link: [queue],
+        url: true,
+      });
+
+      return queue;
     }
 
     function addEfs() {
@@ -126,7 +139,6 @@ export default $config({
         },
         link: [bucket],
       });
-      ret.service = service.url;
       return service;
     }
 
@@ -162,12 +174,6 @@ export default $config({
       });
       ret.cron = cron.nodes.job.name;
       return cron;
-    }
-
-    function addQueue() {
-      const queue = new sst.aws.Queue("MyQueue");
-      queue.subscribe("functions/queue/index.subscriber");
-      return queue;
     }
 
     function addTopic() {

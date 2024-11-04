@@ -5,7 +5,7 @@ import { Dns } from "../dns";
 import { FunctionArgs } from "./function";
 import { Service } from "./service";
 import { RETENTION } from "./logging.js";
-import { cloudwatch, ec2, ecs, iam, lb } from "@pulumi/aws";
+import { appautoscaling, cloudwatch, ec2, ecs, iam, lb } from "@pulumi/aws";
 import { ImageArgs } from "@pulumi/docker-build";
 import { Cluster as ClusterV1 } from "./cluster-v1";
 import { Vpc } from "./vpc";
@@ -1057,7 +1057,7 @@ export interface ClusterServiceArgs {
      * }
      * ```
      */
-    cpuUtilization?: Input<number>;
+    cpuUtilization?: Input<false | number>;
     /**
      * The target memory utilization percentage to scale up or down. It'll scale up
      * when the memory utilization is above the target and scale down when it's below the target.
@@ -1071,7 +1071,7 @@ export interface ClusterServiceArgs {
      * }
      * ```
      */
-    memoryUtilization?: Input<number>;
+    memoryUtilization?: Input<false | number>;
   }>;
   /**
    * Configure the Docker build command for building the image or specify a pre-built image.
@@ -1472,6 +1472,10 @@ export interface ClusterServiceArgs {
      * Transform the AWS Load Balancer target group resource.
      */
     target?: Transform<lb.TargetGroupArgs>;
+    /**
+     * Transform the AWS Application Auto Scaling target resource.
+     */
+    autoScalingTarget?: Transform<appautoscaling.TargetArgs>;
     /**
      * Transform the CloudWatch log group resource.
      */
