@@ -15,9 +15,5 @@ export default $config({
       link: [bucket],
       handler: "index.ts",
     });
-
-    return {
-      api: hono.url,
-    };
   },
 });
