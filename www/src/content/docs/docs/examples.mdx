@@ -195,7 +195,7 @@ View the [full example](https://github.com/sst/sst/tree/dev/examples/aws-bucket-
 Create an S3 bucket and subscribe to its events with an SNS topic.
 ```ts title="sst.config.ts"
 const topic = new sst.aws.SnsTopic("MyTopic");
-topic.subscribe("subscriber.handler");
+topic.subscribe("MySubscriber", "subscriber.handler");
 
 const bucket = new sst.aws.Bucket("MyBucket");
 bucket.subscribeTopic(topic.arn, {
@@ -430,7 +430,7 @@ const table = new sst.aws.Dynamo("MyTable", {
   primaryIndex: { hashKey: "id" },
   stream: "new-and-old-images",
 });
-table.subscribe("subscriber.handler", {
+table.subscribe("MySubscriber", "subscriber.handler", {
   filters: [
     {
       dynamodb: {
@@ -987,10 +987,10 @@ Create a Kinesis stream, and subscribe to it with a function.
 const stream = new sst.aws.KinesisStream("MyStream");
 
 // Create a function subscribing to all events
-stream.subscribe("subscriber.all");
+stream.subscribe("AllSub", "subscriber.all");
 
 // Create a function subscribing to events of `bar` type
-stream.subscribe("subscriber.filtered", {
+stream.subscribe("FilteredSub", "subscriber.filtered", {
   filters: [
     {
       data: {
@@ -1695,6 +1695,38 @@ View the [full example](https://github.com/sst/sst/tree/dev/examples/aws-router)
 
 
 ---
+## AWS Cluster Service Discovery
+
+In this example, we are connecting to a service running on a cluster using its AWS Cloud
+Map service host name. This is useful for service discovery.
+
+We are deploying a service to a cluster in a VPC. And we can access it within the VPC using
+the service's cloud map hostname.
+
+```ts title="lambda.ts"
+const reponse = await fetch(`http://${Resource.MyService.service}`);
+```
+
+Here we are accessing it through a Lambda function that's linked to the service and is
+deployed to the same VPC.
+```ts title="sst.config.ts"
+const vpc = new sst.aws.Vpc("MyVpc", { nat: "ec2" });
+
+const cluster = new sst.aws.Cluster("MyCluster", { vpc });
+const service = cluster.addService("MyService");
+
+new sst.aws.Function("MyFunction", {
+  vpc,
+  url: true,
+  link: [service],
+  handler: "lambda.handler",
+});
+```
+
+View the [full example](https://github.com/sst/sst/tree/dev/examples/aws-service-discovery).
+
+
+---
 ## Sharp in Lambda
 
 Uses the [Sharp](https://sharp.pixelplumbing.com/) library to resize images. In this example,
@@ -2004,8 +2036,8 @@ const queue = new sst.aws.Queue("MyQueue");
 queue.subscribe("subscriber.handler");
 
 const topic = new sst.aws.SnsTopic("MyTopic");
-topic.subscribe("subscriber.handler", {});
-topic.subscribeQueue(queue.arn);
+topic.subscribe("MySubscriber1", "subscriber.handler", {});
+topic.subscribeQueue("MySubscriber2", queue.arn);
 
 const app = new sst.aws.Function("MyApp", {
   handler: "publisher.handler",
