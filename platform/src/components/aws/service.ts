@@ -108,7 +108,7 @@ export class Service extends Component implements Link.Linkable {
     const scaling = normalizeScaling();
     const containers = normalizeContainers();
     const lbArgs = normalizeLoadBalancer();
-    const { isSstVpc, vpc } = normalizeVpc();
+    const vpc = normalizeVpc();
 
     const taskRole = createTaskRole();
 
@@ -161,19 +161,18 @@ export class Service extends Component implements Link.Linkable {
     }
 
     function normalizeVpc() {
-      // "vpc" is a Vpc.v1 component
-      if (args.vpc instanceof VpcV1) {
-        throw new VisibleError(
-          `You are using the "Vpc.v1" component. Please migrate to the latest "Vpc" component.`,
-        );
-      }
+      return output(args.vpc).apply((vpc) => {
+        // "vpc" is a Vpc.v1 component
+        if (vpc instanceof VpcV1) {
+          throw new VisibleError(
+            `You are using the "Vpc.v1" component. Please migrate to the latest "Vpc" component.`,
+          );
+        }
 
-      // "vpc" is a Vpc component
-      if (args.vpc instanceof Vpc) {
-        const vpc = args.vpc;
-        return {
-          isSstVpc: true,
-          vpc: {
+        // "vpc" is a Vpc component
+        if (vpc instanceof Vpc) {
+          return {
+            isSstVpc: true,
             id: vpc.id,
             loadBalancerSubnets: lbArgs?.pub.apply((v) =>
               v ? vpc.publicSubnets : vpc.privateSubnets,
@@ -182,12 +181,12 @@ export class Service extends Component implements Link.Linkable {
             securityGroups: vpc.securityGroups,
             cloudmapNamespaceId: vpc.nodes.cloudmapNamespace.id,
             cloudmapNamespaceName: vpc.nodes.cloudmapNamespace.name,
-          },
-        };
-      }
+          };
+        }
 
-      // "vpc" is object
-      return { vpc: output(args.vpc) };
+        // "vpc" is object
+        return { isSstVpc: false, ...vpc };
+      });
     }
 
     function normalizeRegion() {
@@ -480,7 +479,7 @@ export class Service extends Component implements Link.Linkable {
           {
             internal: lbArgs.pub.apply((v) => !v),
             loadBalancerType: lbArgs.type,
-            subnets: vpc.loadBalancerSubnets,
+            subnets: output(vpc).apply((v) => v.loadBalancerSubnets!),
             securityGroups: [securityGroup.id],
             enableCrossZoneLoadBalancing: true,
           },
@@ -861,7 +860,7 @@ export class Service extends Component implements Link.Linkable {
             networkConfiguration: {
               // If the vpc is an SST vpc, services are automatically deployed to the public
               // subnets. So we need to assign a public IP for the service to be accessible.
-              assignPublicIp: isSstVpc,
+              assignPublicIp: vpc.isSstVpc,
               subnets: vpc.serviceSubnets,
               securityGroups: vpc.securityGroups,
             },

@@ -151,9 +151,9 @@ export interface ClusterArgs {
    * }
    * ```
    */
-  vpc:
+  vpc: Input<
     | Vpc
-    | Input<{
+    | {
         /**
          * The ID of the VPC.
          */
@@ -178,7 +178,8 @@ export interface ClusterArgs {
          * The name of the Cloud Map namespace to use for the service.
          */
         cloudmapNamespaceName: Input<string>;
-      }>;
+      }
+  >;
   /**
    * Force upgrade from `Cluster.v1` to the latest `Cluster` version. The only valid value
    * is `v2`, which is the version of the new `Cluster`.
