@@ -292,7 +292,7 @@ func Start(
 						FunctionID: info.FunctionID,
 						WorkerID:   info.WorkerID,
 						RequestID:  splits[len(splits)-2],
-						Output:     responseBody,
+						Output:     evt.requestBody.Bytes(),
 					})
 				}
 				if splits[len(splits)-1] == "error" {
@@ -301,7 +301,7 @@ func Start(
 						WorkerID:   info.WorkerID,
 						RequestID:  splits[len(splits)-2],
 					}
-					json.Unmarshal(evt.responseBody.Bytes(), &fee)
+					json.Unmarshal(evt.requestBody.Bytes(), &fee)
 					bus.Publish(fee)
 				}
 			case info := <-workerShutdownChan:
