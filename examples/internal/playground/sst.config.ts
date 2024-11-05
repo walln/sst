@@ -147,7 +147,7 @@ export default $config({
         vpc,
       });
       ret.pgHost = postgres.host;
-      ret.pgPort = $interpolate`postgres.port`;
+      ret.pgPort = $interpolate`${postgres.port}`;
       ret.pgUsername = postgres.username;
       ret.pgPassword = postgres.password;
       return postgres;
