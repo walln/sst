@@ -23,6 +23,8 @@ export default $config({
         ctx.install();
         ctx.shell("goenv install 1.21.3 && goenv global 1.21.3");
         ctx.shell("cd ../platform && ./scripts/build");
+        ctx.shell(`node -e "console.log(os.arch())"`);
+        ctx.shell(`node -e "console.log(os.platform())"`);
         ctx.shell("bun i sst-linux-x64");
         ctx.deploy();
       },
