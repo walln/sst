@@ -506,7 +506,7 @@ export class Vpc extends Component implements Link.Linkable {
         if (!v) return;
         const param = ssm.Parameter.get(
           `${name}PrivateKey`,
-          interpolate`/sst/vpc/${vpc.id}/private-key`,
+          interpolate`/sst/vpc/${vpcId}/private-key`,
           undefined,
           { parent },
         );
