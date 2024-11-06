@@ -20,10 +20,10 @@ export default $config({
         }
       },
       workflow(ctx) {
-        ctx.shell("rm ../bun.lockb");
         ctx.install();
         ctx.shell("goenv install 1.21.3 && goenv global 1.21.3");
         ctx.shell("cd ../platform && ./scripts/build");
+        ctx.shell("bun i sst-linux-x64");
         ctx.deploy();
       },
     },
