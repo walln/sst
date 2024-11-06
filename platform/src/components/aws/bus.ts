@@ -211,7 +211,7 @@ export class Bus extends Component implements Link.Linkable {
   public get nodes() {
     return {
       /**
-       * The Amazon EventBus resource.
+       * The Amazon EventBridge EventBus resource.
        */
       bus: this.bus,
     };
