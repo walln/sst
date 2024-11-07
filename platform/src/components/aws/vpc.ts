@@ -639,11 +639,26 @@ export class Vpc extends Component implements Link.Linkable {
           { parent },
         );
 
+        // TODO: remove this after most people have deployed the referenced VPC
+        //       remove by 2025-01-01
         new ssm.Parameter(`${name}PrivateKey`, {
           name: interpolate`/sst/vpc/${vpc.id}/private-key`,
+          description:
+            "Bastion host private key (deprecated) - will be removed in future releases",
           type: ssm.ParameterType.SecureString,
           value: tlsPrivateKey.privateKeyOpenssh,
         });
+
+        new ssm.Parameter(
+          `${name}PrivateKeyValue`,
+          {
+            name: interpolate`/sst/vpc/${vpc.id}/private-key-value`,
+            description: "Bastion host private key",
+            type: ssm.ParameterType.SecureString,
+            value: tlsPrivateKey.privateKeyOpenssh,
+          },
+          { parent },
+        );
 
         const keyPair = new ec2.KeyPair(
           `${name}KeyPair`,
