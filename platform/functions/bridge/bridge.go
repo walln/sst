@@ -144,6 +144,7 @@ func run() error {
 					"Content-Type": []string{"application/json"},
 				},
 			})
+			return
 		}
 		if strings.HasSuffix(req.URL.Path, "/next") {
 			step <- "next"
