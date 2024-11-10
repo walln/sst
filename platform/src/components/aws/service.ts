@@ -246,10 +246,14 @@ export class Service extends Component implements Link.Linkable {
     function normalizeContainers() {
       if (
         args.containers &&
-        (args.image || args.logging || args.environment || args.volumes)
+        (args.image ||
+          args.logging ||
+          args.environment ||
+          args.volumes ||
+          args.ssm)
       ) {
         throw new VisibleError(
-          `You cannot provide both "containers" and "image", "logging", "environment" or "volumes".`,
+          `You cannot provide both "containers" and "image", "logging", "environment", "volumes" or "ssm".`,
         );
       }
 
@@ -260,6 +264,7 @@ export class Service extends Component implements Link.Linkable {
           image: args.image,
           logging: args.logging,
           environment: args.environment,
+          ssm: args.ssm,
           volumes: args.volumes,
           command: args.command,
           entrypoint: args.entrypoint,
@@ -654,6 +659,25 @@ export class Service extends Component implements Link.Linkable {
             managedPolicyArns: [
               "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy",
             ],
+            inlinePolicies: [
+              {
+                name: "inline",
+                policy: iam.getPolicyDocumentOutput({
+                  statements: [
+                    {
+                      sid: "ReadSsmAndSecrets",
+                      actions: [
+                        "ssm:GetParameters",
+                        "ssm:GetParameter",
+                        "ssm:GetParameterHistory",
+                        "secretsmanager:GetSecretValue",
+                      ],
+                      resources: ["*"],
+                    },
+                  ],
+                }).json,
+              },
+            ],
           },
           { parent: self },
         ),
@@ -773,6 +797,9 @@ export class Service extends Component implements Link.Linkable {
             sourceVolume: volume.efs.accessPoint,
             containerPath: volume.path,
           })),
+          secrets: Object.entries(container.ssm ?? {}).map(
+            ([name, valueFrom]) => ({ name, valueFrom }),
+          ),
         })),
       );
 

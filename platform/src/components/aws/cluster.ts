@@ -1188,6 +1188,20 @@ export interface ClusterServiceArgs {
    */
   environment?: FunctionArgs["environment"];
   /**
+   * Key-value pairs of AWS Systems Manager Parameter Store parameter ARNs or AWS Secrets
+   * Manager secret ARNs. The values will be loaded into the container as environment
+   * variables.
+   * @example
+   * ```js
+   * {
+   *   ssm: {
+   *     DATABASE_PASSWORD: "arn:aws:secretsmanager:us-east-1:123456789012:secret:my-secret-123abc"
+   *   }
+   * }
+   * ```
+   */
+  ssm?: Input<Record<string, Input<string>>>;
+  /**
    * Configure the service's logs in CloudWatch.
    * @default `{ retention: "1 month" }`
    * @example
@@ -1371,6 +1385,12 @@ export interface ClusterServiceArgs {
        */
       retention?: Input<keyof typeof RETENTION>;
     }>;
+    /**
+     * Key-value pairs of AWS Systems Manager Parameter Store parameter ARNs or AWS Secrets
+     * Manager secret ARNs. The values will be loaded into the container as environment
+     * variables. Same as the top-level [`ssm`](#ssm).
+     */
+    ssm?: ClusterServiceArgs["ssm"];
     /**
      * Mount Amazon EFS file systems into the container. Same as the top-level
      * [`efs`](#efs).
