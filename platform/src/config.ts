@@ -300,15 +300,19 @@ export interface Target {
     /**
      * The compute size of the build environment.
      *
-     * For `x86_64`, it can be the following:
+     * For `x86_64`, the following compute sizes are supported:
      * - `small`: 3 GB, 2 vCPUs
      * - `medium`: 7 GB, 4 vCPUs
      * - `large`: 15 GB, 8 vCPUs
-     * - `xlarge`: 30 GB, 16 vCPUs
+     * - `xlarge`: 70 GB, 36 vCPUs
+     * - `2xlarge`: 145 GB, 72 vCPUs
      *
-     * For `arm64` architecture, only `small` and `large` are supported:
+     * For `arm64` architecture, the following compute sizes are supported:
      * - `small`: 4 GB, 2 vCPUs
-     * - `large`: 8 GB, 4 vCPUs
+     * - `medium`: 8 GB, 4 vCPUs
+     * - `large`: 16 GB, 8 vCPUs
+     * - `xlarge`: 64 GB, 32 vCPUs
+     * - `2xlarge`: 96 GB, 48 vCPUs
      *
      * To increase the memory used by your Node.js process in the build environment, you'll want
      * to set the `NODE_OPTIONS` environment variable to `--max-old-space-size=xyz`. Where `xyz`
@@ -316,9 +320,9 @@ export interface Target {
      *
      * Read more about the [CodeBuild build environments](https://docs.aws.amazon.com/codebuild/latest/userguide/build-env-ref-compute-types.html).
      *
-     * @default `small`
+     * @default `medium`
      */
-    compute?: "small" | "medium" | "large" | "xlarge";
+    compute?: "small" | "medium" | "large" | "xlarge" | "2xlarge";
   };
 }
 
