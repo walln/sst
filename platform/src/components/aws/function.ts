@@ -1867,7 +1867,7 @@ export class Function extends Component implements Link.Linkable {
         sourcemaps,
         copyFiles,
         isContainer,
-        logGroup.apply((l) => l?.name),
+        logGroup.apply((l) => l?.arn),
       ]).apply(
         async ([
           bundle,
@@ -1875,7 +1875,7 @@ export class Function extends Component implements Link.Linkable {
           sourcemaps,
           copyFiles,
           isContainer,
-          logGroupName,
+          logGroupArn,
         ]) => {
           if (isContainer) return;
 
@@ -1945,13 +1945,13 @@ export class Function extends Component implements Link.Linkable {
           const assetBucket = region.apply((region) =>
             bootstrap.forRegion(region).then((d) => d.asset),
           );
-          if (logGroupName && sourcemaps) {
+          if (logGroupArn && sourcemaps) {
             let index = 0;
             for (const file of sourcemaps) {
               new s3.BucketObjectv2(
                 `${name}Sourcemap${index}`,
                 {
-                  key: interpolate`sourcemap${logGroupName}/${hashValue}.${path.basename(
+                  key: interpolate`sourcemap/${logGroupArn}/${hashValue}.${path.basename(
                     file,
                   )}`,
                   bucket: assetBucket,
