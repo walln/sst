@@ -116,7 +116,7 @@ type NodeProperties struct {
 	ESBuild      esbuild.BuildOptions `json:"esbuild"`
 	Minify       bool                 `json:"minify"`
 	Format       string               `json:"format"`
-	SourceMap    bool                 `json:"sourceMap"`
+	SourceMap    *bool                `json:"sourceMap"`
 	Splitting    bool                 `json:"splitting"`
 	Plugins      string               `json:"plugins"`
 	Architecture string               `json:"architecture"`

@@ -1274,12 +1274,12 @@ export class Function extends Component implements Link.Linkable {
 
     const linkData = buildLinkData();
     const linkPermissions = buildLinkPermissions();
-    const { bundle, handler: handler0 } = buildHandler();
+    const { bundle, handler: handler0, sourcemaps } = buildHandler();
     const { handler, wrapper } = buildHandlerWrapper();
     const role = createRole();
     const imageAsset = createImageAsset();
-    const zipAsset = createZipAsset();
     const logGroup = createLogGroup();
+    const zipAsset = createZipAsset();
     const fn = createFunction();
     const fnUrl = createUrl();
     createProvisioned();
@@ -1295,6 +1295,7 @@ export class Function extends Component implements Link.Linkable {
       functionID: name,
       handler: args.handler,
       bundle: args.bundle,
+      logGroup: logGroup.apply((l) => l?.name),
       encryptionKey: Function.encryptionKey().base64,
       runtime,
       links: output(linkData).apply((input) =>
@@ -1585,6 +1586,7 @@ export class Function extends Component implements Link.Linkable {
             handler: string;
             out: string;
             errors: string[];
+            sourcemaps: string[];
           }>("Runtime.Build", input);
           if (result.errors.length > 0) {
             throw new Error(result.errors.join("\n"));
@@ -1594,6 +1596,7 @@ export class Function extends Component implements Link.Linkable {
         return {
           handler: buildResult.handler,
           bundle: buildResult.out,
+          sourcemaps: buildResult.sourcemaps,
         };
       });
     }
@@ -1858,9 +1861,24 @@ export class Function extends Component implements Link.Linkable {
       //       b/c the folder contains node_modules. And pnpm node_modules
       //       contains symlinks. Pulumi cannot zip symlinks correctly.
       //       We will zip the folder ourselves.
-      return all([bundle, wrapper, copyFiles, isContainer]).apply(
-        async ([bundle, wrapper, copyFiles, isContainer]) => {
+      return all([
+        bundle,
+        wrapper,
+        sourcemaps,
+        copyFiles,
+        isContainer,
+        logGroup.apply((l) => l?.name),
+      ]).apply(
+        async ([
+          bundle,
+          wrapper,
+          sourcemaps,
+          copyFiles,
+          isContainer,
+          logGroupName,
+        ]) => {
           if (isContainer) return;
+          sourcemaps = sourcemaps || [];
 
           const zipPath = path.resolve(
             $cli.paths.work,
@@ -1892,7 +1910,11 @@ export class Function extends Component implements Link.Linkable {
             // set the date to 0 so that the zip file is deterministic
             archive.glob(
               "**",
-              { cwd: bundle, dot: true },
+              {
+                cwd: bundle,
+                dot: true,
+                ignore: sourcemaps.map((item) => path.relative(bundle, item)),
+              },
               { date: new Date(0), mode: 0o777 },
             );
 
@@ -1920,14 +1942,32 @@ export class Function extends Component implements Link.Linkable {
           const hash = crypto.createHash("sha256");
           hash.update(await fs.promises.readFile(zipPath));
           const hashValue = hash.digest("hex");
+          const assetBucket = region.apply((region) =>
+            bootstrap.forRegion(region).then((d) => d.asset),
+          );
+          if (logGroupName) {
+            let index = 0;
+            for (const file of sourcemaps) {
+              new s3.BucketObjectv2(
+                `${name}Sourcemap${index}`,
+                {
+                  key: interpolate`sourcemap${logGroupName}/${hashValue}.${path.basename(
+                    file,
+                  )}`,
+                  bucket: assetBucket,
+                  source: new asset.FileAsset(file),
+                },
+                { parent, retainOnDelete: true },
+              );
+              index++;
+            }
+          }
 
           return new s3.BucketObjectv2(
             `${name}Code`,
             {
               key: interpolate`assets/${name}-code-${hashValue}.zip`,
-              bucket: region.apply((region) =>
-                bootstrap.forRegion(region).then((d) => d.asset),
-              ),
+              bucket: assetBucket,
               source: new asset.FileArchive(zipPath),
             },
             { parent },

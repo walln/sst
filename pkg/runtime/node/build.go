@@ -15,7 +15,6 @@ import (
 	"github.com/sst/ion/internal/fs"
 	"github.com/sst/ion/pkg/js"
 	"github.com/sst/ion/pkg/process"
-	"github.com/sst/ion/pkg/project/path"
 	"github.com/sst/ion/pkg/runtime"
 )
 
@@ -42,18 +41,8 @@ func (r *Runtime) Build(ctx context.Context, input *runtime.BuildInput) (*runtim
 		extension = ".cjs"
 	}
 
-	rel, err := filepath.Rel(path.ResolveRootDir(input.CfgPath), file)
-	if err != nil {
-		return nil, err
-	}
-
-	fileName := strings.TrimSuffix(filepath.Base(rel), filepath.Ext(rel))
-	// Lambda handler can only contain 1 dot separating the file name and function name
-	fileName = strings.ReplaceAll(fileName, ".", "-")
-	folder := filepath.Dir(rel)
-	path := filepath.Join(folder, fileName)
-	handler := path + filepath.Ext(input.Handler)
-	target := filepath.Join(input.Out(), path+extension)
+	handler := "bundle" + filepath.Ext(input.Handler)
+	target := filepath.Join(input.Out(), "bundle"+extension)
 	slog.Info("loader info", "loader", properties.Loader)
 
 	loader := map[string]esbuild.Loader{}
@@ -166,8 +155,8 @@ func (r *Runtime) Build(ctx context.Context, input *runtime.BuildInput) (*runtim
 			options.MinifySyntax = properties.Minify
 			options.MinifyIdentifiers = properties.Minify
 		}
-		if !properties.SourceMap {
-			options.Sourcemap = esbuild.SourceMapNone
+		if properties.SourceMap != nil && *properties.SourceMap == false {
+			options.Sourcemap = esbuild.SourceMapLinked
 		}
 	}
 
@@ -215,7 +204,15 @@ func (r *Runtime) Build(ctx context.Context, input *runtime.BuildInput) (*runtim
 		}
 	}
 
+	sourcemaps := []string{}
 	if !input.Dev {
+		if properties.SourceMap == nil {
+			for _, file := range result.OutputFiles {
+				if strings.HasSuffix(file.Path, ".map") {
+					sourcemaps = append(sourcemaps, file.Path)
+				}
+			}
+		}
 		var metafile js.Metafile
 		json.Unmarshal([]byte(result.Metafile), &metafile)
 
@@ -290,7 +287,8 @@ func (r *Runtime) Build(ctx context.Context, input *runtime.BuildInput) (*runtim
 	}
 
 	return &runtime.BuildOutput{
-		Handler: handler,
-		Errors:  errors,
+		Handler:    handler,
+		Errors:     errors,
+		Sourcemaps: sourcemaps,
 	}, nil
 }
