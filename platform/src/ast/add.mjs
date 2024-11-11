@@ -20,15 +20,15 @@ const sourceFile = ts.createSourceFile(
 // Find the default export declaration
 const exportAssignment = sourceFile.statements.find((statement) =>
   ts.isExportAssignment(statement),
-) as ts.ExportAssignment;
+);
 
 // Find the "$config" call expression
-const configCallExpression = exportAssignment.expression as ts.CallExpression;
+const configCallExpression = exportAssignment.expression;
 
 // Find the "app" function declaration inside the "$config" call
 const appFunctionDeclaration =
   configCallExpression.arguments[0].properties.find(
-    (property: any) => property.name.getText() === "app",
+    (property) => property.name.getText() === "app",
   );
 
 const returnStatement = appFunctionDeclaration.body?.statements.find(
@@ -42,7 +42,7 @@ let providersProperty = returnStatement.expression?.properties.find(
   (property) =>
     ts.isPropertyAssignment(property) &&
     property.name.getText() === "providers",
-) as ts.PropertyAssignment;
+);
 
 if (!providersProperty) {
   providersProperty = ts.factory.createPropertyAssignment(
