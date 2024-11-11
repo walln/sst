@@ -1878,7 +1878,6 @@ export class Function extends Component implements Link.Linkable {
           logGroupName,
         ]) => {
           if (isContainer) return;
-          sourcemaps = sourcemaps || [];
 
           const zipPath = path.resolve(
             $cli.paths.work,
@@ -1913,7 +1912,8 @@ export class Function extends Component implements Link.Linkable {
               {
                 cwd: bundle,
                 dot: true,
-                ignore: sourcemaps.map((item) => path.relative(bundle, item)),
+                ignore:
+                  sourcemaps?.map((item) => path.relative(bundle, item)) || [],
               },
               { date: new Date(0), mode: 0o777 },
             );
@@ -1945,7 +1945,7 @@ export class Function extends Component implements Link.Linkable {
           const assetBucket = region.apply((region) =>
             bootstrap.forRegion(region).then((d) => d.asset),
           );
-          if (logGroupName) {
+          if (logGroupName && sourcemaps) {
             let index = 0;
             for (const file of sourcemaps) {
               new s3.BucketObjectv2(
