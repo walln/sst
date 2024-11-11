@@ -361,6 +361,20 @@ export interface FunctionArgs {
    */
   memory?: Input<Size>;
   /**
+   * The amount of ephemeral storage allocated for the function. This sets the ephemeral
+   * storage of the lambda function (/tmp). Must be between "512 MB" and "10240 MB" ("10 GB")
+   * in 1 MB increments.
+   *
+   * @default `"512 MB"`
+   * @example
+   * ```js
+   * {
+   *   storage: "5 GB"
+   * }
+   * ```
+   */
+  storage?: Input<Size>;
+  /**
    * Key-value pairs of values that are set as [Lambda environment variables](https://docs.aws.amazon.com/lambda/latest/dg/configuration-envvars.html).
    * The keys need to:
    * - Start with a letter
@@ -1248,6 +1262,7 @@ export class Function extends Component implements Link.Linkable {
     const runtime = normalizeRuntime();
     const timeout = normalizeTimeout();
     const memory = normalizeMemory();
+    const storage = output(args.storage).apply((v) => v ?? "512 MB");
     const architecture = output(args.architecture).apply((v) => v ?? "x86_64");
     const environment = normalizeEnvironment();
     const streaming = normalizeStreaming();
@@ -1974,6 +1989,7 @@ export class Function extends Component implements Link.Linkable {
               role: args.role ?? role!.arn,
               timeout: timeout.apply((timeout) => toSeconds(timeout)),
               memorySize: memory.apply((memory) => toMBs(memory)),
+              ephemeralStorage: { size: storage.apply((v) => toMBs(v)) },
               environment: {
                 variables: environment,
               },
