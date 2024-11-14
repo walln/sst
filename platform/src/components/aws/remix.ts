@@ -494,7 +494,10 @@ export class Remix extends Component implements Link.Linkable {
           let buildPath = path.join(outputPath, "build");
 
           if (viteConfig) {
-            assetsPath = "client";
+            assetsPath = path.join(
+              viteConfig.__remixPluginContext.remixConfig.buildDirectory,
+              "client",
+            );
             assetsVersionedSubDir = "assets";
             buildPath = path.join(
               outputPath,
