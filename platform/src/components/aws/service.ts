@@ -360,21 +360,45 @@ export class Service extends Component implements Link.Linkable {
         // parse protocols and ports
         const ports = lb.ports.map((v) => {
           const listenParts = v.listen.split("/");
+          const listenPort = parseInt(listenParts[0]);
+          const listenProtocol = listenParts[1];
+          const redirectParts = v.redirect?.split("/");
+          const redirectPort = redirectParts && parseInt(redirectParts[0]);
+          const redirectProtocol = redirectParts && redirectParts[1];
+          if (redirectPort && redirectProtocol) {
+            if (protocolType(listenProtocol) !== protocolType(redirectProtocol))
+              throw new VisibleError(
+                `The listen protocol "${v.listen}" must match the redirect protocol "${v.redirect}".`,
+              );
+            return {
+              type: "redirect" as const,
+              listenPort,
+              listenProtocol,
+              redirectPort,
+              redirectProtocol,
+            };
+          }
+
           const forwardParts = v.forward ? v.forward.split("/") : listenParts;
+          const forwardPort = forwardParts && parseInt(forwardParts[0]);
+          const forwardProtocol = forwardParts && forwardParts[1];
+          if (protocolType(listenProtocol) !== protocolType(forwardProtocol))
+            throw new VisibleError(
+              `The listen protocol "${v.listen}" must match the forward protocol "${v.forward}".`,
+            );
           return {
-            listenPort: parseInt(listenParts[0]),
-            listenProtocol: listenParts[1],
-            forwardPort: parseInt(forwardParts[0]),
-            forwardProtocol: forwardParts[1],
+            type: "forward" as const,
+            listenPort,
+            listenProtocol,
+            forwardPort,
+            forwardProtocol,
             container: v.container ?? containers[0].name,
           };
         });
 
         // validate protocols are consistent
         const appProtocols = ports.filter(
-          (port) =>
-            ["http", "https"].includes(port.listenProtocol) &&
-            ["http", "https"].includes(port.forwardProtocol),
+          (port) => protocolType(port.listenProtocol) === "application",
         );
         if (appProtocols.length > 0 && appProtocols.length < ports.length)
           throw new VisibleError(
@@ -495,12 +519,14 @@ export class Service extends Component implements Link.Linkable {
         ),
       );
 
-      const ret = all([lbArgs.ports, lbArgs.health, certificateArn]).apply(
-        ([ports, health, cert]) => {
-          const listeners: Record<string, lb.Listener> = {};
+      // Create targets
+      const targets = all([lbArgs.ports, lbArgs.health]).apply(
+        ([ports, health]) => {
           const targets: Record<string, lb.TargetGroup> = {};
 
           ports.forEach((p) => {
+            if (p.type !== "forward") return;
+
             const container = p.container;
             const forwardProtocol = p.forwardProtocol.toUpperCase();
             const forwardPort = p.forwardPort;
@@ -531,7 +557,17 @@ export class Service extends Component implements Link.Linkable {
                 ),
               );
             targets[targetId] = target;
+          });
+          return targets;
+        },
+      );
 
+      // Create listeners
+      all([lbArgs.ports, targets, certificateArn]).apply(
+        ([ports, targets, cert]) => {
+          const listeners: Record<string, lb.Listener> = {};
+
+          ports.forEach((p) => {
             const listenProtocol = p.listenProtocol.toUpperCase();
             const listenPort = p.listenPort;
             const listenerId = `${listenProtocol}${listenPort}`;
@@ -549,10 +585,26 @@ export class Service extends Component implements Link.Linkable {
                       ? cert
                       : undefined,
                     defaultActions: [
-                      {
-                        type: "forward",
-                        targetGroupArn: target.arn,
-                      },
+                      p.type === "forward"
+                        ? {
+                            type: "forward",
+                            targetGroupArn:
+                              targets[
+                                `${
+                                  p.container
+                                }${p.forwardProtocol.toUpperCase()}${
+                                  p.forwardPort
+                                }`
+                              ].arn,
+                          }
+                        : {
+                            type: "redirect",
+                            redirect: {
+                              port: p.redirectPort.toString(),
+                              protocol: p.redirectProtocol.toUpperCase(),
+                              statusCode: "HTTP_301",
+                            },
+                          },
                     ],
                   },
                   { parent: self },
@@ -560,12 +612,10 @@ export class Service extends Component implements Link.Linkable {
               );
             listeners[listenerId] = listener;
           });
-
-          return { listeners, targets };
         },
       );
 
-      return { loadBalancer, targets: ret.targets };
+      return { loadBalancer, targets };
     }
 
     function createSsl() {
@@ -905,7 +955,6 @@ export class Service extends Component implements Link.Linkable {
               enable: true,
               rollback: true,
             },
-
             loadBalancers:
               lbArgs &&
               all([lbArgs.ports, targets!]).apply(([ports, targets]) =>
@@ -913,7 +962,7 @@ export class Service extends Component implements Link.Linkable {
                   targetGroupArn: target.arn,
                   containerName: target.port.apply(
                     (port) =>
-                      ports.find((p) => p.forwardPort === port)!.container,
+                      ports.find((p) => p.forwardPort === port)!.container!,
                   ),
                   containerPort: target.port.apply((port) => port!),
                 })),
@@ -1143,6 +1192,12 @@ export class Service extends Component implements Link.Linkable {
       },
     };
   }
+}
+
+function protocolType(protocol: string) {
+  return ["http", "https"].includes(protocol)
+    ? ("application" as const)
+    : ("network" as const);
 }
 
 const __pulumiType = "sst:aws:Service";

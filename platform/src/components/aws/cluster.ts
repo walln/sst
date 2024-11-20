@@ -524,6 +524,10 @@ export interface ClusterServiceArgs {
          * @default The container name when there is only one container.
          */
         container?: Input<string>;
+        /**
+         * The port and protocol to redirect the traffic to. Uses the format `{port}/{protocol}`.
+         */
+        redirect?: Input<Port>;
       }[]
     >;
   }>;
@@ -548,7 +552,7 @@ export interface ClusterServiceArgs {
    *   loadBalancer: {
    *     domain: "example.com",
    *     ports: [
-   *       { listen: "80/http" },
+   *       { listen: "80/http", redirect: "443/https" },
    *       { listen: "443/https", forward: "80/http" }
    *     ]
    *   }
@@ -702,7 +706,7 @@ export interface ClusterServiceArgs {
         }
     >;
     /**
-     * Configure the mapping for the ports the load balancer listens to and forwards to
+     * Configure the mapping for the ports the load balancer listens to, forwards, or redirects to
      * the service.
      * This supports two types of protocols:
      *
@@ -749,6 +753,18 @@ export interface ClusterServiceArgs {
      *   ]
      * }
      * ```
+     *
+     * You can also redirect traffic from one port to another. This is commonly used to
+     * redirect http to https.
+     *
+     * ```js
+     * {
+     *   ports: [
+     *     { listen: "80/http", redirect: "443/https" },
+     *     { listen: "443/https", forward: "80/http" }
+     *   ]
+     * }
+     * ```
      */
     ports: Input<
       {
@@ -771,6 +787,10 @@ export interface ClusterServiceArgs {
          * container.
          */
         container?: Input<string>;
+        /**
+         * The port and protocol to redirect the traffic to. Uses the format `{port}/{protocol}`.
+         */
+        redirect?: Input<Port>;
       }[]
     >;
     /**
