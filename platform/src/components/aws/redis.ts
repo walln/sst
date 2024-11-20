@@ -1,4 +1,5 @@
 import {
+  all,
   ComponentResourceOptions,
   interpolate,
   jsonStringify,
@@ -16,8 +17,23 @@ import { VisibleError } from "../error.js";
 
 export interface RedisArgs {
   /**
-   * The Redis engine version. Check out the [supported versions](https://docs.aws.amazon.com/AmazonElastiCache/latest/red-ug/supported-engine-versions.html).
-   * @default `"7.1"`
+   * The Redis engine to use.
+   *
+   * Two engines are supported:
+   * - `"redis"`: The open source version of Redis.
+   * - `"valkey"`: A Redis-compatible engine built for improved scalability and performance (https://valkey.io/).
+   *
+   * @default `"redis"`
+   */
+  engine?: Input<"redis" | "valkey">;
+  /**
+   * The Redis engine version.
+   *
+   * The default version is `"7.1"` for the `"redis"` engine and `"7.2"` for the `"valkey"` engine.
+   *
+   * Check out the [supported versions](https://docs.aws.amazon.com/AmazonElastiCache/latest/red-ug/supported-engine-versions.html).
+   *
+   * @default `"7.1"` for Redis`, `"7.2"` for Valkey
    * @example
    * ```js
    * {
@@ -163,10 +179,10 @@ interface RedisRef {
  *
  * ### Cost
  *
- * By default this component uses _On-demand nodes_ with a single `cache.t4g.micro` instance;
- * $0.016 per hour.
+ * By default this component uses _On-demand nodes_ with a single `cache.t4g.micro` instance.
  *
- * That works out to $0.016 x 24 x 30 or **$12 per month**.
+ * The default `redis` engine costs $0.016 per hour. That works out to $0.016 x 24 x 30 or **$12 per month**.
+ * If the `valkey` engine is used, the cost is $0.0128 per hour. That works out to $0.0128 x 24 x 30 or **$9.22 per month**.
  *
  * Adjust this for the `instance` type and number of `nodes` you are using.
  *
@@ -188,7 +204,10 @@ export class Redis extends Component implements Link.Linkable {
     }
 
     const parent = this;
-    const version = output(args.version).apply((v) => v ?? "7.1");
+    const engine = output(args.engine).apply((v) => v ?? "redis");
+    const version = all([engine, args.version]).apply(
+      ([engine, v]) => v ?? (engine === "redis" ? "7.1" : "7.2"),
+    );
     const instance = output(args.instance).apply((v) => v ?? "t4g.micro");
     const nodes = output(args.nodes).apply((v) => v ?? 1);
     const vpc = normalizeVpc();
@@ -268,7 +287,7 @@ export class Redis extends Component implements Link.Linkable {
           {
             replicationGroupId: physicalName(40, name),
             description: "Managed by SST",
-            engine: "redis",
+            engine,
             engineVersion: version,
             nodeType: interpolate`cache.${instance}`,
             dataTieringEnabled: instance.apply((v) => v.startsWith("r6gd.")),
