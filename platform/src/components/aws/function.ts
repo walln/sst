@@ -1303,7 +1303,10 @@ export class Function extends Component implements Link.Linkable {
       ),
       copyFiles,
       properties: output({ nodejs: args.nodejs, python: args.python }).apply(
-        (val) => val.nodejs || val.python,
+        (val) => ({
+          ...(val.nodejs || val.python),
+          architecture,
+        }),
       ),
       dev,
     });
