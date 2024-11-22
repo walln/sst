@@ -3,6 +3,9 @@
 from typing import Any
 
 class Resource:
+    class App:
+        name: str
+        stage: str
     class MyLinkableValue:
         foo: str
         type: str

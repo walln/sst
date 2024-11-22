@@ -1,5 +1,5 @@
 version = 1
-requires-python = ">=3.11"
+requires-python = "==3.11.*"
 
 [[package]]
 name = "aws-python"
@@ -7,13 +7,13 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "python-dateutil" },
-    { name = "sst-sdk" },
+    { name = "sst" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "python-dateutil", specifier = ">=2.9.0.post0" },
-    { name = "sst-sdk", git = "https://github.com/sst/ion.git?subdirectory=sdk%2Fpython" },
+    { name = "sst", git = "https://github.com/sst/sst.git?subdirectory=sdk%2Fpython&branch=dev" },
 ]
 
 [[package]]
@@ -38,6 +38,6 @@ wheels = [
 ]
 
 [[package]]
-name = "sst-sdk"
+name = "sst"
 version = "0.1.0"
-source = { git = "https://github.com/sst/ion.git?subdirectory=sdk%2Fpython#3e6b9872586ac7ecb6584e8c43281641e075177b" }
+source = { git = "https://github.com/sst/sst.git?subdirectory=sdk%2Fpython&branch=dev#1eeef7b160bcfe17e35fa1e9e6ed9f6631998e3b" }
