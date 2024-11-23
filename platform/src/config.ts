@@ -110,7 +110,6 @@ export interface App {
    * ```
    */
   version?: string;
-
   /**
    * The name of the app. This is used to prefix the names of the resources in your app.
    *
@@ -201,7 +200,6 @@ export interface App {
    * @default The `home` provider.
    */
   providers?: Record<string, any>;
-
   /**
    * The provider SST will use to store the state for your app. The state keeps track of all your resources and secrets. The state is generated locally and backed up in your cloud provider.
    *
@@ -242,87 +240,93 @@ export interface AppInput {
   stage: string;
 }
 
+export interface RunnerInput {
+  /**
+   * The stage the deployment will be run in.
+   */
+  stage: string;
+}
+
 export interface Target {
   /**
    * The stage the app will be deployed to.
    */
   stage: string;
+}
+
+export interface Runner {
   /**
-   * Configure the runner that will run the build.
-   *
-   * It uses this to create a _runner_ — a
-   * [AWS CodeBuild](https://aws.amazon.com/codebuild/) project and an IAM Role,
-   * in **your account**. By default it uses:
-   *
-   * ```ts
-   * {
-   *   engine: "codebuild",
-   *   architecture: "x86_64",
-   *   compute: "small",
-   *   timeout: "1 hour"
-   * }
-   * ```
-   *
-   * :::note
-   * Runners are shared across all apps in the same account and region.
-   * :::
-   *
-   * Once a runner is created, it can be used to run multiple builds of the same
-   * machine config concurrently.
-   *
-   * You are only charged for the number of build
-   * minutes that you use. The pricing is based on the machine config used.
-   * [Learn more about CodeBuild pricing](https://aws.amazon.com/codebuild/pricing/).
-   *
-   * :::note
-   * A runner can run multiple builds concurrently.
-   * :::
-   *
-   * If a runner with the given config has been been previously created,
-   * it'll be reused. The Console will also automatically remove runners that
-   * have not been used for more than 7 days.
+   * The service used to run the build. Currently, only AWS CodeBuild is supported.
    */
-  runner?: {
+  engine: "codebuild";
+  /**
+   * The timeout for the build. It can be from `5 minutes` to `1 hour`.
+   * @default `1 hour`
+   */
+  timeout?: `${number} ${"minute" | "minutes" | "hour" | "hours"}`;
+  /**
+   * The architecture of the build machine.
+   * @default `x86_64`
+   */
+  architecture?: "x86_64" | "arm64";
+  /**
+   * The compute size of the build environment.
+   *
+   * For `x86_64`, the following compute sizes are supported:
+   * - `small`: 3 GB, 2 vCPUs
+   * - `medium`: 7 GB, 4 vCPUs
+   * - `large`: 15 GB, 8 vCPUs
+   * - `xlarge`: 70 GB, 36 vCPUs
+   * - `2xlarge`: 145 GB, 72 vCPUs
+   *
+   * For `arm64` architecture, the following compute sizes are supported:
+   * - `small`: 4 GB, 2 vCPUs
+   * - `medium`: 8 GB, 4 vCPUs
+   * - `large`: 16 GB, 8 vCPUs
+   * - `xlarge`: 64 GB, 32 vCPUs
+   * - `2xlarge`: 96 GB, 48 vCPUs
+   *
+   * To increase the memory used by your Node.js process in the build environment, you'll want
+   * to set the `NODE_OPTIONS` environment variable to `--max-old-space-size=xyz`. Where `xyz`
+   * is the memory size in MB. By default, this is set to 1.5 GB.
+   *
+   * Read more about the [CodeBuild build environments](https://docs.aws.amazon.com/codebuild/latest/userguide/build-env-ref-compute-types.html).
+   *
+   * @default `medium`
+   */
+  compute?: "small" | "medium" | "large" | "xlarge" | "2xlarge";
+  /**
+   * The VPC to run the build in.
+   */
+  vpc?: {
     /**
-     * The service used to run the build. Currently, only AWS CodeBuild is supported.
+     * The ID of the VPC.
      */
-    engine: "codebuild";
+    id: string;
     /**
-     * The timeout for the build. It can be from `5 minutes` to `1 hour`.
-     * @default `1 hour`
+     * The subnets to run the build in.
      */
-    timeout?: `${number} ${"minute" | "minutes" | "hour" | "hours"}`;
+    subnets: string[];
     /**
-     * The architecture of the build machine.
-     * @default `x86_64`
+     * The security groups to run the build in.
      */
-    architecture?: "x86_64" | "arm64";
+    securityGroups: string[];
+  };
+  /**
+   * The paths to cache the build in.
+   */
+  cache?: {
     /**
-     * The compute size of the build environment.
+     * The paths to cache. For example:
+     * ```js
+     * {
+     *   paths: ["node_modules", "/path/to/cache"]
+     * }
+     * ```
      *
-     * For `x86_64`, the following compute sizes are supported:
-     * - `small`: 3 GB, 2 vCPUs
-     * - `medium`: 7 GB, 4 vCPUs
-     * - `large`: 15 GB, 8 vCPUs
-     * - `xlarge`: 70 GB, 36 vCPUs
-     * - `2xlarge`: 145 GB, 72 vCPUs
-     *
-     * For `arm64` architecture, the following compute sizes are supported:
-     * - `small`: 4 GB, 2 vCPUs
-     * - `medium`: 8 GB, 4 vCPUs
-     * - `large`: 16 GB, 8 vCPUs
-     * - `xlarge`: 64 GB, 32 vCPUs
-     * - `2xlarge`: 96 GB, 48 vCPUs
-     *
-     * To increase the memory used by your Node.js process in the build environment, you'll want
-     * to set the `NODE_OPTIONS` environment variable to `--max-old-space-size=xyz`. Where `xyz`
-     * is the memory size in MB. By default, this is set to 1.5 GB.
-     *
-     * Read more about the [CodeBuild build environments](https://docs.aws.amazon.com/codebuild/latest/userguide/build-env-ref-compute-types.html).
-     *
-     * @default `medium`
+     * Relative paths are relative to the root of the repository.
      */
-    compute?: "small" | "medium" | "large" | "xlarge" | "2xlarge";
+    paths: string[];
   };
 }
 
@@ -666,10 +670,10 @@ export interface Config {
      *        ) {
      *         return {
      *           stage: "production",
-     *           runner: { engine: "codebuild", compute: "large" }
      *         };
      *       }
-     *     }
+     *     },
+     *     runner: { engine: "codebuild", compute: "large" }
      *   }
      * }
      * ```
@@ -747,27 +751,46 @@ export interface Config {
        * :::note
        * If a target is not returned, the app will not be deployed.
        * :::
-       *
-       * In addition to the `stage` you can also configure the `runner` that will run the build.
-       * For example, to use a larger machine for the `production` stage.
-       *
-       * ```ts title="sst.config.ts"
-       * target(event) {
-       *   if (event.type === "branch" && event.branch === "main" && event.action === "pushed") {
-       *     return {
-       *       stage: "production"
-       *       runner: {
-       *         engine: "codebuild",
-       *         compute: "large"
-       *       };
-       *     };
-       *   }
-       * }
-       * ```
        */
       target(
         input: BranchEvent | PullRequestEvent | TagEvent,
       ): Target | undefined;
+      /**
+       * Configure the runner that will run the build.
+       *
+       * It uses this to create a _runner_ — a
+       * [AWS CodeBuild](https://aws.amazon.com/codebuild/) project and an IAM Role,
+       * in **your account**. By default it uses:
+       *
+       * ```ts
+       * {
+       *   engine: "codebuild",
+       *   architecture: "x86_64",
+       *   compute: "small",
+       *   timeout: "1 hour"
+       * }
+       * ```
+       *
+       * :::note
+       * Runners are shared across all apps in the same account and region.
+       * :::
+       *
+       * Once a runner is created, it can be used to run multiple builds of the same
+       * machine config concurrently.
+       *
+       * You are only charged for the number of build
+       * minutes that you use. The pricing is based on the machine config used.
+       * [Learn more about CodeBuild pricing](https://aws.amazon.com/codebuild/pricing/).
+       *
+       * :::note
+       * A runner can run multiple builds concurrently.
+       * :::
+       *
+       * If a runner with the given config has been been previously created,
+       * it'll be reused. The Console will also automatically remove runners that
+       * have not been used for more than 7 days.
+       */
+      runner?: Runner | ((input: RunnerInput) => Runner);
     };
   };
   /**
