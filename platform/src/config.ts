@@ -296,7 +296,26 @@ export interface Runner {
    */
   compute?: "small" | "medium" | "large" | "xlarge" | "2xlarge";
   /**
-   * The VPC to run the build in.
+   * The VPC to run the build in. If provided, the build environment will have access to
+   * resources in the VPC.
+   *
+   * This is useful for building Next.js apps that might make queries to your database
+   * as a part of the build process.
+   *
+   * You can get these from the outputs of the `Vpc` component your are using or from the
+   * [Console](/docs/console/#resources).
+   *
+   * @example
+   *
+   * ```ts
+   * {
+   *   vpc: {
+   *     id: "vpc-0be8fa4de860618bb",
+   *     subnets: ["subnet-0be8fa4de860618bb"],
+   *     securityGroups: ["sg-0be8fa4de860618bb"]
+   *   }
+   * }
+   * ```
    */
   vpc?: {
     /**
@@ -313,18 +332,25 @@ export interface Runner {
     securityGroups: string[];
   };
   /**
-   * The paths to cache the build in.
+   * Paths to cache as a part of the build. By default the `.git` directory is cached.
+   *
+   * The given list of files and directories will be saved to the cache at the end of the build.
+   * And they will be restored at the start of the build process.
+   *
+   * ```ts
+   * {
+   *   cache: {
+   *     paths: ["node_modules", "/path/to/cache"]
+   *   }
+   * }
+   * ```
+   *
+   * To clear the cache, you can trigger a new deploy using the **Force** deploy option in the
+   * Console.
    */
   cache?: {
     /**
-     * The paths to cache. For example:
-     * ```js
-     * {
-     *   paths: ["node_modules", "/path/to/cache"]
-     * }
-     * ```
-     *
-     * Relative paths are relative to the root of the repository.
+     * The paths to cache. These are relative to the root of the repository.
      */
     paths: string[];
   };
@@ -645,6 +671,10 @@ export interface Config {
      * minutes that you use. The pricing is based on the machine config used.
      * [Learn more about CodeBuild pricing](https://aws.amazon.com/codebuild/pricing/).
      *
+     * :::note
+     * You need to configure an environment in the Console to be able to auto-deploy to it.
+     * :::
+     *
      * By default, this auto-deploys when you _git push_ to a:
      *
      * - **branch**: The stage name is a sanitized version of the branch name. When a branch
@@ -652,14 +682,10 @@ export interface Config {
      * - **pull request**: The stage name is `pr-<number>`. When a pull request is closed,
      *   the stage **is removed**.
      *
-     * :::note
-     * You need to configure an environment in the Console to be able to auto-deploy to it.
-     * :::
+     * To customize this, you can pass in your own `target` function. You can also
+     * configure the build machine that'll be used with the `runner` option.
      *
-     * You can pass in your own `target` function to customize this behaviour and the machine
-     * that'll be used to run the build.
-     *
-     * ```ts title="sst.config.ts"
+     * ```ts title="sst.config.ts" {"target", "runner"}
      * console: {
      *   autodeploy: {
      *     target(event) {
