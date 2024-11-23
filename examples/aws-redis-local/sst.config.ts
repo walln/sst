@@ -1,24 +1,19 @@
 /// <reference path="./.sst/platform/config.d.ts" />
 
-import path from "path";
-
 /**
  * ## AWS Redis local
  *
- * In this example, we use a local Docker Redis instance for dev. While on deploy, we are
- * using AWS ElastiCache.
+ * In this example, we connect to a local Docker Redis instance for dev. While on deploy, we are using AWS ElastiCache.
  *
  * We use the [`docker run` cli](https://docs.docker.com/reference/cli/docker/container/run/)
- * to create a local container with Redis when running `sst dev`.
+ * to start a local container with Redis.
  *
- * ```ts title="sst.config.ts"
- * {
- *   command: `docker run \
- *     --rm \
- *     -p 6379:6379 \
- *     -v ${path.join(process.cwd(), ".sst", "storage", $app.stage, "MyRedis")}:/data \
- *     redis:latest`,
- * }
+ * ```bash
+ * docker run \
+ *   --rm \
+ *   -p 6379:6379 \
+ *   -v $(pwd)/.sst/storage/redis:/data \
+ *   redis:latest
  * ```
  *
  * The data is persisted to the `.sst/storage` directory. So if you restart the dev server,
@@ -66,11 +61,8 @@ export default $config({
     const vpc = new sst.aws.Vpc("MyVpc", { nat: "managed" });
     const redis = new sst.aws.Redis("MyRedis", {
       dev: {
-        command: `docker run \
-          --rm \
-          -p 6379:6379 \
-          -v ${path.join(process.cwd(), ".sst", "storage", $app.stage, "MyRedis")}:/data \
-          redis:latest`,
+        host: "localhost",
+        port: 6379,
       },
       vpc,
     });
