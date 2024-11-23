@@ -73,29 +73,29 @@ export interface VpcArgs {
     | "ec2"
     | "managed"
     | {
+      /**
+       * Configures the NAT EC2 instance.
+       * @default `{instance: "t4g.nano"}`
+       * @example
+       * ```ts
+       * {
+       *   nat: {
+       *     ec2: {
+       *       instance: "t4g.large"
+       *     }
+       *   }
+       * }
+       * ```
+       */
+      ec2: Input<{
         /**
-         * Configures the NAT EC2 instance.
-         * @default `{instance: "t4g.nano"}`
-         * @example
-         * ```ts
-         * {
-         *   nat: {
-         *     ec2: {
-         *       instance: "t4g.large"
-         *     }
-         *   }
-         * }
-         * ```
+         * The type of instance to use for the NAT.
+         *
+         * @default `"t4g.nano"`
          */
-        ec2: Input<{
-          /**
-           * The type of instance to use for the NAT.
-           *
-           * @default `"t4g.nano"`
-           */
-          instance: Input<string>;
-        }>;
-      }
+        instance: Input<string>;
+      }>;
+    }
   >;
   /**
    * Configures a bastion host that can be used to connect to resources in the VPC.
@@ -242,7 +242,8 @@ interface VpcRef {
  * number of `az` and add $0.045 per GB processed per month.
  *
  * The above are rough estimates for _us-east-1_, check out the
- * [NAT Gateway pricing](https://aws.amazon.com/vpc/pricing/) for more details.
+ * [NAT Gateway pricing](https://aws.amazon.com/vpc/pricing/) for more details. Standard [data
+ * transfer charges](https://aws.amazon.com/ec2/pricing/on-demand/#Data_Transfer) apply.
  *
  * #### EC2 NAT
  *
@@ -462,8 +463,8 @@ export class Vpc extends Component implements Link.Linkable {
         .ids.apply((ids) =>
           ids.length
             ? ec2.Instance.get(`${name}BastionInstance`, ids[0], undefined, {
-                parent,
-              })
+              parent,
+            })
             : undefined,
         );
 
@@ -929,20 +930,20 @@ export class Vpc extends Component implements Link.Linkable {
                   ([natGateways, natInstances]) => [
                     ...(natGateways[i]
                       ? [
-                          {
-                            cidrBlock: "0.0.0.0/0",
-                            natGatewayId: natGateways[i].id,
-                          },
-                        ]
+                        {
+                          cidrBlock: "0.0.0.0/0",
+                          natGatewayId: natGateways[i].id,
+                        },
+                      ]
                       : []),
                     ...(natInstances[i]
                       ? [
-                          {
-                            cidrBlock: "0.0.0.0/0",
-                            networkInterfaceId:
-                              natInstances[i].primaryNetworkInterfaceId,
-                          },
-                        ]
+                        {
+                          cidrBlock: "0.0.0.0/0",
+                          networkInterfaceId:
+                            natInstances[i].primaryNetworkInterfaceId,
+                        },
+                      ]
                       : []),
                   ],
                 ),
