@@ -136,6 +136,8 @@ export default function Index() {
 
 When our app loads, we'll generate a pre-signed URL for the file upload and use it in the form.
 
+Add this above the `Index` component in `app/routes/_index.tsx`.
+
 ```tsx title="app/routes/_index.tsx" {4}
 export async function loader() {
   const command = new PutObjectCommand({
@@ -144,7 +146,7 @@ export async function loader() {
   });
   const url = await getSignedUrl(new S3Client({}), command);
 
-  return json({ url });
+  return { url };
 }
 ```
 
@@ -156,7 +158,6 @@ Add the relevant imports.
 
 ```tsx title="app/routes/_index.tsx"
 import { Resource } from "sst";
-import { json } from "@remix-run/node";
 import { useLoaderData } from "@remix-run/react";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
