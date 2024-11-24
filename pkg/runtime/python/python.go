@@ -117,6 +117,8 @@ func (r *PythonRuntime) Build(ctx context.Context, input *runtime.BuildInput) (*
 	/// 3. Remove the virtualenv because it does not need to be included in the zip
 
 	slog.Info("building python function", "handler", input.Handler, "out", input.Out())
+	slog.Info("Build properties", "properties", input.Properties)
+	slog.Info("Build is container", "isContainer", input.IsContainer)
 
 	file, ok := r.getFile(input)
 	if !ok {

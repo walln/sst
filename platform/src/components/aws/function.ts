@@ -1556,8 +1556,7 @@ export class Function extends Component implements Link.Linkable {
 								handler: string;
 								out: string;
 								errors: string[];
-							}>("Runtime.Build", { ...input, container });
-
+							}>("Runtime.Build", { ...input, isContainer: container });
 							if (result.errors.length > 0) {
 								throw new Error(result.errors.join("\n"));
 							}
