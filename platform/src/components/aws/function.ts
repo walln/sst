@@ -1548,48 +1548,22 @@ export class Function extends Component implements Link.Linkable {
 					};
 				}
 
+				// TODO(walln): remove the python branch and unify with the js builds
 				if (runtime.startsWith("python")) {
-					// const buildResult = all([args, isContainer, linkData]).apply(
-					//   async ([args, isContainer, linkData]) => {
-					//     if (isContainer) {
-					//       const result = await buildPythonContainer(name, {
-					//         ...args,
-					//         links: linkData,
-					//       });
-					//       if (result.type === "error") {
-					//         throw new VisibleError(
-					//           `Failed to build function "${args.handler}": ` +
-					//             result.errors.join("\n").trim(),
-					//         );
-					//       }
-					//       return result;
-					//     }
-					//     const result = await buildPython(name, {
-					//       ...args,
-					//       links: linkData,
-					//     });
-					//     if (result.type === "error") {
-					//       throw new VisibleError(
-					//         `Failed to build function "${args.handler}": ` +
-					//           result.errors.join("\n").trim(),
-					//       );
-					//     }
-					//     return result;
-					//   },
-					// );
+					const buildResult = all([isContainer, buildInput]).apply(
+						async ([container, input]) => {
+							const result = await rpc.call<{
+								handler: string;
+								out: string;
+								errors: string[];
+							}>("Runtime.Build", { ...input, container });
 
-					const buildResult = buildInput.apply(async (input) => {
-						const result = await rpc.call<{
-							handler: string;
-							out: string;
-							errors: string[];
-						}>("Runtime.Build", { ...input, container: false });
-
-						if (result.errors.length > 0) {
-							throw new Error(result.errors.join("\n"));
-						}
-						return result;
-					});
+							if (result.errors.length > 0) {
+								throw new Error(result.errors.join("\n"));
+							}
+							return result;
+						},
+					);
 
 					return {
 						handler: buildResult.handler,
