@@ -1167,6 +1167,16 @@ export interface ClusterServiceArgs {
          * ```
          */
         args?: Input<Record<string, Input<string>>>;
+        /**
+         * Tags to apply to the Docker image.
+         * @example
+         * ```js
+         * {
+         *   tags: ["v1.0.0", "commit-613c1b2"]
+         * }
+         * ```
+         */
+        tags?: Input<Input<string>[]>;
       }
   >;
   /**

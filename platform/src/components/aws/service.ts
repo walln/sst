@@ -9,7 +9,7 @@ import {
   output,
   secret,
 } from "@pulumi/pulumi";
-import { Image, Platform } from "@pulumi/docker-build";
+import { Platform } from "@pulumi/docker-build";
 import { Component, transform } from "../component.js";
 import { toGBs, toMBs } from "../size.js";
 import { toNumber } from "../cpu.js";
@@ -790,9 +790,9 @@ export class Service extends Component implements Link.Linkable {
                     ...linkEnvs,
                   },
                   platforms: [container.image.platform],
-                  tags: [
-                    interpolate`${bootstrapData.assetEcrUrl}:${container.name}`,
-                  ],
+                  tags: [container.name, ...(container.image.tags ?? [])].map(
+                    (tag) => interpolate`${bootstrapData.assetEcrUrl}:${tag}`,
+                  ),
                   registries: [
                     ecr
                       .getAuthorizationTokenOutput(
