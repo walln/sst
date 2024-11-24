@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/fs"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -79,11 +78,6 @@ func New() *PythonRuntime {
 }
 
 func (r *PythonRuntime) Build(ctx context.Context, input *runtime.BuildInput) (*runtime.BuildOutput, error) {
-	/// Building a python function works as follows:
-	/// 1. Locate the workspace that the handler resides in
-	///		We can do this by resolving the parent pyproject.toml file
-	/// 2. Copy the pyproject.toml file to the output directory
-
 	/// Workspaces are the most challenging part of the build process
 	/// UV currently does not support --include-workspace-deps for builds
 	/// See: https://github.com/astral-sh/uv/issues/6935 hopefully this lands soon
@@ -91,196 +85,35 @@ func (r *PythonRuntime) Build(ctx context.Context, input *runtime.BuildInput) (*
 	/// As a result, we have to manually construct the dependency tree
 	/// So we need to:
 	///
-	/// 1. Identify the entrypoint workspace
-	/// 2. Parse the workspace graph using the root pyproject.toml
-	/// 3. Use this graph to find the minimum set of workspaces to include
-	/// 4. Build each workspace as an sdist
-	/// 5. Copy each sdist to the same level such that the artifact is:
-	///		/{artifact-dir}/entrypoint-workspace/*
-	///		/{artifact-dir}/dependency-a/*
-	///		/{artifact-dir}/dependency-b/*
-	///		...
-	///		/{artifact-dir}/transitive-dep-a/*
-	///		/{artifact-dir}/transitive-dep-b/*
-	///		...
-	/// 6. Export the requirements.txt file for the entrypoint workspace to compile all
-	///		non-local dependencies into a single requirements.txt file
-	/// 7. Pip install the requirements.txt file into the artifact directory using a
-	///		install target (pip install -t ...)
-
-	/// If in dev mode then we need to copy the lambda bridge into the build artifact
-	/// so that we can run from the project without having to manually isolate the runtime
-
-	/// If in deployment mode then we need to:
-	/// 1. Sync the dependencies with uv
-	/// 2. Convert the virtualenv to site-packages so that lambda can find the packages
-	/// 3. Remove the virtualenv because it does not need to be included in the zip
-
-	slog.Info("building python function", "handler", input.Handler, "out", input.Out())
-	slog.Info("Build properties", "properties", input.Properties)
-	slog.Info("Build is container", "isContainer", input.IsContainer)
-
+	/// 1. Build all packages (future tree shaking would be nice)
+	/// 2. Ensure local packages are built for lambdaric acccess (remove src/ nesting)
+	/// 3. Export the uv package index to requirements.txt
+	/// 4. Install the dependencies into the artifact directory as a target
 	file, ok := r.getFile(input)
 	if !ok {
 		return nil, fmt.Errorf("handler not found: %v", input.Handler)
 	}
 
-	// FOR DEV AND FOR ZIP BUILDS:
-	workingDir := path.ResolveRootDir(input.CfgPath)
+	// TODO: If in dev mode then copy the lambda bridge into the build artifact
+	// So that the handler is lambdaric compatible
 
-	// 1. Generate non-local package index
-	syncCmd := process.CommandContext(ctx, "uv", "sync", "--all-packages")
-	syncCmd.Dir = workingDir
-	slog.Info("running uv sync in dir", "dir", syncCmd.Dir)
-
-	// capture the output of the sync command
-	syncOutput, err := syncCmd.CombinedOutput()
-	if err != nil {
-		slog.Error("failed to run uv sync", "error", err, "output", string(syncOutput))
-		return nil, fmt.Errorf("failed to run uv sync: %v", err)
-	}
-	slog.Error("uv sync output", "output", string(syncOutput))
-
-	// err := syncCmd.Run()
-	// if err != nil {
-	// 	slog.Error("failed to run uv sync", "error", err)
-	// 	return nil, fmt.Errorf("failed to run uv sync: %v", err)
-	// }
-
-	outputRequirementsFile := filepath.Join(input.Out(), "requirements.txt")
-	exportCmd := process.CommandContext(ctx, "uv", "export", "--all-packages", "--output-file="+outputRequirementsFile, "--no-emit-workspace")
-	exportCmd.Dir = workingDir
-	err = exportCmd.Run()
-	if err != nil {
-		return nil, fmt.Errorf("failed to run uv export: %v", err)
-	}
-
-	// 2. Build the entire workspace - this should cache and be fast thank you astral
-	buildCmd := process.CommandContext(ctx, "uv", "build", "--all", "--sdist", "--out-dir="+input.Out())
-	buildCmd.Dir = workingDir
-	err = buildCmd.Run()
-	if err != nil {
-		return nil, fmt.Errorf("failed to run uv build: %v", err)
-	}
-
-	// 3. Decode each tar.gz file in the dist directory and remove the trailing "-{version}"
-	files, err := filepath.Glob(filepath.Join(input.Out(), "*.tar.gz"))
-	if err != nil {
-		return nil, fmt.Errorf("failed to glob tar.gz files: %v", err)
-	}
-
-	for _, file := range files {
-		// Extract the tar.gz file
-		cmd := process.CommandContext(ctx, "tar", "-xzf", file, "-C", input.Out())
-		cmd.Dir = input.Out()
-		err = cmd.Run()
+	var build *runtime.BuildOutput
+	var err error
+	if !input.IsContainer {
+		build, err = BuildPythonZip(ctx, input)
 		if err != nil {
-			return nil, fmt.Errorf("failed to extract tar.gz file: %v", err)
+			return nil, err
 		}
-
-		// Get the directory name without version number
-		dirName := strings.TrimSuffix(filepath.Base(file), ".tar.gz")
-		lastHyphen := strings.LastIndex(dirName, "-")
-		baseName := dirName[:lastHyphen]
-
-		extractedDir := filepath.Join(input.Out(), dirName)
-		targetDir := filepath.Join(input.Out(), baseName)
-
-		// Check if the package has a src/{package_name} structure
-		srcPath := filepath.Join(extractedDir, "src", baseName)
-		if _, err := os.Stat(srcPath); err == nil {
-			// Remove old directory if it exists
-			if err := os.RemoveAll(targetDir); err != nil {
-				return nil, fmt.Errorf("failed to remove old directory: %v", err)
-			}
-			// Move the contents from src/{package_name} directly to the target
-			if err := os.Rename(srcPath, targetDir); err != nil {
-				return nil, fmt.Errorf("failed to move src directory contents: %v", err)
-			}
-			// Clean up the original extracted directory
-			if err := os.RemoveAll(extractedDir); err != nil {
-				return nil, fmt.Errorf("failed to clean up extracted directory: %v", err)
-			}
-		} else {
-			// Handle the regular case (no src directory)
-			if err := os.RemoveAll(targetDir); err != nil {
-				return nil, fmt.Errorf("failed to remove old directory: %v", err)
-			}
-			if err := os.Rename(extractedDir, targetDir); err != nil {
-				return nil, fmt.Errorf("failed to rename directory: %v", err)
-			}
-		}
-	}
-
-	// 4. Remove the tar.gz files (non-recursive)
-	for _, file := range files {
-		err = os.Remove(file)
+	} else {
+		build, err = BuildPythonContainer(ctx, input)
 		if err != nil {
-			return nil, fmt.Errorf("failed to remove tar.gz file: %v", err)
+			return nil, err
 		}
 	}
-
-	// 5. Install the dependencies as a target
-	installCmd := process.CommandContext(ctx, "uv", "pip", "install", "-r", outputRequirementsFile, "--target", input.Out())
-	installCmd.Dir = input.Out()
-	err = installCmd.Run()
-	if err != nil {
-		return nil, fmt.Errorf("failed to run uv pip install: %v", err)
-	}
-
-	// This is a deployment build now we need to:
-	///
-	/// First determine if this function is being built for a container deployment
-	///
-	/// If it is a container deployment then we need to:
-	/// 1. Copy the Dockerfile to the artifact directory (user provided or default)
-	/// 2. Build the container image
-	/// 3. Upload the container image to the container registry
-	///
-	/// If it is a zip deployment then we need to:
-	/// 1. Sync the dependencies with uv
-	/// 2. Convert the virtualenv to site-packages so that lambda can find the packages
-	/// 3. Remove the virtualenv because it does not need to be included in the zip
 	r.lastBuiltHandler[input.FunctionID] = file
 
-	errors := []string{}
+	return build, nil
 
-	// Adjust handler path if it contains the pattern {package_name}/src/{package_name}
-	handlerParts := strings.Split(input.Handler, "/")
-	if len(handlerParts) >= 3 {
-		// Start from the back, using a sliding window of 3
-		for i := len(handlerParts) - 3; i >= 0; i-- {
-			// Check if we have enough parts left to match the pattern
-			if i+2 >= len(handlerParts) {
-				continue
-			}
-
-			pkgName := handlerParts[i]
-			if handlerParts[i+1] == "src" && handlerParts[i+2] == pkgName {
-				// Found the pattern, now remove the middle two parts (src/{package_name})
-				newParts := append(
-					handlerParts[:i+1],
-					handlerParts[i+3:]...,
-				)
-				input.Handler = strings.Join(newParts, "/")
-				slog.Info("adjusted handler path", "original", handlerParts, "adjusted", input.Handler)
-				break
-			}
-
-			// Stop if we would go beyond the project root
-			absPath := filepath.Join(path.ResolveRootDir(input.CfgPath), strings.Join(handlerParts[:i], "/"))
-			if !strings.HasPrefix(absPath, path.ResolveRootDir(input.CfgPath)) {
-				break
-			}
-		}
-	}
-
-	slog.Info("built python function", "HANDLER", input.Handler, "out", input.Out())
-
-	return &runtime.BuildOutput{
-		Handler: input.Handler,
-		Errors:  errors,
-	}, nil
 }
 
 func (r *PythonRuntime) Match(runtime string) bool {
@@ -414,6 +247,146 @@ func (r *PythonRuntime) ShouldRebuild(functionID string, file string) bool {
 	return true
 }
 
+func BuildPythonZip(ctx context.Context, input *runtime.BuildInput) (*runtime.BuildOutput, error) {
+	workingDir := path.ResolveRootDir(input.CfgPath)
+
+	// 1. Generate non-local package index
+	syncCmd := process.CommandContext(ctx, "uv", "sync", "--all-packages")
+	syncCmd.Dir = workingDir
+	slog.Info("running uv sync in dir", "dir", syncCmd.Dir)
+
+	// capture the output of the sync command
+	syncOutput, err := syncCmd.CombinedOutput()
+	if err != nil {
+		slog.Error("failed to run uv sync", "error", err, "output", string(syncOutput))
+		return nil, fmt.Errorf("failed to run uv sync: %v", err)
+	}
+	slog.Error("uv sync output", "output", string(syncOutput))
+
+	outputRequirementsFile := filepath.Join(input.Out(), "requirements.txt")
+	exportCmd := process.CommandContext(ctx, "uv", "export", "--all-packages", "--output-file="+outputRequirementsFile, "--no-emit-workspace")
+	exportCmd.Dir = workingDir
+	err = exportCmd.Run()
+	if err != nil {
+		return nil, fmt.Errorf("failed to run uv export: %v", err)
+	}
+
+	// 2. Build the entire workspace - this should cache and be fast thank you astral
+	buildCmd := process.CommandContext(ctx, "uv", "build", "--all", "--sdist", "--out-dir="+input.Out())
+	buildCmd.Dir = workingDir
+	err = buildCmd.Run()
+	if err != nil {
+		return nil, fmt.Errorf("failed to run uv build: %v", err)
+	}
+
+	// 3. Decode each tar.gz file in the dist directory and remove the trailing "-{version}"
+	files, err := filepath.Glob(filepath.Join(input.Out(), "*.tar.gz"))
+	if err != nil {
+		return nil, fmt.Errorf("failed to glob tar.gz files: %v", err)
+	}
+
+	for _, file := range files {
+		// Extract the tar.gz file
+		cmd := process.CommandContext(ctx, "tar", "-xzf", file, "-C", input.Out())
+		cmd.Dir = input.Out()
+		err = cmd.Run()
+		if err != nil {
+			return nil, fmt.Errorf("failed to extract tar.gz file: %v", err)
+		}
+
+		// Get the directory name without version number
+		dirName := strings.TrimSuffix(filepath.Base(file), ".tar.gz")
+		lastHyphen := strings.LastIndex(dirName, "-")
+		baseName := dirName[:lastHyphen]
+
+		extractedDir := filepath.Join(input.Out(), dirName)
+		targetDir := filepath.Join(input.Out(), baseName)
+
+		// Check if the package has a src/{package_name} structure
+		srcPath := filepath.Join(extractedDir, "src", baseName)
+		if _, err := os.Stat(srcPath); err == nil {
+			// Remove old directory if it exists
+			if err := os.RemoveAll(targetDir); err != nil {
+				return nil, fmt.Errorf("failed to remove old directory: %v", err)
+			}
+			// Move the contents from src/{package_name} directly to the target
+			if err := os.Rename(srcPath, targetDir); err != nil {
+				return nil, fmt.Errorf("failed to move src directory contents: %v", err)
+			}
+			// Clean up the original extracted directory
+			if err := os.RemoveAll(extractedDir); err != nil {
+				return nil, fmt.Errorf("failed to clean up extracted directory: %v", err)
+			}
+		} else {
+			// Handle the regular case (no src directory)
+			if err := os.RemoveAll(targetDir); err != nil {
+				return nil, fmt.Errorf("failed to remove old directory: %v", err)
+			}
+			if err := os.Rename(extractedDir, targetDir); err != nil {
+				return nil, fmt.Errorf("failed to rename directory: %v", err)
+			}
+		}
+	}
+
+	// 4. Remove the tar.gz files (non-recursive)
+	for _, file := range files {
+		err = os.Remove(file)
+		if err != nil {
+			return nil, fmt.Errorf("failed to remove tar.gz file: %v", err)
+		}
+	}
+
+	// 5. Install the dependencies as a target
+	installCmd := process.CommandContext(ctx, "uv", "pip", "install", "-r", outputRequirementsFile, "--target", input.Out())
+	installCmd.Dir = input.Out()
+	err = installCmd.Run()
+	if err != nil {
+		return nil, fmt.Errorf("failed to run uv pip install: %v", err)
+	}
+
+	// Adjust handler path if it contains the pattern {package_name}/src/{package_name}
+	handlerParts := strings.Split(input.Handler, "/")
+	if len(handlerParts) >= 3 {
+		// Start from the back, using a sliding window of 3
+		for i := len(handlerParts) - 3; i >= 0; i-- {
+			// Check if we have enough parts left to match the pattern
+			if i+2 >= len(handlerParts) {
+				continue
+			}
+
+			pkgName := handlerParts[i]
+			if handlerParts[i+1] == "src" && handlerParts[i+2] == pkgName {
+				// Found the pattern, now remove the middle two parts (src/{package_name})
+				newParts := append(
+					handlerParts[:i+1],
+					handlerParts[i+3:]...,
+				)
+				input.Handler = strings.Join(newParts, "/")
+				slog.Info("adjusted handler path", "original", handlerParts, "adjusted", input.Handler)
+				break
+			}
+
+			// Stop if we would go beyond the project root
+			absPath := filepath.Join(path.ResolveRootDir(input.CfgPath), strings.Join(handlerParts[:i], "/"))
+			if !strings.HasPrefix(absPath, path.ResolveRootDir(input.CfgPath)) {
+				break
+			}
+		}
+	}
+
+	slog.Info("built python function", "handler", input.Handler, "out", input.Out())
+
+	errors := []string{}
+	return &runtime.BuildOutput{
+		Handler: input.Handler,
+		Errors:  errors,
+	}, nil
+}
+
+func BuildPythonContainer(ctx context.Context, input *runtime.BuildInput) (*runtime.BuildOutput, error) {
+	return nil, nil
+}
+
 var PYTHON_EXTENSIONS = []string{".py"}
 
 func (r *PythonRuntime) getFile(input *runtime.BuildInput) (string, bool) {
@@ -427,124 +400,4 @@ func (r *PythonRuntime) getFile(input *runtime.BuildInput) (string, bool) {
 		}
 	}
 	return "", false
-}
-
-func copyFile(src, dst string) error {
-	// Open the source file
-	sourceFile, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer sourceFile.Close()
-
-	// Ensure the destination directory exists
-	destDir := filepath.Dir(dst)
-	if err := os.MkdirAll(destDir, os.ModePerm); err != nil {
-		return fmt.Errorf("failed to create destination directories for %s: %v", dst, err)
-	}
-
-	// Create the destination file
-	destinationFile, err := os.Create(dst)
-	if err != nil {
-		return err
-	}
-	defer destinationFile.Close()
-
-	// Copy the content from source to destination
-	_, err = io.Copy(destinationFile, sourceFile)
-	if err != nil {
-		return err
-	}
-
-	// Flush the writes to stable storage
-	err = destinationFile.Sync()
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func copyWorkspace(sourceDir string, artifactDir string) (string, string, error) {
-	// Recursively copy all files in a source directory to a destination directory
-	var pyprojectPath string
-
-	err := filepath.WalkDir(sourceDir, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-
-		// Get the relative path of the file from the input directory
-		relPath, err := filepath.Rel(sourceDir, path)
-		if err != nil {
-			return fmt.Errorf("failed to get relative path: %v", err)
-		}
-
-		// Construct the destination path
-		destPath := filepath.Join(artifactDir, relPath)
-		if d.IsDir() {
-			// Create the directory in the output directory
-			return os.MkdirAll(destPath, os.ModePerm)
-		}
-
-		// Track pyproject.toml location in the output directory
-		if filepath.Base(path) == "pyproject.toml" {
-			pyprojectPath = destPath
-		}
-
-		// Copy the file to the destination path
-		return copyFile(path, destPath)
-	})
-
-	if err != nil {
-		return "", "", fmt.Errorf("failed to copy workspace: %v", err)
-	}
-
-	if pyprojectPath == "" {
-		return "", "", fmt.Errorf("pyproject.toml not found in copied workspace")
-	}
-
-	return artifactDir, pyprojectPath, nil
-}
-
-func getWorkspace(handlerPath string, rootDir string) (string, error) {
-	// Get the parent pyproject.toml file of a given python file
-	// If the only pyproject.toml file in the rootDir then we need to raise an error
-
-	// Ensure rootDir is an absolute path
-	if !filepath.IsAbs(rootDir) {
-		return "", fmt.Errorf("rootDir must be an absolute path")
-	}
-
-	// Start from the directory of the handler and move up the directory tree
-	dir := filepath.Dir(handlerPath)
-
-	// Convert handlerPath's directory to absolute path
-	absDir, err := filepath.Abs(dir)
-	if err != nil {
-		return "", err
-	}
-
-	for {
-		// If we've reached the root directory then we need to raise an error
-		if absDir == rootDir {
-			break
-		}
-
-		// Check if the pyproject.toml file exists in the current directory
-		pyProjectFile := filepath.Join(dir, "pyproject.toml")
-		if _, err := os.Stat(pyProjectFile); err == nil {
-			return absDir, nil
-		}
-
-		// Move up one directory
-		parentDir := filepath.Dir(absDir)
-		absDir = parentDir
-	}
-
-	return "", fmt.Errorf("pyproject.toml not found")
-}
-
-func createDevBuild(artifactDir string, pyprojectPath string) {
-
 }
