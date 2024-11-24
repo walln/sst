@@ -11,7 +11,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/BurntSushi/toml"
 	"github.com/sst/ion/pkg/process"
 	"github.com/sst/ion/pkg/project/path"
 	"github.com/sst/ion/pkg/runtime"
@@ -89,16 +88,15 @@ func (r *PythonRuntime) Build(ctx context.Context, input *runtime.BuildInput) (*
 	/// 2. Ensure local packages are built for lambdaric acccess (remove src/ nesting)
 	/// 3. Export the uv package index to requirements.txt
 	/// 4. Install the dependencies into the artifact directory as a target
-	file, ok := r.getFile(input)
-	if !ok {
-		return nil, fmt.Errorf("handler not found: %v", input.Handler)
+	file, err := r.getFile(input)
+	if err != nil {
+		return nil, fmt.Errorf("handler not found: %v", err)
 	}
 
 	// TODO: If in dev mode then copy the lambda bridge into the build artifact
 	// So that the handler is lambdaric compatible
 
 	var build *runtime.BuildOutput
-	var err error
 	if !input.IsContainer {
 		build, err = BuildPythonZip(ctx, input)
 		if err != nil {
@@ -139,91 +137,28 @@ type PyProject struct {
 }
 
 func (r *PythonRuntime) Run(ctx context.Context, input *runtime.RunInput) (runtime.Worker, error) {
-	// Get the directory of the Handler
-	// handlerDir := filepath.Dir(filepath.Join(input.Build.Out, input.Build.Handler))
+	// We need the lambda bridge in the artifact directory so that we can run the handler
+	// without having to manually isolate the runtime, So if it is not present then we need to copy it from
+	// the platform directory into the artifact directory
 
-	// We have to manually construct the dependencies to install because uv currently does not support importing a
-	// foreign pyproject.toml as a configuration file and we have to run the python-runtime file rather than
-	// the handler file
-
-	// Get the absolute path of the pyproject.toml file
-	// pyprojectFile, err := FindClosestPyProjectToml(handlerDir)
-	pyprojectFile := ""
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	// Decode the TOML file
-	var pyProject PyProject
-	if _, err := toml.DecodeFile(pyprojectFile, &pyProject); err != nil {
-		slog.Error("Error decoding TOML file", "err", err)
-	}
-
-	// Extract the dependencies
-	dependencies := pyProject.Project.Dependencies
-
-	// Extract the sources
-	sources := pyProject.Tool.Uv.Sources
-
-	args := []string{
-		"run",
-		"--no-project",
-		"--with",
-		"requests",
-	}
-
-	// We need to check if the dependency is a git dependency
-	// If it is, we can confirm if its in the uv.sources as a git dependency
-	// then we need to remove it from the dependencies list
-	filteredDependencies := []string{}
-	// Iterate over each dependency
-	for _, dep := range dependencies {
-		// Check if the dependency is in the sources map
-		if source, exists := sources[dep]; exists {
-			if source.Git != "" {
-				// It's a Git dependency listed in sources, so skip it
-				slog.Debug("Skipping dependency: %s (Git: %s)\n", dep, source.Git)
-				continue
-			}
-		}
-		// Add the dependency to the filtered list if it's not a Git dependency
-		filteredDependencies = append(filteredDependencies, dep)
-	}
-	dependencies = filteredDependencies
-
-	for _, dep := range dependencies {
-		args = append(args, "--with", dep)
-	}
-
-	// If sources are specified, use them
-	if len(sources) > 0 {
-		for _, source := range sources {
-			if source.URL != "" {
-				args = append(args, "--find-links", source.URL)
-			} else if source.Git != "" {
-				repo_url := "git+" + source.Git
-				if source.Branch != "" {
-					repo_url = repo_url + "@" + source.Branch
-				}
-				if source.Subdirectory != nil {
-					repo_url = repo_url + "#subdirectory=" + *source.Subdirectory
-				}
-				// uv run --with git+https://github.com/sst/ion.git#subdirectory=sdk/python python.py
-				args = append(args, "--with", repo_url)
-			}
+	// Check if the lambda bridge is present
+	lambdaBridgePath := filepath.Join(input.Build.Out, "lambdaric_python_bridge.py")
+	if _, err := os.Stat(lambdaBridgePath); os.IsNotExist(err) {
+		// Copy the lambda bridge from the platform directory into the artifact directory
+		err := copyFile(filepath.Join(path.ResolvePlatformDir(input.CfgPath), "/dist/python-runtime/index.py"), lambdaBridgePath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to copy lambda bridge: %v", err)
 		}
 	}
-
-	args = append(args,
-		filepath.Join(path.ResolvePlatformDir(input.CfgPath), "/dist/python-runtime/index.py"),
-		filepath.Join(input.Build.Out, input.Build.Handler),
-		input.WorkerID,
-	)
 
 	cmd := process.CommandContext(
 		ctx,
 		"uv",
-		args...)
+		"run",
+		lambdaBridgePath,
+		filepath.Join(input.Build.Out, input.Build.Handler),
+		input.WorkerID,
+	)
 	cmd.Env = append(input.Env, "AWS_LAMBDA_RUNTIME_API="+input.Server)
 	slog.Info("starting worker", "env", cmd.Env, "args", cmd.Args)
 	cmd.Dir = input.Build.Out
@@ -241,6 +176,7 @@ func (r *PythonRuntime) Run(ctx context.Context, input *runtime.RunInput) (runti
 		stderr,
 		cmd,
 	}, nil
+
 }
 
 func (r *PythonRuntime) ShouldRebuild(functionID string, file string) bool {
@@ -346,6 +282,7 @@ func BuildPythonZip(ctx context.Context, input *runtime.BuildInput) (*runtime.Bu
 
 	// Adjust handler path if it contains the pattern {package_name}/src/{package_name}
 	handlerParts := strings.Split(input.Handler, "/")
+	adjustedHandler := input.Handler
 	if len(handlerParts) >= 3 {
 		// Start from the back, using a sliding window of 3
 		for i := len(handlerParts) - 3; i >= 0; i-- {
@@ -361,8 +298,8 @@ func BuildPythonZip(ctx context.Context, input *runtime.BuildInput) (*runtime.Bu
 					handlerParts[:i+1],
 					handlerParts[i+3:]...,
 				)
-				input.Handler = strings.Join(newParts, "/")
-				slog.Info("adjusted handler path", "original", handlerParts, "adjusted", input.Handler)
+				adjustedHandler = strings.Join(newParts, "/")
+				slog.Info("adjusted handler path", "original", input.Handler, "adjusted", adjustedHandler)
 				break
 			}
 
@@ -373,12 +310,11 @@ func BuildPythonZip(ctx context.Context, input *runtime.BuildInput) (*runtime.Bu
 			}
 		}
 	}
-
-	slog.Info("built python function", "handler", input.Handler, "out", input.Out())
+	slog.Info("built python function", "handler", adjustedHandler, "out", input.Out())
 
 	errors := []string{}
 	return &runtime.BuildOutput{
-		Handler: input.Handler,
+		Handler: adjustedHandler,
 		Errors:  errors,
 	}, nil
 }
@@ -387,17 +323,42 @@ func BuildPythonContainer(ctx context.Context, input *runtime.BuildInput) (*runt
 	return nil, nil
 }
 
-var PYTHON_EXTENSIONS = []string{".py"}
+func (r *PythonRuntime) getFile(input *runtime.BuildInput) (string, error) {
+	slog.Info("looking for python handler file", "handler", input.Handler)
 
-func (r *PythonRuntime) getFile(input *runtime.BuildInput) (string, bool) {
-	slog.Info("getting python file", "handler", input.Handler)
 	dir := filepath.Dir(input.Handler)
 	base := strings.TrimSuffix(filepath.Base(input.Handler), filepath.Ext(input.Handler))
-	for _, ext := range PYTHON_EXTENSIONS {
-		file := filepath.Join(path.ResolveRootDir(input.CfgPath), dir, base+ext)
-		if _, err := os.Stat(file); err == nil {
-			return file, true
-		}
+	rootDir := path.ResolveRootDir(input.CfgPath)
+
+	// Look for .py file
+	pythonFile := filepath.Join(rootDir, dir, base+".py")
+	if _, err := os.Stat(pythonFile); err == nil {
+		return pythonFile, nil
 	}
-	return "", false
+
+	// No Python file found for the handler
+	return "", fmt.Errorf("could not find Python file '%s.py' in directory '%s'",
+		base,
+		filepath.Join(rootDir, dir))
+}
+
+func copyFile(src, dst string) error {
+	srcFile, err := os.Open(src)
+	if err != nil {
+		return fmt.Errorf("failed to open source file: %v", err)
+	}
+	defer srcFile.Close()
+
+	dstFile, err := os.Create(dst)
+	if err != nil {
+		return fmt.Errorf("failed to create destination file: %v", err)
+	}
+	defer dstFile.Close()
+
+	_, err = io.Copy(dstFile, srcFile)
+	if err != nil {
+		return fmt.Errorf("failed to copy file contents: %v", err)
+	}
+
+	return nil
 }
