@@ -260,7 +260,7 @@ export interface Runner {
    */
   engine: "codebuild";
   /**
-   * The timeout for the build. It can be from `5 minutes` to `1 hour`.
+   * The timeout for the build. It can be from `5 minutes` to `36 hours`.
    * @default `1 hour`
    */
   timeout?: `${number} ${"minute" | "minutes" | "hour" | "hours"}`;
