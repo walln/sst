@@ -1,25 +1,26 @@
+# If any docker wizard is interested, a multi-stage build would be better for caching
+# and reducing the size of the final image (we need gcc and git to support installing
+# git dependencies).
+
+# The python version to use is supplied as an arg from SST
 ARG PYTHON_VERSION=3.11
+
 # Use an official AWS Lambda base image for Python
 FROM public.ecr.aws/lambda/python:${PYTHON_VERSION}
+
+# # Ensure git is installed so we can install git based dependencies (such as sst)
+RUN yum update -y && \
+  yum install -y git gcc && \
+  yum clean all
 
 # Install UV to manage your python runtime
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 
-ARG PYPROJECT_PATH
-ARG UV_LOCK_PATH
+# Install the dependencies to the lambda runtime
+COPY requirements.txt ${LAMBDA_TASK_ROOT}/requirements.txt
+RUN uv pip install -r requirements.txt --target ${LAMBDA_TASK_ROOT} --system
 
-# I am sure someone more experienced with Docker can do this better for cachine
-# Copy everything from the current context to the LAMBDA_TASK_ROOT
+# Copy the rest of the code
 COPY . ${LAMBDA_TASK_ROOT}
 
-# Find the directory containing pyproject.toml, cd into it, and run pip install
-# lambdaric controlling the runtime means that we cannot use `uv run`
-# to automatically execute the virtual environment. So we need to export
-# the lockfile to a requirements.txt file and just let pip install it.
-RUN PYPROJECT_DIR=$(for dir in $(ls -R ${LAMBDA_TASK_ROOT} | grep ":$" | sed 's/:$//'); do if [ -f "${dir}/pyproject.toml" ]; then echo "${dir}"; break; fi; done) && \
-    if [ -n "$PYPROJECT_DIR" ]; then \
-      cd "$PYPROJECT_DIR" && uv export && pip install -t ${LAMBDA_TASK_ROOT} .; \
-    else \
-      echo "pyproject.toml not found"; \
-    fi
-
+# No need to configure the handler or entrypoint - SST will do that

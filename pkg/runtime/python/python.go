@@ -264,7 +264,7 @@ func (r *PythonRuntime) BuildPythonZip(ctx context.Context, input *runtime.Build
 	}
 
 	// If making a zip build or a local build then we need to install the dependencies and adjust the handler path
-	if !input.IsContainer {
+	if !input.IsContainer || input.Dev {
 
 		// 5. Install the dependencies as a target
 		installCmd := process.CommandContext(ctx, "uv", "pip", "install", "-r", outputRequirementsFile, "--target", input.Out())
@@ -275,34 +275,9 @@ func (r *PythonRuntime) BuildPythonZip(ctx context.Context, input *runtime.Build
 		}
 
 		// Adjust handler path if it contains the pattern {package_name}/src/{package_name}
-		handlerParts := strings.Split(input.Handler, "/")
-		adjustedHandler := input.Handler
-		if len(handlerParts) >= 3 {
-			// Start from the back, using a sliding window of 3
-			for i := len(handlerParts) - 3; i >= 0; i-- {
-				// Check if we have enough parts left to match the pattern
-				if i+2 >= len(handlerParts) {
-					continue
-				}
-
-				pkgName := handlerParts[i]
-				if handlerParts[i+1] == "src" && handlerParts[i+2] == pkgName {
-					// Found the pattern, now remove the middle two parts (src/{package_name})
-					newParts := append(
-						handlerParts[:i+1],
-						handlerParts[i+3:]...,
-					)
-					adjustedHandler = strings.Join(newParts, "/")
-					slog.Info("adjusted handler path", "original", input.Handler, "adjusted", adjustedHandler)
-					break
-				}
-
-				// Stop if we would go beyond the project root
-				absPath := filepath.Join(path.ResolveRootDir(input.CfgPath), strings.Join(handlerParts[:i], "/"))
-				if !strings.HasPrefix(absPath, path.ResolveRootDir(input.CfgPath)) {
-					break
-				}
-			}
+		adjustedHandler, err := r.adjustHandlerPath(input)
+		if err != nil {
+			return nil, fmt.Errorf("failed to adjust handler path: %v", err)
 		}
 		slog.Info("built python function", "handler", adjustedHandler, "out", input.Out())
 
@@ -314,22 +289,38 @@ func (r *PythonRuntime) BuildPythonZip(ctx context.Context, input *runtime.Build
 	} else {
 		// 5. Check if there is a Dockerfile in the handler directory
 		// 	If not then copy over the default one from the platform directory
-		handlerFile, err := r.getFile(input)
+		workspaceDir, err := r.getWorkspaceDirectory(input)
 		if err != nil {
-			return nil, fmt.Errorf("handler not found: %v", err)
+			return nil, fmt.Errorf("failed to get workspace directory: %v", err)
 		}
-		handlerDir := filepath.Dir(handlerFile)
-		_, err = os.Stat(filepath.Join(handlerDir, "Dockerfile"))
+
+		slog.Info("checking for Dockerfile in workspace directory", "dir", workspaceDir)
+		_, err = os.Stat(filepath.Join(workspaceDir, "Dockerfile"))
 		if err != nil {
-			if os.IsNotExist(err) {
-				// Copy over the default Dockerfile from the platform directory
-				copyFile(filepath.Join(path.ResolvePlatformDir(input.CfgPath), "/dist/python-runtime/Dockerfile"), filepath.Join(handlerDir, "Dockerfile"))
+			slog.Error("workspace directory does not contain Dockerfile", "dir", workspaceDir)
+			// Check if the Dockerfile exists in the platform directory
+			defaultDockerfilePath := filepath.Join(path.ResolvePlatformDir(input.CfgPath), "/dist/dockerfiles/python.Dockerfile")
+			_, err = os.Stat(defaultDockerfilePath)
+			if err != nil {
+				slog.Error("failed to check for Dockerfile in platform directory", "error", err)
+				return nil, fmt.Errorf("failed to check for Dockerfile in platform directory: %v", err)
 			} else {
-				return nil, fmt.Errorf("failed to check for Dockerfile: %v", err)
+				slog.Info("dockerfile exists in platform directory", "dir", path.ResolvePlatformDir(input.CfgPath))
 			}
+
+			slog.Info("copying default Dockerfile from platform directory to output directory", "dir", path.ResolvePlatformDir(input.CfgPath))
+
+			// Copy over the default Dockerfile from the platform directory
+			copyFile(defaultDockerfilePath, filepath.Join(input.Out(), "Dockerfile"))
+			slog.Info("copied default Dockerfile to output directory", "dir", input.Out())
 		} else {
-			slog.Info("Dockerfile already exists in handler directory", "dir", handlerDir)
-			copyFile(filepath.Join(handlerDir, "Dockerfile"), filepath.Join(input.Out(), "Dockerfile"))
+			slog.Info("Dockerfile already exists in workspace directory", "dir", workspaceDir)
+			copyFile(filepath.Join(workspaceDir, "Dockerfile"), filepath.Join(input.Out(), "Dockerfile"))
+		}
+
+		adjustedHandler, err := r.adjustHandlerPath(input)
+		if err != nil {
+			return nil, fmt.Errorf("failed to adjust handler path: %v", err)
 		}
 
 		// TODO(walln): handle dockerignore files
@@ -338,7 +329,7 @@ func (r *PythonRuntime) BuildPythonZip(ctx context.Context, input *runtime.Build
 
 		errors := []string{}
 		return &runtime.BuildOutput{
-			Handler: input.Handler,
+			Handler: adjustedHandler,
 			Errors:  errors,
 		}, nil
 	}
@@ -382,4 +373,72 @@ func copyFile(src, dst string) error {
 	}
 
 	return nil
+}
+
+func (r *PythonRuntime) getWorkspaceDirectory(input *runtime.BuildInput) (string, error) {
+	file, err := r.getFile(input)
+	if err != nil {
+		return "", err
+	}
+
+	projectRoot := path.ResolveRootDir(input.CfgPath)
+	currentDir := filepath.Dir(file)
+
+	// First verify that the current directory is within the project root
+	if !strings.HasPrefix(currentDir, projectRoot) {
+		return "", fmt.Errorf("handler file %s is not within the project root %s", file, projectRoot)
+	}
+
+	// Traverse up the file tree to find the pyproject.toml file
+	// If we reach the project root then return an error
+	for {
+		pyprojectPath := filepath.Join(currentDir, "pyproject.toml")
+		if _, err := os.Stat(pyprojectPath); err == nil {
+			// We found the pyproject.toml file
+			return currentDir, nil
+		}
+
+		// Move up the directory tree
+		parentDir := filepath.Dir(currentDir)
+
+		// Check if we have reached the project root or cannot move up anymore
+		if parentDir == currentDir || currentDir == projectRoot {
+			return "", fmt.Errorf("no pyproject.toml found in directory tree from %s up to project root %s", filepath.Dir(file), projectRoot)
+		}
+
+		currentDir = parentDir
+	}
+}
+
+func (r *PythonRuntime) adjustHandlerPath(input *runtime.BuildInput) (string, error) {
+	handlerParts := strings.Split(input.Handler, "/")
+	adjustedHandler := input.Handler
+	if len(handlerParts) >= 3 {
+		// Start from the back, using a sliding window of 3
+		for i := len(handlerParts) - 3; i >= 0; i-- {
+			// Check if we have enough parts left to match the pattern
+			if i+2 >= len(handlerParts) {
+				continue
+			}
+
+			pkgName := handlerParts[i]
+			if handlerParts[i+1] == "src" && handlerParts[i+2] == pkgName {
+				// Found the pattern, now remove the middle two parts (src/{package_name})
+				newParts := append(
+					handlerParts[:i+1],
+					handlerParts[i+3:]...,
+				)
+				adjustedHandler = strings.Join(newParts, "/")
+				slog.Info("adjusted handler path", "original", input.Handler, "adjusted", adjustedHandler)
+				break
+			}
+
+			// Stop if we would go beyond the project root
+			absPath := filepath.Join(path.ResolveRootDir(input.CfgPath), strings.Join(handlerParts[:i], "/"))
+			if !strings.HasPrefix(absPath, path.ResolveRootDir(input.CfgPath)) {
+				break
+			}
+		}
+	}
+	return adjustedHandler, nil
 }
