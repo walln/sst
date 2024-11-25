@@ -28,19 +28,19 @@ export default $config({
 			link: [linkableValue],
 		});
 
-		// const custom = new sst.aws.Function("PythonFnCustom", {
-		// 	python: {
-		// 		container: true,
-		// 	},
-		// 	handler: "./custom-dockerfile/src/custom-dockerfile/api.handler",
-		// 	runtime: "python3.11",
-		// 	url: true,
-		// 	link: [linkableValue],
-		// });
+		const custom = new sst.aws.Function("PythonFnCustom", {
+			python: {
+				container: true,
+			},
+			handler: "./custom_dockerfile/src/custom_dockerfile/api.handler",
+			runtime: "python3.11",
+			url: true,
+			link: [linkableValue],
+		});
 
 		return {
 			base: base.url,
-			// custom: custom.url,
+			custom: custom.url,
 		};
 	},
 });

@@ -10,7 +10,7 @@ dependencies = []
 requires-python = "==3.11.*"
 
 [tool.uv.workspace]
-members = ["functions", "core", "custom-dockerfile"]
+members = ["functions", "core", "custom_dockerfile"]
 
 [tool.uv.sources]
 sst = { git = "https://github.com/walln/sst.git", subdirectory = "sdk/python", branch = "walln/python-improvements" }

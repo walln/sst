@@ -13,4 +13,8 @@ class Resource:
         name: str
         type: str
         url: str
+    class PythonFnCustom:
+        name: str
+        type: str
+        url: str
 

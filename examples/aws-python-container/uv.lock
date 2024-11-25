@@ -113,7 +113,7 @@ wheels = [
 [[package]]
 name = "custom-dockerfile"
 version = "0.1.0"
-source = { editable = "custom-dockerfile" }
+source = { editable = "custom_dockerfile" }
 dependencies = [
     { name = "core" },
     { name = "sst" },

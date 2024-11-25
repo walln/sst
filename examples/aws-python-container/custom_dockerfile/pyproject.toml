@@ -1,5 +1,5 @@
 [project]
-name = "custom-dockerfile"
+name = "custom_dockerfile"
 version = "0.1.0"
 description = "Custom Dockerfile"
 dependencies = ["core", "sst"]
