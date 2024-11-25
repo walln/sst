@@ -201,10 +201,11 @@ func (r *PythonRuntime) BuildPythonZip(ctx context.Context, input *runtime.Build
 	// 2. Build the entire workspace - this should cache and be fast thank you astral
 	buildCmd := process.CommandContext(ctx, "uv", "build", "--all", "--sdist", "--out-dir="+input.Out())
 	buildCmd.Dir = workingDir
-	err = buildCmd.Run()
+	buildOutput, err := buildCmd.CombinedOutput()
 	if err != nil {
-		return nil, fmt.Errorf("failed to run uv build: %v", err)
+		return nil, fmt.Errorf("failed to run uv build: %v\n%s", err, string(buildOutput))
 	}
+	slog.Error("uv build output", "output", string(buildOutput))
 
 	// 3. Decode each tar.gz file in the dist directory and remove the trailing "-{version}"
 	files, err := filepath.Glob(filepath.Join(input.Out(), "*.tar.gz"))
