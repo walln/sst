@@ -398,6 +398,9 @@ export interface Runner {
    * }
    * ```
    *
+   * The relative paths are for caching files inside your repo. While the absolute path is for
+   * any global caches.
+   *
    * To clear the cache, you can trigger a new deploy using the **Force** deploy option in the
    * Console.
    */

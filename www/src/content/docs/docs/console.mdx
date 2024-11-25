@@ -586,7 +586,7 @@ When you _git push_ to a branch, pull request, or tag, the following happens:
 3. The runner config is generated based on the `console.autodeploy.runner`. Or the defaults are used.
 4. The deploy is run based on the above config.
 
-This only applies only to git events. If you trigger a deploy through the Console, you are asked to sepcify the stage you want to deploy to. So in this case, it skips step 1 from above and does not call `console.autodeploy.target`.
+This only applies only to git events. If you trigger a deploy through the Console, you are asked to specify the stage you want to deploy to. So in this case, it skips step 1 from above and does not call `console.autodeploy.target`.
 
 Both `target` and `runner` are optional and come with defaults, but they can be customized.
 
