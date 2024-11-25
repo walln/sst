@@ -151,9 +151,9 @@ export interface ClusterArgs {
    * }
    * ```
    */
-  vpc: Input<
+  vpc:
     | Vpc
-    | {
+    | Input<{
         /**
          * The ID of the VPC.
          */
@@ -178,8 +178,7 @@ export interface ClusterArgs {
          * The name of the Cloud Map namespace to use for the service.
          */
         cloudmapNamespaceName: Input<string>;
-      }
-  >;
+      }>;
   /**
    * Force upgrade from `Cluster.v1` to the latest `Cluster` version. The only valid value
    * is `v2`, which is the version of the new `Cluster`.
@@ -1757,10 +1756,14 @@ export class Cluster extends Component {
     args: ClusterArgs,
     opts: ComponentResourceOptions = {},
   ) {
+    super(__pulumiType, name, args, opts);
     const _version = 2;
-    super(__pulumiType, name, args, opts, {
-      _version,
-      _message: [
+    const self = this;
+
+    self.registerVersion({
+      new: _version,
+      old: $cli.state.version[name],
+      message: [
         `There is a new version of "Cluster" that has breaking changes.`,
         ``,
         `What changed:`,
@@ -1773,10 +1776,8 @@ export class Cluster extends Component {
         `To continue using v${$cli.state.version[name]}:`,
         `  - Rename "Cluster" to "Cluster.v${$cli.state.version[name]}". Learn more about versioning - https://sst.dev/docs/components/#versioning`,
       ].join("\n"),
-      _forceUpgrade: args.forceUpgrade,
+      forceUpgrade: args.forceUpgrade,
     });
-
-    const parent = this;
 
     const cluster = createCluster();
 
@@ -1786,7 +1787,12 @@ export class Cluster extends Component {
 
     function createCluster() {
       return new ecs.Cluster(
-        ...transform(args.transform?.cluster, `${name}Cluster`, {}, { parent }),
+        ...transform(
+          args.transform?.cluster,
+          `${name}Cluster`,
+          {},
+          { parent: self },
+        ),
       );
     }
   }

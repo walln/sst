@@ -162,32 +162,31 @@ export class Service extends Component implements Link.Linkable {
     }
 
     function normalizeVpc() {
-      return output(args.vpc).apply((vpc) => {
-        // "vpc" is a Vpc.v1 component
-        if (vpc instanceof VpcV1) {
-          throw new VisibleError(
-            `You are using the "Vpc.v1" component. Please migrate to the latest "Vpc" component.`,
-          );
-        }
+      // "vpc" is a Vpc.v1 component
+      if (args.vpc instanceof VpcV1) {
+        throw new VisibleError(
+          `You are using the "Vpc.v1" component. Please migrate to the latest "Vpc" component.`,
+        );
+      }
 
-        // "vpc" is a Vpc component
-        if (vpc instanceof Vpc) {
-          return {
-            isSstVpc: true,
-            id: vpc.id,
-            loadBalancerSubnets: lbArgs?.pub.apply((v) =>
-              v ? vpc.publicSubnets : vpc.privateSubnets,
-            ),
-            serviceSubnets: vpc.publicSubnets,
-            securityGroups: vpc.securityGroups,
-            cloudmapNamespaceId: vpc.nodes.cloudmapNamespace.id,
-            cloudmapNamespaceName: vpc.nodes.cloudmapNamespace.name,
-          };
-        }
+      // "vpc" is a Vpc component
+      if (args.vpc instanceof Vpc) {
+        const vpc = args.vpc;
+        return {
+          isSstVpc: true,
+          id: vpc.id,
+          loadBalancerSubnets: lbArgs?.pub.apply((v) =>
+            v ? vpc.publicSubnets : vpc.privateSubnets,
+          ),
+          serviceSubnets: vpc.publicSubnets,
+          securityGroups: vpc.securityGroups,
+          cloudmapNamespaceId: vpc.nodes.cloudmapNamespace.id,
+          cloudmapNamespaceName: vpc.nodes.cloudmapNamespace.name,
+        };
+      }
 
-        // "vpc" is object
-        return { isSstVpc: false, ...vpc };
-      });
+      // "vpc" is object
+      return output(args.vpc).apply((vpc) => ({ isSstVpc: false, ...vpc }));
     }
 
     function normalizeRegion() {
@@ -511,7 +510,7 @@ export class Service extends Component implements Link.Linkable {
           {
             internal: lbArgs.pub.apply((v) => !v),
             loadBalancerType: lbArgs.type,
-            subnets: output(vpc).apply((v) => v.loadBalancerSubnets!),
+            subnets: vpc.loadBalancerSubnets,
             securityGroups: [securityGroup.id],
             enableCrossZoneLoadBalancing: true,
           },

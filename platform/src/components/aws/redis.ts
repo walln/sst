@@ -96,9 +96,9 @@ export interface RedisArgs {
    * }
    * ```
    */
-  vpc: Input<
+  vpc:
     | Vpc
-    | {
+    | Input<{
         /**
          * A list of subnet IDs in the VPC to deploy the Redis cluster in.
          */
@@ -107,8 +107,7 @@ export interface RedisArgs {
          * A list of VPC security group IDs.
          */
         securityGroups: Input<Input<string>[]>;
-      }
-  >;
+      }>;
   /**
    * Configure how this component works in `sst dev`.
    *
@@ -296,18 +295,16 @@ export class Redis extends Component implements Link.Linkable {
     }
 
     function normalizeVpc() {
-      return output(args.vpc).apply((vpc) => {
-        // "vpc" is a Vpc component
-        if (vpc instanceof Vpc) {
-          return output({
-            subnets: vpc.privateSubnets,
-            securityGroups: vpc.securityGroups,
-          });
-        }
+      // "vpc" is a Vpc component
+      if (args.vpc instanceof Vpc) {
+        return output({
+          subnets: args.vpc.privateSubnets,
+          securityGroups: args.vpc.securityGroups,
+        });
+      }
 
-        // "vpc" is object
-        return output(vpc);
-      });
+      // "vpc" is object
+      return output(args.vpc);
     }
 
     function createAuthToken() {

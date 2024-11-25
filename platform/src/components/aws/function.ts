@@ -1089,9 +1089,9 @@ export interface FunctionArgs {
    * }
    * ```
    */
-  vpc?: Input<
+  vpc?:
     | Vpc
-    | {
+    | Input<{
         /**
          * A list of VPC security group IDs.
          */
@@ -1105,8 +1105,7 @@ export interface FunctionArgs {
          * @deprecated Use `privateSubnets` instead.
          */
         subnets?: Input<Input<string>[]>;
-      }
-  >;
+      }>;
   /**
    * [Transform](/docs/components#transform) how this component creates its underlying
    * resources.
@@ -1501,25 +1500,26 @@ export class Function extends Component implements Link.Linkable {
       // "vpc" is undefined
       if (!args.vpc) return;
 
-      return output(args.vpc).apply((vpc) => {
-        // "vpc" is a Vpc component
-        if (vpc instanceof Vpc) {
-          const result = {
-            privateSubnets: vpc.privateSubnets,
-            securityGroups: vpc.securityGroups,
-          };
-          return all([vpc.nodes.natGateways, vpc.nodes.natInstances]).apply(
-            ([natGateways, natInstances]) => {
-              if (natGateways.length === 0 && natInstances.length === 0) {
-                throw new VisibleError(
-                  `Functions that are running in a VPC need a NAT gateway. Enable it by setting "nat" on the "sst.aws.Vpc" component.`,
-                );
-              }
-              return result;
-            },
-          );
-        }
+      // "vpc" is a Vpc component
+      if (args.vpc instanceof Vpc) {
+        const result = {
+          privateSubnets: args.vpc.privateSubnets,
+          securityGroups: args.vpc.securityGroups,
+        };
+        return all([
+          args.vpc.nodes.natGateways,
+          args.vpc.nodes.natInstances,
+        ]).apply(([natGateways, natInstances]) => {
+          if (natGateways.length === 0 && natInstances.length === 0) {
+            throw new VisibleError(
+              `Functions that are running in a VPC need a NAT gateway. Enable it by setting "nat" on the "sst.aws.Vpc" component.`,
+            );
+          }
+          return result;
+        });
+      }
 
+      return output(args.vpc).apply((vpc) => {
         // "vpc" is object
         if (vpc.subnets) {
           throw new VisibleError(

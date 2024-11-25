@@ -89,7 +89,7 @@ export interface PostgresArgs {
   /**
    * The maximum storage limit for the database.
    *
-   * RDS will autoscale your storage to match your usage up to the given limit. 
+   * RDS will autoscale your storage to match your usage up to the given limit.
    * You are not billed for the maximum storage limit, You are only billed for the storage you use.
    *
    * :::note
@@ -152,15 +152,14 @@ export interface PostgresArgs {
    * }
    * ```
    */
-  vpc: Input<
+  vpc:
     | Vpc
-    | {
+    | Input<{
         /**
          * A list of subnet IDs in the VPC.
          */
         subnets: Input<Input<string>[]>;
-      }
-  >;
+      }>;
   /**
    * Configure how this component works in `sst dev`.
    *
@@ -240,7 +239,7 @@ export interface PostgresGetArgs {
 
 interface PostgresRef {
   ref: boolean;
-  instance: rds.Instance;
+  id: Input<string>;
   proxyId?: Input<string>;
 }
 
@@ -326,51 +325,19 @@ export class Postgres extends Component implements Link.Linkable {
     args: PostgresArgs,
     opts?: ComponentResourceOptions,
   ) {
+    super(__pulumiType, name, args, opts);
     const _version = 2;
-    super(__pulumiType, name, args, opts, {
-      _version,
-      _message: [
-        `This component has been renamed. Please change:`,
-        ``,
-        `"sst.aws.Postgres" to "sst.aws.Postgres.v${$cli.state.version[name]}"`,
-        ``,
-        `Learn more https://sst.dev/docs/components/#versioning`,
-      ].join("\n"),
-    });
-
-    const parent = this;
+    const self = this;
 
     if (args && "ref" in args) {
-      const ref = args as unknown as PostgresRef;
-
-      const proxy = ref.proxyId
-        ? rds.Proxy.get(`${name}Proxy`, ref.proxyId, undefined, { parent })
-        : undefined;
-
-      const secret = ref.instance.tags.apply((tags) =>
-        tags?.["sst:lookup:password"]
-          ? secretsmanager.getSecretVersionOutput(
-              {
-                secretId: tags["sst:lookup:password"],
-              },
-              { parent },
-            )
-          : output(undefined),
-      );
-      const password = secret.apply((v) => {
-        if (!v) {
-          throw new VisibleError(
-            `Failed to get password for Postgres ${name}.`,
-          );
-        }
-        return JSON.parse(v.secretString).password as string;
-      });
+      const ref = reference();
       this.instance = ref.instance;
-      this._password = password;
-      this.proxy = output(proxy);
+      this._password = ref.password;
+      this.proxy = output(ref.proxy);
       return;
     }
 
+    registerVersion();
     const engineVersion = output(args.version).apply((v) => v ?? "16.4");
     const instanceType = output(args.instance).apply((v) => v ?? "t4g.micro");
     const username = output(args.username).apply((v) => v ?? "postgres");
@@ -398,6 +365,63 @@ export class Postgres extends Component implements Link.Linkable {
     this._password = password;
     this.proxy = proxy;
 
+    function reference() {
+      const ref = args as unknown as PostgresRef;
+      const instance = rds.Instance.get(`${name}Instance`, ref.id, undefined, {
+        parent: self,
+      });
+
+      const input = instance.tags.apply((tags) => {
+        registerVersion(
+          tags?.["sst:component-version"]
+            ? parseInt(tags["sst:component-version"])
+            : undefined,
+        );
+
+        return {
+          proxyId: output(ref.proxyId),
+          passwordTag: tags?.["sst:lookup:password"],
+        };
+      });
+
+      const proxy = input.proxyId.apply((proxyId) =>
+        proxyId
+          ? rds.Proxy.get(`${name}Proxy`, proxyId, undefined, {
+              parent: self,
+            })
+          : undefined,
+      );
+
+      const password = input.passwordTag.apply((passwordTag) => {
+        if (!passwordTag)
+          throw new VisibleError(
+            `Failed to get password for Postgres ${name}.`,
+          );
+
+        const secret = secretsmanager.getSecretVersionOutput(
+          { secretId: passwordTag },
+          { parent: self },
+        );
+        return $jsonParse(secret.secretString).apply(
+          (v) => v.password as string,
+        );
+      });
+
+      return { instance, proxy, password };
+    }
+
+    function registerVersion(overrideVersion?: number) {
+      self.registerVersion({
+        new: _version,
+        old: overrideVersion ?? $cli.state.version[name],
+        message: [
+          `This component has been renamed. Please change:\n`,
+          `"sst.aws.Postgres" to "sst.aws.Postgres.v${$cli.state.version[name]}"\n`,
+          `Learn more https://sst.dev/docs/components/#versioning`,
+        ].join("\n"),
+      });
+    }
+
     function normalizeStorage() {
       return output(args.storage ?? "20 GB").apply((v) => {
         const size = toGBs(v);
@@ -416,24 +440,22 @@ export class Postgres extends Component implements Link.Linkable {
     }
 
     function normalizeVpc() {
-      return output(args.vpc).apply((vpc) => {
-        // "vpc" is a Vpc.v1 component
-        if (vpc instanceof VpcV1) {
-          throw new VisibleError(
-            `You are using the "Vpc.v1" component. Please migrate to the latest "Vpc" component.`,
-          );
-        }
+      // "vpc" is a Vpc.v1 component
+      if (args.vpc instanceof VpcV1) {
+        throw new VisibleError(
+          `You are using the "Vpc.v1" component. Please migrate to the latest "Vpc" component.`,
+        );
+      }
 
-        // "vpc" is a Vpc component
-        if (vpc instanceof Vpc) {
-          return {
-            subnets: vpc.privateSubnets,
-          };
-        }
+      // "vpc" is a Vpc component
+      if (args.vpc instanceof Vpc) {
+        return {
+          subnets: args.vpc.privateSubnets,
+        };
+      }
 
-        // "vpc" is object
-        return vpc;
-      });
+      // "vpc" is object
+      return output(args.vpc);
     }
 
     function registerDev() {
@@ -478,7 +500,7 @@ export class Postgres extends Component implements Link.Linkable {
               length: 32,
               special: false,
             },
-            { parent },
+            { parent: self },
           ).result;
     }
 
@@ -490,7 +512,7 @@ export class Postgres extends Component implements Link.Linkable {
           {
             subnetIds: vpc.subnets,
           },
-          { parent },
+          { parent: self },
         ),
       );
     }
@@ -514,7 +536,7 @@ export class Postgres extends Component implements Link.Linkable {
               },
             ],
           },
-          { parent },
+          { parent: self },
         ),
       );
     }
@@ -525,7 +547,7 @@ export class Postgres extends Component implements Link.Linkable {
         {
           recoveryWindowInDays: 0,
         },
-        { parent },
+        { parent: self },
       );
 
       new secretsmanager.SecretVersion(
@@ -537,7 +559,7 @@ export class Postgres extends Component implements Link.Linkable {
             password,
           }),
         },
-        { parent },
+        { parent: self },
       );
 
       return secret;
@@ -569,7 +591,7 @@ export class Postgres extends Component implements Link.Linkable {
               "sst:lookup:password": secret.id,
             },
           },
-          { parent, deleteBeforeReplace: true },
+          { parent: self, deleteBeforeReplace: true },
         ),
       );
     }
@@ -599,7 +621,7 @@ export class Postgres extends Component implements Link.Linkable {
                   (v) => v!,
                 ),
               },
-              { parent },
+              { parent: self },
             ),
         ),
       );
@@ -629,7 +651,7 @@ export class Postgres extends Component implements Link.Linkable {
               },
             ],
           },
-          { parent },
+          { parent: self },
         );
 
         const rdsProxy = new rds.Proxy(
@@ -646,7 +668,7 @@ export class Postgres extends Component implements Link.Linkable {
             roleArn: role.arn,
             vpcSubnetIds: vpc.subnets,
           },
-          { parent },
+          { parent: self },
         );
 
         const targetGroup = new rds.ProxyDefaultTargetGroup(
@@ -654,7 +676,7 @@ export class Postgres extends Component implements Link.Linkable {
           {
             dbProxyName: rdsProxy.name,
           },
-          { parent },
+          { parent: self },
         );
 
         new rds.ProxyTarget(
@@ -664,7 +686,7 @@ export class Postgres extends Component implements Link.Linkable {
             targetGroupName: targetGroup.name,
             dbInstanceIdentifier: instance.identifier,
           },
-          { parent },
+          { parent: self },
         );
 
         return rdsProxy;
@@ -799,23 +821,11 @@ export class Postgres extends Component implements Link.Linkable {
     args: PostgresGetArgs,
     opts?: ComponentResourceOptions,
   ) {
-    const instance = rds.Instance.get(
-      `${name}Instance`,
-      args.id,
-      undefined,
-      opts,
-    );
-    return instance.tags.apply((tags) => {
-      // override version
-      $cli.state.version[name] = tags?.["sst:component-version"]
-        ? parseInt(tags["sst:component-version"])
-        : $cli.state.version[name];
-      return new Postgres(name, {
-        ref: true,
-        instance,
-        proxyId: args.proxyId,
-      } as unknown as PostgresArgs);
-    });
+    return new Postgres(name, {
+      ref: true,
+      id: args.id,
+      proxyId: args.proxyId,
+    } as unknown as PostgresArgs);
   }
 }
 
