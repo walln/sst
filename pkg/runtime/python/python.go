@@ -93,20 +93,9 @@ func (r *PythonRuntime) Build(ctx context.Context, input *runtime.BuildInput) (*
 		return nil, fmt.Errorf("handler not found: %v", err)
 	}
 
-	// TODO: If in dev mode then copy the lambda bridge into the build artifact
-	// So that the handler is lambdaric compatible
-
-	var build *runtime.BuildOutput
-	if !input.IsContainer {
-		build, err = BuildPythonZip(ctx, input)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		build, err = BuildPythonContainer(ctx, input)
-		if err != nil {
-			return nil, err
-		}
+	build, err := r.BuildPythonZip(ctx, input)
+	if err != nil {
+		return nil, err
 	}
 	r.lastBuiltHandler[input.FunctionID] = file
 
@@ -160,7 +149,6 @@ func (r *PythonRuntime) Run(ctx context.Context, input *runtime.RunInput) (runti
 		input.WorkerID,
 	)
 	cmd.Env = append(input.Env, "AWS_LAMBDA_RUNTIME_API="+input.Server)
-	slog.Info("starting worker", "env", cmd.Env, "args", cmd.Args)
 	cmd.Dir = input.Build.Out
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -170,7 +158,10 @@ func (r *PythonRuntime) Run(ctx context.Context, input *runtime.RunInput) (runti
 	if err != nil {
 		return nil, fmt.Errorf("failed to create stderr pipe: %v", err)
 	}
+
+	slog.Info("starting worker", "env", cmd.Env, "args", cmd.Args)
 	cmd.Start()
+
 	return &Worker{
 		stdout,
 		stderr,
@@ -183,7 +174,7 @@ func (r *PythonRuntime) ShouldRebuild(functionID string, file string) bool {
 	return true
 }
 
-func BuildPythonZip(ctx context.Context, input *runtime.BuildInput) (*runtime.BuildOutput, error) {
+func (r *PythonRuntime) BuildPythonZip(ctx context.Context, input *runtime.BuildInput) (*runtime.BuildOutput, error) {
 	workingDir := path.ResolveRootDir(input.CfgPath)
 
 	// 1. Generate non-local package index
@@ -272,55 +263,85 @@ func BuildPythonZip(ctx context.Context, input *runtime.BuildInput) (*runtime.Bu
 		}
 	}
 
-	// 5. Install the dependencies as a target
-	installCmd := process.CommandContext(ctx, "uv", "pip", "install", "-r", outputRequirementsFile, "--target", input.Out())
-	installCmd.Dir = input.Out()
-	err = installCmd.Run()
-	if err != nil {
-		return nil, fmt.Errorf("failed to run uv pip install: %v", err)
-	}
+	// If making a zip build or a local build then we need to install the dependencies and adjust the handler path
+	if !input.IsContainer {
 
-	// Adjust handler path if it contains the pattern {package_name}/src/{package_name}
-	handlerParts := strings.Split(input.Handler, "/")
-	adjustedHandler := input.Handler
-	if len(handlerParts) >= 3 {
-		// Start from the back, using a sliding window of 3
-		for i := len(handlerParts) - 3; i >= 0; i-- {
-			// Check if we have enough parts left to match the pattern
-			if i+2 >= len(handlerParts) {
-				continue
-			}
+		// 5. Install the dependencies as a target
+		installCmd := process.CommandContext(ctx, "uv", "pip", "install", "-r", outputRequirementsFile, "--target", input.Out())
+		installCmd.Dir = input.Out()
+		err = installCmd.Run()
+		if err != nil {
+			return nil, fmt.Errorf("failed to run uv pip install: %v", err)
+		}
 
-			pkgName := handlerParts[i]
-			if handlerParts[i+1] == "src" && handlerParts[i+2] == pkgName {
-				// Found the pattern, now remove the middle two parts (src/{package_name})
-				newParts := append(
-					handlerParts[:i+1],
-					handlerParts[i+3:]...,
-				)
-				adjustedHandler = strings.Join(newParts, "/")
-				slog.Info("adjusted handler path", "original", input.Handler, "adjusted", adjustedHandler)
-				break
-			}
+		// Adjust handler path if it contains the pattern {package_name}/src/{package_name}
+		handlerParts := strings.Split(input.Handler, "/")
+		adjustedHandler := input.Handler
+		if len(handlerParts) >= 3 {
+			// Start from the back, using a sliding window of 3
+			for i := len(handlerParts) - 3; i >= 0; i-- {
+				// Check if we have enough parts left to match the pattern
+				if i+2 >= len(handlerParts) {
+					continue
+				}
 
-			// Stop if we would go beyond the project root
-			absPath := filepath.Join(path.ResolveRootDir(input.CfgPath), strings.Join(handlerParts[:i], "/"))
-			if !strings.HasPrefix(absPath, path.ResolveRootDir(input.CfgPath)) {
-				break
+				pkgName := handlerParts[i]
+				if handlerParts[i+1] == "src" && handlerParts[i+2] == pkgName {
+					// Found the pattern, now remove the middle two parts (src/{package_name})
+					newParts := append(
+						handlerParts[:i+1],
+						handlerParts[i+3:]...,
+					)
+					adjustedHandler = strings.Join(newParts, "/")
+					slog.Info("adjusted handler path", "original", input.Handler, "adjusted", adjustedHandler)
+					break
+				}
+
+				// Stop if we would go beyond the project root
+				absPath := filepath.Join(path.ResolveRootDir(input.CfgPath), strings.Join(handlerParts[:i], "/"))
+				if !strings.HasPrefix(absPath, path.ResolveRootDir(input.CfgPath)) {
+					break
+				}
 			}
 		}
+		slog.Info("built python function", "handler", adjustedHandler, "out", input.Out())
+
+		errors := []string{}
+		return &runtime.BuildOutput{
+			Handler: adjustedHandler,
+			Errors:  errors,
+		}, nil
+	} else {
+		// 5. Check if there is a Dockerfile in the handler directory
+		// 	If not then copy over the default one from the platform directory
+		handlerFile, err := r.getFile(input)
+		if err != nil {
+			return nil, fmt.Errorf("handler not found: %v", err)
+		}
+		handlerDir := filepath.Dir(handlerFile)
+		_, err = os.Stat(filepath.Join(handlerDir, "Dockerfile"))
+		if err != nil {
+			if os.IsNotExist(err) {
+				// Copy over the default Dockerfile from the platform directory
+				copyFile(filepath.Join(path.ResolvePlatformDir(input.CfgPath), "/dist/python-runtime/Dockerfile"), filepath.Join(handlerDir, "Dockerfile"))
+			} else {
+				return nil, fmt.Errorf("failed to check for Dockerfile: %v", err)
+			}
+		} else {
+			slog.Info("Dockerfile already exists in handler directory", "dir", handlerDir)
+			copyFile(filepath.Join(handlerDir, "Dockerfile"), filepath.Join(input.Out(), "Dockerfile"))
+		}
+
+		// TODO(walln): handle dockerignore files
+
+		// TODO(walln): Do we need adjust invalid handler paths bc of lambdaric?
+
+		errors := []string{}
+		return &runtime.BuildOutput{
+			Handler: input.Handler,
+			Errors:  errors,
+		}, nil
 	}
-	slog.Info("built python function", "handler", adjustedHandler, "out", input.Out())
-
-	errors := []string{}
-	return &runtime.BuildOutput{
-		Handler: adjustedHandler,
-		Errors:  errors,
-	}, nil
-}
-
-func BuildPythonContainer(ctx context.Context, input *runtime.BuildInput) (*runtime.BuildOutput, error) {
-	return nil, nil
 }
 
 func (r *PythonRuntime) getFile(input *runtime.BuildInput) (string, error) {
