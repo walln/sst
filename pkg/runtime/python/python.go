@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/BurntSushi/toml"
 	"github.com/sst/ion/pkg/process"
 	"github.com/sst/ion/pkg/project/path"
 	"github.com/sst/ion/pkg/runtime"
@@ -116,13 +117,8 @@ type Source struct {
 
 type PyProject struct {
 	Project struct {
-		Dependencies []string `toml:"dependencies"`
+		Name string `toml:"name"`
 	} `toml:"project"`
-	Tool struct {
-		Uv struct {
-			Sources map[string]Source `toml:"sources"`
-		} `toml:"uv"`
-	} `toml:"tool"`
 }
 
 func (r *PythonRuntime) Run(ctx context.Context, input *runtime.RunInput) (runtime.Worker, error) {
@@ -191,7 +187,11 @@ func (r *PythonRuntime) BuildPythonZip(ctx context.Context, input *runtime.Build
 	slog.Error("uv sync output", "output", string(syncOutput))
 
 	outputRequirementsFile := filepath.Join(input.Out(), "requirements.txt")
-	exportCmd := process.CommandContext(ctx, "uv", "export", "--all-packages", "--output-file="+outputRequirementsFile, "--no-emit-workspace")
+	packageName, err := r.getPackageName(input)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get package name: %v", err)
+	}
+	exportCmd := process.CommandContext(ctx, "uv", "export", "--package="+packageName, "--output-file="+outputRequirementsFile, "--no-emit-workspace")
 	exportCmd.Dir = workingDir
 	err = exportCmd.Run()
 	if err != nil {
@@ -409,6 +409,29 @@ func (r *PythonRuntime) getWorkspaceDirectory(input *runtime.BuildInput) (string
 
 		currentDir = parentDir
 	}
+}
+
+func (r *PythonRuntime) getPackageName(input *runtime.BuildInput) (string, error) {
+	workspaceDir, err := r.getWorkspaceDirectory(input)
+	if err != nil {
+		return "", err
+	}
+
+	// Read the pyproject.toml file
+	pyproject, err := os.ReadFile(filepath.Join(workspaceDir, "pyproject.toml"))
+	if err != nil {
+		return "", fmt.Errorf("failed to read pyproject.toml file: %v", err)
+	}
+
+	// Parse the pyproject.toml file
+	pyprojectData := PyProject{}
+	err = toml.Unmarshal(pyproject, &pyprojectData)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse pyproject.toml file: %v", err)
+	}
+
+	return pyprojectData.Project.Name, nil
+
 }
 
 func (r *PythonRuntime) adjustHandlerPath(input *runtime.BuildInput) (string, error) {
