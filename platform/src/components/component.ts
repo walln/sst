@@ -382,6 +382,7 @@ export class Component extends ComponentResource {
     this.componentName = name;
   }
 
+  /** @internal */
   protected registerVersion(input: {
     new: number;
     old?: number;
