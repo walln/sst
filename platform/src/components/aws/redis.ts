@@ -18,23 +18,22 @@ import { DevCommand } from "../experimental/dev-command.js";
 
 export interface RedisArgs {
   /**
-   * The Redis engine to use.
+   * The Redis engine to use. The following engines are supported:
    *
-   * Two engines are supported:
-   * - `"redis"`: The open source version of Redis.
-   * - `"valkey"`: A Redis-compatible engine built for improved scalability and performance (https://valkey.io/).
+   * - `"redis"`: The open-source version of Redis.
+   * - `"valkey"`: [Valkey](https://valkey.io/) is a Redis-compatible in-memory key-value store.
    *
    * @default `"redis"`
    */
   engine?: Input<"redis" | "valkey">;
   /**
-   * The Redis engine version.
+   * The version of Redis.
    *
-   * The default version is `"7.1"` for the `"redis"` engine and `"7.2"` for the `"valkey"` engine.
+   * The default is `"7.1"` for the `"redis"` engine and `"7.2"` for the `"valkey"` engine.
    *
    * Check out the [supported versions](https://docs.aws.amazon.com/AmazonElastiCache/latest/red-ug/supported-engine-versions.html).
    *
-   * @default `"7.1"` for Redis`, `"7.2"` for Valkey
+   * @default `"7.1"` for Redis, `"7.2"` for Valkey
    * @example
    * ```js
    * {
@@ -97,17 +96,17 @@ export interface RedisArgs {
    * ```
    */
   vpc:
-    | Vpc
-    | Input<{
-        /**
-         * A list of subnet IDs in the VPC to deploy the Redis cluster in.
-         */
-        subnets: Input<Input<string>[]>;
-        /**
-         * A list of VPC security group IDs.
-         */
-        securityGroups: Input<Input<string>[]>;
-      }>;
+  | Vpc
+  | Input<{
+    /**
+     * A list of subnet IDs in the VPC to deploy the Redis cluster in.
+     */
+    subnets: Input<Input<string>[]>;
+    /**
+     * A list of VPC security group IDs.
+     */
+    securityGroups: Input<Input<string>[]>;
+  }>;
   /**
    * Configure how this component works in `sst dev`.
    *
@@ -222,7 +221,8 @@ interface RedisRef {
  * By default this component uses _On-demand nodes_ with a single `cache.t4g.micro` instance.
  *
  * The default `redis` engine costs $0.016 per hour. That works out to $0.016 x 24 x 30 or **$12 per month**.
- * If the `valkey` engine is used, the cost is $0.0128 per hour. That works out to $0.0128 x 24 x 30 or **$9.22 per month**.
+ *
+ * If the `valkey` engine is used, the cost is $0.0128 per hour. That works out to $0.0128 x 24 x 30 or **$9 per month**.
  *
  * Adjust this for the `instance` type and number of `nodes` you are using.
  *
@@ -498,11 +498,11 @@ export class Redis extends Component implements Link.Linkable {
     const secret = cluster.tags.apply((tags) =>
       tags?.["sst:auth-token-ref"]
         ? secretsmanager.getSecretVersionOutput(
-            {
-              secretId: tags["sst:auth-token-ref"],
-            },
-            opts,
-          )
+          {
+            secretId: tags["sst:auth-token-ref"],
+          },
+          opts,
+        )
         : output(undefined),
     );
     const authToken = secret.apply((v) => {
