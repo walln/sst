@@ -1,4 +1,4 @@
-# aws-bun
+# aws-bun-redis
 
 To install dependencies:
 
