@@ -324,7 +324,7 @@ export class Redis extends Component implements Link.Linkable {
         dev: {
           title: name,
           autostart: true,
-          command: `go run ../../../cmd/sst print-and-not-quit`,
+          command: `sst print-and-not-quit`,
         },
         environment: {
           SST_DEV_COMMAND_MESSAGE: interpolate`Make sure your local Redis server is using:
