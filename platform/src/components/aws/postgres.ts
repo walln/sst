@@ -528,7 +528,16 @@ export class Postgres extends Component implements Link.Linkable {
         dev: {
           title: name,
           autostart: true,
-          command: interpolate`echo "Make sure your PostgreSQL server is running on \\"${dev.host}:${dev.port}\\" with username \\"${dev.username}\\", password \\"${dev.password}\\", and database \\"${dev.database}\\"."`,
+          command: `go run ../../../cmd/sst print-and-not-quit`,
+        },
+        environment: {
+          SST_DEV_COMMAND_MESSAGE: interpolate`Make sure your local PostgreSQL server is using:
+
+  username: "${dev.username}"
+  password: "${dev.password}"
+  database: "${dev.database}"
+
+Listening on "${dev.host}:${dev.port}"...`,
         },
       });
 

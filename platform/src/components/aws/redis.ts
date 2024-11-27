@@ -96,17 +96,17 @@ export interface RedisArgs {
    * ```
    */
   vpc:
-  | Vpc
-  | Input<{
-    /**
-     * A list of subnet IDs in the VPC to deploy the Redis cluster in.
-     */
-    subnets: Input<Input<string>[]>;
-    /**
-     * A list of VPC security group IDs.
-     */
-    securityGroups: Input<Input<string>[]>;
-  }>;
+    | Vpc
+    | Input<{
+        /**
+         * A list of subnet IDs in the VPC to deploy the Redis cluster in.
+         */
+        subnets: Input<Input<string>[]>;
+        /**
+         * A list of VPC security group IDs.
+         */
+        securityGroups: Input<Input<string>[]>;
+      }>;
   /**
    * Configure how this component works in `sst dev`.
    *
@@ -274,7 +274,7 @@ export class Redis extends Component implements Link.Linkable {
     host: Output<string>;
     port: Output<number>;
     username: Output<string>;
-    password: Output<string>;
+    password?: Output<string>;
   };
 
   constructor(name: string, args: RedisArgs, opts?: ComponentResourceOptions) {
@@ -317,14 +317,24 @@ export class Redis extends Component implements Link.Linkable {
         host: output(args.dev.host ?? "localhost"),
         port: output(args.dev.port ?? 6379),
         username: output(args.dev.username ?? "default"),
-        password: output(args.dev.password ?? ""),
+        password: args.dev.password ? output(args.dev.password) : undefined,
       };
 
       new DevCommand(`${name}Dev`, {
         dev: {
           title: name,
           autostart: true,
-          command: interpolate`echo "Make sure your Redis server is running on \\"${dev.host}:${dev.port}\\" with username \\"${dev.username}\\" and password \\"${dev.password}\\"."`,
+          command: `go run ../../../cmd/sst print-and-not-quit`,
+        },
+        environment: {
+          SST_DEV_COMMAND_MESSAGE: interpolate`Make sure your local Redis server is using:
+
+  username: "${dev.username}"
+  password: ${
+    dev.password ? `"${dev.password}"` : "\x1b[38;5;8m[no password]\x1b[0m"
+  }
+
+Listening on "${dev.host}:${dev.port}"...`,
         },
       });
 
@@ -441,7 +451,7 @@ export class Redis extends Component implements Link.Linkable {
    * The password to connect to the Redis cluster.
    */
   public get password() {
-    return this.dev ? this.dev.password : this._authToken;
+    return this.dev ? this.dev.password ?? output("") : this._authToken;
   }
 
   /**
@@ -535,11 +545,11 @@ export class Redis extends Component implements Link.Linkable {
     const secret = cluster.tags.apply((tags) =>
       tags?.["sst:auth-token-ref"]
         ? secretsmanager.getSecretVersionOutput(
-          {
-            secretId: tags["sst:auth-token-ref"],
-          },
-          opts,
-        )
+            {
+              secretId: tags["sst:auth-token-ref"],
+            },
+            opts,
+          )
         : output(undefined),
     );
     const authToken = secret.apply((v) => {

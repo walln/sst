@@ -1010,6 +1010,18 @@ var root = &cli.Command{
 			},
 		},
 		{
+			Name:   "print-and-not-quit",
+			Hidden: true,
+			Run: func(cli *cli.Cli) error {
+				lines := strings.Split(os.Getenv("SST_DEV_COMMAND_MESSAGE"), "\n")
+				for _, line := range lines {
+					fmt.Println(line)
+				}
+				<-cli.Context.Done()
+				return nil
+			},
+		},
+		{
 			Name:   "common-errors",
 			Hidden: true,
 			Run: func(cli *cli.Cli) error {
