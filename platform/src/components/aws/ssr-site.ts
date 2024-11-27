@@ -60,48 +60,48 @@ export interface SsrSiteArgs extends BaseSsrSiteArgs {
   invalidation?: Input<
     | false
     | {
-      /**
-       * Configure if `sst deploy` should wait for the CloudFront cache invalidation to finish.
-       *
-       * :::tip
-       * For non-prod environments it might make sense to pass in `false`.
-       * :::
-       *
-       * Waiting for this process to finish ensures that new content will be available after the deploy finishes. However, this process can sometimes take more than 5 mins.
-       * @default `false`
-       * @example
-       * ```js
-       * {
-       *   invalidation: {
-       *     wait: true
-       *   }
-       * }
-       * ```
-       */
-      wait?: Input<boolean>;
-      /**
-       * The paths to invalidate.
-       *
-       * You can either pass in an array of glob patterns to invalidate specific files. Or you can use one of these built-in options:
-       * - `all`: All files will be invalidated when any file changes
-       * - `versioned`: Only versioned files will be invalidated when versioned files change
-       *
-       * :::note
-       * Each glob pattern counts as a single invalidation. However, invalidating `all` counts as a single invalidation as well.
-       * :::
-       * @default `"all"`
-       * @example
-       * Invalidate the `index.html` and all files under the `products/` route. This counts as two invalidations.
-       * ```js
-       * {
-       *   invalidation: {
-       *     paths: ["/index.html", "/products/*"]
-       *   }
-       * }
-       * ```
-       */
-      paths?: Input<"all" | "versioned" | string[]>;
-    }
+        /**
+         * Configure if `sst deploy` should wait for the CloudFront cache invalidation to finish.
+         *
+         * :::tip
+         * For non-prod environments it might make sense to pass in `false`.
+         * :::
+         *
+         * Waiting for this process to finish ensures that new content will be available after the deploy finishes. However, this process can sometimes take more than 5 mins.
+         * @default `false`
+         * @example
+         * ```js
+         * {
+         *   invalidation: {
+         *     wait: true
+         *   }
+         * }
+         * ```
+         */
+        wait?: Input<boolean>;
+        /**
+         * The paths to invalidate.
+         *
+         * You can either pass in an array of glob patterns to invalidate specific files. Or you can use one of these built-in options:
+         * - `all`: All files will be invalidated when any file changes
+         * - `versioned`: Only versioned files will be invalidated when versioned files change
+         *
+         * :::note
+         * Each glob pattern counts as a single invalidation. However, invalidating `all` counts as a single invalidation as well.
+         * :::
+         * @default `"all"`
+         * @example
+         * Invalidate the `index.html` and all files under the `products/` route. This counts as two invalidations.
+         * ```js
+         * {
+         *   invalidation: {
+         *     paths: ["/index.html", "/products/*"]
+         *   }
+         * }
+         * ```
+         */
+        paths?: Input<"all" | "versioned" | string[]>;
+      }
   >;
   /**
    * The number of instances of the [server function](#nodes-server) to keep warm. This is useful for cases where you are experiencing long cold starts. The default is to not keep any instances warm.
@@ -212,15 +212,19 @@ export interface SsrSiteArgs extends BaseSsrSiteArgs {
       /**
        * Configure the viewer request function.
        *
-       * The viewer request function can be used to modify incoming requests before they reach
-       * your origin server. For example, you can redirect users, rewrite URLs, or add headers.
+       * The viewer request function can be used to modify incoming requests before they
+       * reach your origin server. For example, you can redirect users, rewrite URLs,
+       * or add headers.
        */
       viewerRequest?: Input<{
         /**
          * The code to inject into the viewer request function.
          *
-         * By default, a viewer request function is created to add the `x-forwarded-host`
-         * header. The given code will be injected at the end of this function.
+         * By default, a viewer request function is created to:
+         * - Disable CloudFront default URL if custom domain is set.
+         * - Add the `x-forwarded-host` header.
+         *
+         * The given code will be injected at the end of this function.
          *
          * ```js
          * async function handler(event) {
@@ -511,13 +515,13 @@ export function createServersAndDistribution(
               // versioned files
               ...(copy.versionedSubDir
                 ? [
-                  {
-                    files: path.posix.join(copy.versionedSubDir, "**"),
-                    cacheControl:
-                      assets?.versionedFilesCacheHeader ??
-                      `public,max-age=${versionedFilesTTL},immutable`,
-                  },
-                ]
+                    {
+                      files: path.posix.join(copy.versionedSubDir, "**"),
+                      cacheControl:
+                        assets?.versionedFilesCacheHeader ??
+                        `public,max-age=${versionedFilesTTL},immutable`,
+                    },
+                  ]
                 : []),
               ...(assets?.fileOptions ?? []),
             ];
@@ -807,15 +811,15 @@ export function createServersAndDistribution(
           cachePolicyId: "658327ea-f89d-4fab-a63d-7e88639e58f6",
           functionAssociations: behavior.cfFunction
             ? [
-              {
-                eventType: "viewer-request",
-                functionArn: useCfFunction(
-                  "assets",
-                  "request",
-                  behavior.cfFunction,
-                ).arn,
-              },
-            ]
+                {
+                  eventType: "viewer-request",
+                  functionArn: useCfFunction(
+                    "assets",
+                    "request",
+                    behavior.cfFunction,
+                  ).arn,
+                },
+              ]
             : [],
         };
       } else if (behavior.cacheType === "server") {
@@ -838,24 +842,24 @@ export function createServersAndDistribution(
           originRequestPolicyId: "b689b0a8-53d0-40ab-baf2-68738e2966ac",
           functionAssociations: behavior.cfFunction
             ? [
-              {
-                eventType: "viewer-request",
-                functionArn: useCfFunction(
-                  "server",
-                  "request",
-                  behavior.cfFunction,
-                ).arn,
-              },
-            ]
+                {
+                  eventType: "viewer-request",
+                  functionArn: useCfFunction(
+                    "server",
+                    "request",
+                    behavior.cfFunction,
+                  ).arn,
+                },
+              ]
             : [],
           lambdaFunctionAssociations: edgeFunction
             ? [
-              {
-                includeBody: true,
-                eventType: "origin-request",
-                lambdaArn: edgeFunction.nodes.function.qualifiedArn,
-              },
-            ]
+                {
+                  includeBody: true,
+                  eventType: "origin-request",
+                  lambdaArn: edgeFunction.nodes.function.qualifiedArn,
+                },
+              ]
             : [],
         };
       }
@@ -868,14 +872,25 @@ export function createServersAndDistribution(
       type: "request" | "response",
       fnName: string,
     ) {
+      const disableUrlInjection = `
+if (event.request.headers.host.value.includes('cloudfront.net')) {
+  return {
+    statusCode: 403,
+    statusDescription: 'Forbidden',
+    body: {
+      encoding: "text",
+      data: '<html><head><title>403 Forbidden</title></head><body><center><h1>403 Forbidden</h1></center></body></html>'
+    }
+  };
+}`;
       const { injections } = plan.cloudFrontFunctions![fnName];
       const config =
         origin === "server"
           ? output(args.server).apply((server) =>
-            type === "request"
-              ? server?.edge?.viewerRequest
-              : server?.edge?.viewerResponse,
-          )
+              type === "request"
+                ? server?.edge?.viewerRequest
+                : server?.edge?.viewerResponse,
+            )
           : output(undefined);
       cfFunctions[fnName] =
         cfFunctions[fnName] ??
@@ -886,6 +901,7 @@ export function createServersAndDistribution(
             keyValueStoreAssociations: config.apply((v) => v?.kvStores ?? []),
             code: interpolate`
 async function handler(event) {
+  ${type === "request" && args.domain ? disableUrlInjection : ""}
   ${injections.join("\n")}
   ${config.apply((v) => v?.injection ?? "")}
   return event.request;
@@ -913,14 +929,14 @@ async function handler(event) {
               headersConfig:
                 (plan.serverCachePolicy?.allowedHeaders ?? []).length > 0
                   ? {
-                    headerBehavior: "whitelist",
-                    headers: {
-                      items: plan.serverCachePolicy?.allowedHeaders,
-                    },
-                  }
+                      headerBehavior: "whitelist",
+                      headers: {
+                        items: plan.serverCachePolicy?.allowedHeaders,
+                      },
+                    }
                   : {
-                    headerBehavior: "none",
-                  },
+                      headerBehavior: "none",
+                    },
               queryStringsConfig: {
                 queryStringBehavior: "all",
               },
@@ -943,11 +959,11 @@ async function handler(event) {
         `  });`,
         ...(streaming
           ? [
-            `  const response = await p;`,
-            `  responseStream.write(JSON.stringify(response));`,
-            `  responseStream.end();`,
-            `  return;`,
-          ]
+              `  const response = await p;`,
+              `  responseStream.write(JSON.stringify(response));`,
+              `  responseStream.end();`,
+              `  return;`,
+            ]
           : [`  return p;`]),
         `}`,
       ].join("\n");
