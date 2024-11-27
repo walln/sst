@@ -110,39 +110,48 @@ export interface RedisArgs {
   /**
    * Configure how this component works in `sst dev`.
    *
-   * By default, your Redis cluster is deployed in `sst dev`. Instead, you can not
-   * deploy it in `sst dev`, and connect to a locally running Redis server. Read more
-   * about [`sst dev`](/docs/reference/cli/#dev).
+   * By default, your Redis cluster is deployed in `sst dev`. But if you want to instead
+   * connect to a locally running Redis server, you can configure the `dev` prop.
+   *
+   * :::note
+   * By default, this creates a new Redis ElastiCache cluster even in `sst dev`.
+   * :::
+   *
+   * This will skip deploying a Redis ElastiCache cluster and link to the locally running Redis
+   * server instead.
    *
    * @example
-   * Connect to local Redis server
+   *
+   * Setting the `dev` prop also means that any linked resources will connect to the right
+   * Redis instance both in `sst dev` and `sst deploy`.
+   *
    * ```ts
    * {
    *   dev: {
-   *     username: "default",
-   *     password: "Passw0rd!"
+   *     host: "localhost",
+   *     port: 6379
    *   }
    * }
    * ```
    */
   dev?: {
     /**
-     * The `host` of the local Redis server to connect to when running in dev mode.
+     * The host of the local Redis server to connect to when running in dev.
      * @default `"localhost"`
      */
     host?: Input<string>;
     /**
-     * The `port` of the local Redis server when running in dev mode.
+     * The port of the local Redis server when running in dev.
      * @default `6379`
      */
     port?: Input<number>;
     /**
-     * The `username` of the local Redis server to connect to when running in dev mode.
+     * The username of the local Redis server to connect to when running in dev.
      * @default `"default"`
      */
     username?: Input<string>;
     /**
-     * The `password` of the local Redis server to connect to when running in dev mode.
+     * The password of the local Redis server to connect to when running in dev.
      * @default No password
      */
     password?: Input<string>;
@@ -213,6 +222,34 @@ interface RedisRef {
  *   }
  * );
  * ```
+ *
+ * #### Running locally
+ *
+ * By default, your Redis cluster is deployed in `sst dev`. But let's say you are running Redis
+ * locally.
+ *
+ * ```bash
+ * docker run \
+ *   --rm \
+ *   -p 6379:6379 \
+ *   -v $(pwd)/.sst/storage/redis:/data \
+ *   redis:latest
+ * ```
+ *
+ * You can connect to it in `sst dev` by configuring the `dev` prop.
+ *
+ * ```ts title="sst.config.ts" {3-6}
+ * const redis = new sst.aws.Redis("MyRedis", {
+ *   vpc,
+ *   dev: {
+ *     host: "localhost",
+ *     port: 6379
+ *   }
+ * });
+ * ```
+ *
+ * This will skip deploying a Redis ElastiCache cluster and link to the locally running Redis
+ * server instead. [Check out the full example](/docs/examples/#aws-redis-local).
  *
  * ---
  *

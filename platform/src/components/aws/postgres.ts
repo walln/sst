@@ -153,55 +153,66 @@ export interface PostgresArgs {
    * ```
    */
   vpc:
-    | Vpc
-    | Input<{
-        /**
-         * A list of subnet IDs in the VPC.
-         */
-        subnets: Input<Input<string>[]>;
-      }>;
+  | Vpc
+  | Input<{
+    /**
+     * A list of subnet IDs in the VPC.
+     */
+    subnets: Input<Input<string>[]>;
+  }>;
   /**
    * Configure how this component works in `sst dev`.
    *
-   * By default, your Postgres database is deployed in `sst dev`. Instead, you can not
-   * deploy it in `sst dev`, and connect to a locally running Postgres database. Read more
-   * about [`sst dev`](/docs/reference/cli/#dev).
+   * By default, your Postgres database is deployed in `sst dev`. But if you want to instead
+   * connect to a locally running Postgres database, you can configure the `dev` prop.
+   *
+   * :::note
+   * By default, this creates a new RDS database even in `sst dev`.
+   * :::
+   *
+   * This will skip deploying an RDS database and link to the locally running Postgres database
+   * instead.
    *
    * @example
-   * Connect to local Postgres database
+   *
+   * Setting the `dev` prop also means that any linked resources will connect to the right
+   * database both in `sst dev` and `sst deploy`.
+   *
    * ```ts
    * {
    *   dev: {
    *     username: "postgres",
    *     password: "password",
    *     database: "postgres",
+   *     host: "localhost",
+   *     port: 5432
    *   }
    * }
    * ```
    */
   dev?: {
     /**
-     * The `host` of the local Postgres database to connect to when running in dev mode.
+     * The host of the local Postgres to connect to when running in dev.
      * @default `"localhost"`
      */
     host?: Input<string>;
     /**
-     * The `port` of the local Postgres database to connect to when running in dev mode.
+     * The port of the local Postgres to connect to when running in dev.
      * @default `5432`
      */
     port?: Input<number>;
     /**
-     * The `database` of the local Postgres database to connect to when running in dev mode.
+     * The database of the local Postgres to connect to when running in dev.
      * @default Inherit from the top-level [`database`](#database).
      */
     database?: Input<string>;
     /**
-     * The `username` of the local Postgres database to connect to when running in dev mode.
+     * The username of the local Postgres to connect to when running in dev.
      * @default Inherit from the top-level [`username`](#username).
      */
     username?: Input<string>;
     /**
-     * The `password` of the local Postgres database to connect to when running in dev mode.
+     * The password of the local Postgres to connect to when running in dev.
      * @default Inherit from the top-level [`password`](#password).
      */
     password?: Input<string>;
@@ -282,6 +293,39 @@ interface PostgresRef {
  * });
  * await client.connect();
  * ```
+ *
+ * #### Running locally
+ *
+ * By default, your RDS Postgres database is deployed in `sst dev`. But let's say you are running
+ * Postgres locally.
+ *
+ * ```bash
+ * docker run \
+ *   --rm \
+ *   -p 5432:5432 \
+ *   -v $(pwd)/.sst/storage/postgres:/var/lib/postgresql/data \
+ *   -e POSTGRES_USER=postgres \
+ *   -e POSTGRES_PASSWORD=password \
+ *   -e POSTGRES_DB=local \
+ *   postgres:16.4
+ * ```
+ *
+ * You can connect to it in `sst dev` by configuring the `dev` prop.
+ *
+ * ```ts title="sst.config.ts" {3-8}
+ * const postgres = new sst.aws.Postgres("MyPostgres", {
+ *   vpc,
+ *   dev: {
+ *     username: "postgres",
+ *     password: "password",
+ *     database: "local",
+ *     port: 5432
+ *   }
+ * });
+ * ```
+ *
+ * This will skip deploying an RDS database and link to the locally running Postgres database
+ * instead. [Check out the full example](/docs/examples/#aws-postgres-local).
  *
  * ---
  *
@@ -387,8 +431,8 @@ export class Postgres extends Component implements Link.Linkable {
       const proxy = input.proxyId.apply((proxyId) =>
         proxyId
           ? rds.Proxy.get(`${name}Proxy`, proxyId, undefined, {
-              parent: self,
-            })
+            parent: self,
+          })
           : undefined,
       );
 
@@ -495,13 +539,13 @@ export class Postgres extends Component implements Link.Linkable {
       return args.password
         ? output(args.password)
         : new RandomPassword(
-            `${name}Password`,
-            {
-              length: 32,
-              special: false,
-            },
-            { parent: self },
-          ).result;
+          `${name}Password`,
+          {
+            length: 32,
+            special: false,
+          },
+          { parent: self },
+        ).result;
     }
 
     function createSubnetGroup() {
