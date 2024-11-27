@@ -1429,20 +1429,24 @@ const pool = new Pool({
 
 The above will work in both `sst dev` and `sst deploy`.
 ```ts title="sst.config.ts"
-const vpc = new sst.aws.Vpc("MyVpc", { bastion: true, nat: "ec2" });
+const vpc = new sst.aws.Vpc("MyVpc", { nat: "ec2" });
+
 const rds = new sst.aws.Postgres("MyPostgres", {
   dev: {
     username: "postgres",
     password: "password",
-    database: "postgres",
+    database: "local",
+    host: "localhost",
+    port: 5432,
   },
   vpc,
 });
+
 new sst.aws.Function("MyFunction", {
-  url: true,
-  handler: "index.handler",
-  link: [rds],
   vpc,
+  url: true,
+  link: [rds],
+  handler: "index.handler",
 });
 ```
 
@@ -1722,8 +1726,8 @@ const client = Resource.MyRedis.host === "localhost"
 The local Redis server is running in `standalone` mode, whereas on deploy it'll be in
 `cluster` mode. So our Lambda function needs to connect using the right config.
 ```ts title="sst.config.ts"
-// NAT Gateways are required for Lambda functions
 const vpc = new sst.aws.Vpc("MyVpc", { nat: "managed" });
+
 const redis = new sst.aws.Redis("MyRedis", {
   dev: {
     host: "localhost",
@@ -1731,11 +1735,12 @@ const redis = new sst.aws.Redis("MyRedis", {
   },
   vpc,
 });
+
 new sst.aws.Function("MyApp", {
-  handler: "index.handler",
-  url: true,
   vpc,
+  url: true,
   link: [redis],
+  handler: "index.handler",
 });
 ```
 

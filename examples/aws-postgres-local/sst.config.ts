@@ -63,7 +63,7 @@ export default $config({
     };
   },
   async run() {
-    const vpc = new sst.aws.Vpc("MyVpc", { bastion: true, nat: "ec2" });
+    const vpc = new sst.aws.Vpc("MyVpc", { nat: "ec2" });
 
     const rds = new sst.aws.Postgres("MyPostgres", {
       dev: {
