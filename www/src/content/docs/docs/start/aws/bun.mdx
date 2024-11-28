@@ -245,7 +245,7 @@ This should upload the `package.json`. Now head over to `http://localhost:3000/l
 
 To deploy our app we'll first add a `Dockerfile`.
 
-```dockerfile title="Dockerfile" {27}
+```dockerfile title="Dockerfile"
 FROM oven/bun
 
 COPY bun.lockb . 
@@ -255,8 +255,8 @@ RUN bun install --frozen-lockfile
 
 COPY . .
 
-CMD ["bun", "index.ts"]
 EXPOSE 3000
+CMD ["bun", "index.ts"]
 ```
 
 This is a pretty basic setup. You can refer to the [Bun docs](https://bun.sh/guides/ecosystem/docker) for a more optimized Dockerfile.
