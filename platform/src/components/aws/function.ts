@@ -26,6 +26,7 @@ import {
   cloudwatch,
   ecr,
   getCallerIdentityOutput,
+  getPartitionOutput,
   getRegionOutput,
   iam,
   lambda,
@@ -1255,7 +1256,8 @@ export class Function extends Component implements Link.Linkable {
     const isContainer = all([args.python, dev]).apply(
       ([python, dev]) => !dev && (python?.container ?? false),
     );
-    const region = normalizeRegion();
+    const partition = getPartitionOutput({}, opts).partition;
+    const region = getRegionOutput({}, opts).name;
     const bootstrapData = region.apply((region) => bootstrap.forRegion(region));
     const injections = normalizeInjections();
     const runtime = normalizeRuntime();
@@ -1356,10 +1358,6 @@ export class Function extends Component implements Link.Linkable {
       return all([args.dev, args.live]).apply(
         ([d, l]) => $dev && d !== false && l !== false,
       );
-    }
-
-    function normalizeRegion() {
-      return getRegionOutput(undefined, { parent }).name;
     }
 
     function normalizeInjections() {
@@ -1729,8 +1727,8 @@ export class Function extends Component implements Link.Linkable {
                     {
                       actions: ["s3:*"],
                       resources: [
-                        interpolate`arn:aws:s3:::${bootstrapData.asset}`,
-                        interpolate`arn:aws:s3:::${bootstrapData.asset}/*`,
+                        interpolate`arn:${partition}:s3:::${bootstrapData.asset}`,
+                        interpolate`arn:${partition}:s3:::${bootstrapData.asset}/*`,
                       ],
                     },
                   ]
@@ -1760,8 +1758,8 @@ export class Function extends Component implements Link.Linkable {
                         {
                           type: "AWS",
                           identifiers: [
-                            interpolate`arn:aws:iam::${
-                              getCallerIdentityOutput().accountId
+                            interpolate`arn:${partition}:iam::${
+                              getCallerIdentityOutput({}, opts).accountId
                             }:root`,
                           ],
                         },
@@ -1777,12 +1775,12 @@ export class Function extends Component implements Link.Linkable {
             managedPolicyArns: logging.apply((logging) => [
               ...(logging
                 ? [
-                    "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+                    interpolate`arn:${partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole`,
                   ]
                 : []),
               ...(vpc
                 ? [
-                    "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole",
+                    interpolate`arn:${partition}:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole`,
                   ]
                 : []),
             ]),

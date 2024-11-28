@@ -33,6 +33,7 @@ import {
   ecr,
   ecs,
   getCallerIdentityOutput,
+  getPartitionOutput,
   getRegionOutput,
   iam,
   lb,
@@ -101,7 +102,7 @@ export class Service extends Component implements Link.Linkable {
 
     const dev = normalizeDev();
     const cluster = output(args.cluster);
-    const region = normalizeRegion();
+    const region = getRegionOutput({}, opts).name;
     const architecture = normalizeArchitecture();
     const cpu = normalizeCpu();
     const memory = normalizeMemory();
@@ -123,6 +124,7 @@ export class Service extends Component implements Link.Linkable {
       return;
     }
 
+    const partition = getPartitionOutput({}, opts).partition;
     const bootstrapData = region.apply((region) => bootstrap.forRegion(region));
     const executionRole = createExecutionRole();
     const taskDefinition = createTaskDefinition();
@@ -187,10 +189,6 @@ export class Service extends Component implements Link.Linkable {
 
       // "vpc" is object
       return output(args.vpc).apply((vpc) => ({ isSstVpc: false, ...vpc }));
-    }
-
-    function normalizeRegion() {
-      return getRegionOutput(undefined, { parent: self }).name;
     }
 
     function normalizeArchitecture() {
@@ -678,8 +676,8 @@ export class Service extends Component implements Link.Linkable {
                   Service: "ecs-tasks.amazonaws.com",
                 })
               : iam.assumeRolePolicyForPrincipal({
-                  AWS: interpolate`arn:aws:iam::${
-                    getCallerIdentityOutput().accountId
+                  AWS: interpolate`arn:${partition}:iam::${
+                    getCallerIdentityOutput({}, opts).accountId
                   }:root`,
                 }),
             inlinePolicies: policy.apply(({ statements }) =>
@@ -709,7 +707,7 @@ export class Service extends Component implements Link.Linkable {
               Service: "ecs-tasks.amazonaws.com",
             }),
             managedPolicyArns: [
-              "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy",
+              interpolate`arn:${partition}:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy`,
             ],
             inlinePolicies: [
               {

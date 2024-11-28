@@ -10,6 +10,7 @@ import { Input } from "../input";
 import {
   ec2,
   getAvailabilityZonesOutput,
+  getPartitionOutput,
   iam,
   route53,
   servicediscovery,
@@ -321,6 +322,7 @@ export class Vpc extends Component implements Link.Linkable {
     registerVersion();
     const zones = normalizeAz();
     const nat = normalizeNat();
+    const partition = getPartitionOutput({}, opts).partition;
 
     const vpc = createVpc();
     const { keyPair, privateKeyValue } = createKeyPair();
@@ -840,7 +842,7 @@ export class Vpc extends Component implements Link.Linkable {
               ],
             }).json,
             managedPolicyArns: [
-              "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",
+              interpolate`arn:${partition}:iam::aws:policy/AmazonSSMManagedInstanceCore`,
             ],
           },
           { parent: self },
@@ -1065,7 +1067,7 @@ export class Vpc extends Component implements Link.Linkable {
                 ],
               }).json,
               managedPolicyArns: [
-                "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",
+                interpolate`arn:${partition}:iam::aws:policy/AmazonSSMManagedInstanceCore`,
               ],
             },
             { parent: self },
