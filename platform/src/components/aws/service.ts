@@ -99,10 +99,10 @@ export class Service extends Component implements Link.Linkable {
     super(__pulumiType, name, args, opts);
 
     const self = this;
-
+    const partition = getPartitionOutput({}, opts).partition;
+    const region = getRegionOutput({}, opts).name;
     const dev = normalizeDev();
     const cluster = output(args.cluster);
-    const region = getRegionOutput({}, opts).name;
     const architecture = normalizeArchitecture();
     const cpu = normalizeCpu();
     const memory = normalizeMemory();
@@ -124,7 +124,6 @@ export class Service extends Component implements Link.Linkable {
       return;
     }
 
-    const partition = getPartitionOutput({}, opts).partition;
     const bootstrapData = region.apply((region) => bootstrap.forRegion(region));
     const executionRole = createExecutionRole();
     const taskDefinition = createTaskDefinition();
