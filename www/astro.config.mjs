@@ -3,6 +3,8 @@ import starlight from "@astrojs/starlight";
 import sitemap from "@astrojs/sitemap";
 import config from "./config";
 import sst from "astro-sst";
+import { rehypeHeadingIds } from '@astrojs/markdown-remark'
+import rehypeAutolinkHeadings from 'rehype-autolink-headings'
 
 const sidebar = [
   { label: "Intro", slug: "docs" },
@@ -223,6 +225,7 @@ export default defineConfig({
         "./src/styles/lander.css",
         "./src/styles/markdown.css",
         "./src/styles/tsdoc.css",
+        "./src/styles/heading.css",
       ],
       social: {
         "x.com": config.twitter,
@@ -291,4 +294,15 @@ export default defineConfig({
       sidebar,
     }),
   ],
+  markdown: {
+    rehypePlugins: [
+      rehypeHeadingIds,
+      [
+        rehypeAutolinkHeadings,
+        {
+          behavior: 'wrap',
+        },
+      ],
+    ],
+  },
 });
