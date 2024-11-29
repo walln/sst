@@ -6,9 +6,12 @@ import "sst"
 export {}
 declare module "sst" {
   export interface Resource {
-    "MyBucket": {
-      "name": string
-      "type": "sst.aws.Bucket"
+    "MyRedis": {
+      "host": string
+      "password": string
+      "port": number
+      "type": "sst.aws.Redis"
+      "username": string
     }
     "MyService": {
       "service": string
@@ -16,6 +19,7 @@ declare module "sst" {
       "url": string
     }
     "MyVpc": {
+      "bastion": string
       "type": "sst.aws.Vpc"
     }
   }
