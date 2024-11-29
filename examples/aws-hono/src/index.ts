@@ -1,39 +1,25 @@
-import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
+import { handle } from 'hono/aws-lambda'
 import { Resource } from 'sst'
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import {
   S3Client,
   GetObjectCommand,
+  PutObjectCommand,
   ListObjectsV2Command,
 } from '@aws-sdk/client-s3'
-import { Upload } from '@aws-sdk/lib-storage'
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 
 const s3 = new S3Client();
 
 const app = new Hono()
 
-app.get('/', (c) => {
-  return c.text('Hello Hono!')
-})
-
-app.post('/', async (c) => {
-  const body = await c.req.parseBody();
-  const file = body['file'] as File;
-
-  const params = {
+app.get('/', async (c) => {
+  const command = new PutObjectCommand({
+    Key: crypto.randomUUID(),
     Bucket: Resource.MyBucket.name,
-    ContentType: file.type,
-    Key: file.name,
-    Body: file,
-  };
-  const upload = new Upload({
-    params,
-    client: s3,
   });
-  await upload.done();
 
-  return c.text('File uploaded successfully.');
+  return c.text(await getSignedUrl(s3, command));
 });
 
 app.get('/latest', async (c) => {
@@ -42,21 +28,18 @@ app.get('/latest', async (c) => {
       Bucket: Resource.MyBucket.name,
     }),
   );
+
   const latestFile = objects.Contents!.sort(
     (a, b) =>
       (b.LastModified?.getTime() ?? 0) - (a.LastModified?.getTime() ?? 0),
   )[0];
+
   const command = new GetObjectCommand({
     Key: latestFile.Key,
     Bucket: Resource.MyBucket.name,
   });
+
   return c.redirect(await getSignedUrl(s3, command));
 });
 
-const port = 3000
-console.log(`Server is running on http://localhost:${port}`)
-
-serve({
-  fetch: app.fetch,
-  port
-})
+export const handler = handle(app)

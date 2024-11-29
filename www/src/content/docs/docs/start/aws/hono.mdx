@@ -38,9 +38,11 @@ Before you get started, make sure to [configure your AWS credentials](/docs/iam-
 Let's start by creating our app.
 
 ```bash
-mkdir aws-hono && cd aws-hono
-npm init -y
+npm create hono@latest aws-hono
+cd aws-hono
 ```
+
+We are picking the **aws-lambda** template.
 
 ##### Init SST
 
@@ -61,7 +63,7 @@ Let's add a Hono API using an AWS Lambda. Update your `sst.config.ts`.
 
 ```js title="sst.config.ts"
 async run() {
-  const hono = new sst.aws.Function("Hono", {
+  new sst.aws.Function("Hono", {
     url: true,
     handler: "index.handler",
   });
@@ -102,7 +104,7 @@ const bucket = new sst.aws.Bucket("MyBucket");
 Now, link the bucket to the API.
 
 ```ts title="sst.config.ts" {3}
-const hono = new sst.aws.Function("Hono", {
+new sst.aws.Function("Hono", {
   url: true,
   link: [bucket],
   handler: "index.handler",
@@ -113,20 +115,17 @@ const hono = new sst.aws.Function("Hono", {
 
 ### 4. Upload a file
 
-We want the `/` route of our API to generate a pre-signed URL to upload a file to our S3 Bucket. Create an `index.ts` file and add the following.
+We want the `/` route of our API to generate a pre-signed URL to upload a file to our S3 Bucket. Replace the _Hello Hono_ route in `src/index.ts`.
 
-```ts title="index.ts" {5}
-const app = new Hono()
-  .get("/", async (c) => {
-    const command = new PutObjectCommand({
-      Key: crypto.randomUUID(),
-      Bucket: Resource.MyBucket.name,
-    });
-
-    return c.text(await getSignedUrl(s3, command));
+```ts title="src/index.ts" {4}
+app.get('/', async (c) => {
+  const command = new PutObjectCommand({
+    Key: crypto.randomUUID(),
+    Bucket: Resource.MyBucket.name,
   });
 
-export const handler = handle(app);
+  return c.text(await getSignedUrl(s3, command));
+});
 ```
 
 :::tip
@@ -136,55 +135,50 @@ We are directly accessing our S3 bucket with `Resource.MyBucket.name`.
 Install the npm packages.
 
 ```bash
-npm install hono @aws-sdk/client-s3 @aws-sdk/s3-request-presigner
+npm install @aws-sdk/client-s3 @aws-sdk/s3-request-presigner
 ```
 
-Then add the relevant imports.
+Then add the relevant imports. We'll use the extra ones below.
 
-```ts title="index.ts"
-import { Resource } from "sst";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+```ts title="src/index.ts"
+import { Resource } from 'sst'
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import {
   S3Client,
   GetObjectCommand,
   PutObjectCommand,
   ListObjectsV2Command,
-} from "@aws-sdk/client-s3";
-import { Hono } from "hono";
-import { handle } from "hono/aws-lambda";
+} from '@aws-sdk/client-s3'
 
-const s3 = new S3Client({});
+const s3 = new S3Client();
 ```
-
 
 ---
 
 ### 5. Download a file
 
-We want the `/latest` route of our API to generate a pre-signed URL to download the last uploaded file in our S3 Bucket. Add this to your routes in `index.ts`.
+We want the `/latest` route of our API to generate a pre-signed URL to download the last uploaded file in our S3 Bucket. Add this to your routes in `src/index.ts`.
 
-```ts title="index.ts"
-const app = new Hono()
-  // ...
-  .get("/latest", async (c) => {
-    const objects = await s3.send(
-      new ListObjectsV2Command({
-        Bucket: Resource.MyBucket.name,
-      }),
-    );
-
-    const latestFile = objects.Contents!.sort(
-      (a, b) =>
-        (b.LastModified?.getTime() ?? 0) - (a.LastModified?.getTime() ?? 0),
-    )[0];
-
-    const command = new GetObjectCommand({
-      Key: latestFile.Key,
+```ts title="src/index.ts"
+app.get('/latest', async (c) => {
+  const objects = await s3.send(
+    new ListObjectsV2Command({
       Bucket: Resource.MyBucket.name,
-    });
+    }),
+  );
 
-    return c.redirect(await getSignedUrl(s3, command));
+  const latestFile = objects.Contents!.sort(
+    (a, b) =>
+      (b.LastModified?.getTime() ?? 0) - (a.LastModified?.getTime() ?? 0),
+  )[0];
+
+  const command = new GetObjectCommand({
+    Key: latestFile.Key,
+    Bucket: Resource.MyBucket.name,
   });
+
+  return c.redirect(await getSignedUrl(s3, command));
+});
 ```
 
 ---
@@ -345,14 +339,14 @@ app.post('/', async (c) => {
 Add the imports. We'll use the extra ones below.
 
 ```tsx title="src/index.ts"
-import { Resource } from "sst";
+import { Resource } from 'sst'
 import {
   S3Client,
   GetObjectCommand,
   ListObjectsV2Command,
-} from "@aws-sdk/client-s3";
-import { Upload } from "@aws-sdk/lib-storage";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+} from '@aws-sdk/client-s3'
+import { Upload } from '@aws-sdk/lib-storage'
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 
 const s3 = new S3Client();
 ```
