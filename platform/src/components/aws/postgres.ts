@@ -153,13 +153,13 @@ export interface PostgresArgs {
    * ```
    */
   vpc:
-  | Vpc
-  | Input<{
-    /**
-     * A list of subnet IDs in the VPC.
-     */
-    subnets: Input<Input<string>[]>;
-  }>;
+    | Vpc
+    | Input<{
+        /**
+         * A list of subnet IDs in the VPC.
+         */
+        subnets: Input<Input<string>[]>;
+      }>;
   /**
    * Configure how this component works in `sst dev`.
    *
@@ -431,8 +431,8 @@ export class Postgres extends Component implements Link.Linkable {
       const proxy = input.proxyId.apply((proxyId) =>
         proxyId
           ? rds.Proxy.get(`${name}Proxy`, proxyId, undefined, {
-            parent: self,
-          })
+              parent: self,
+            })
           : undefined,
       );
 
@@ -548,13 +548,13 @@ Listening on "${dev.host}:${dev.port}"...`,
       return args.password
         ? output(args.password)
         : new RandomPassword(
-          `${name}Password`,
-          {
-            length: 32,
-            special: false,
-          },
-          { parent: self },
-        ).result;
+            `${name}Password`,
+            {
+              length: 32,
+              special: false,
+            },
+            { parent: self },
+          ).result;
     }
 
     function createSubnetGroup() {
@@ -874,11 +874,15 @@ Listening on "${dev.host}:${dev.port}"...`,
     args: PostgresGetArgs,
     opts?: ComponentResourceOptions,
   ) {
-    return new Postgres(name, {
-      ref: true,
-      id: args.id,
-      proxyId: args.proxyId,
-    } as unknown as PostgresArgs);
+    return new Postgres(
+      name,
+      {
+        ref: true,
+        id: args.id,
+        proxyId: args.proxyId,
+      } as unknown as PostgresArgs,
+      opts,
+    );
   }
 }
 
