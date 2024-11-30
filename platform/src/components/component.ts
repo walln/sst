@@ -150,6 +150,7 @@ export class Component extends ComponentResource {
               "aws:lambda/permission:Permission",
               "aws:lambda/provisionedConcurrencyConfig:ProvisionedConcurrencyConfig",
               "aws:lb/listener:Listener",
+              "aws:lb/listenerRule:ListenerRule",
               "aws:rds/proxyDefaultTargetGroup:ProxyDefaultTargetGroup",
               "aws:rds/proxyTarget:ProxyTarget",
               "aws:route53/record:Record",

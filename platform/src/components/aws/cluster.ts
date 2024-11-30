@@ -513,6 +513,13 @@ export interface ClusterServiceArgs {
          */
         forward?: Input<Port>;
         /**
+         * Configure path-based routing. Only requests matching the path are forwarded to
+         * the container. Only applicable to "http" protocols.
+         *
+         * @default Requests to all paths are forwarded.
+         */
+        path?: Input<string>;
+        /**
          * The name of the container to forward the traffic to.
          *
          * If there is only one container, this is not needed. The traffic is automatically
@@ -753,8 +760,19 @@ export interface ClusterServiceArgs {
      * }
      * ```
      *
-     * You can also redirect traffic from one port to another. This is commonly used to
-     * redirect http to https.
+     * You can also route the same port to multiple containers via path-based routing.
+     *
+     * ```js
+     * {
+     *   ports: [
+     *     { listen: "80/http", container: "app", path: "/api/*" },
+     *     { listen: "80/http", container: "admin", path: "/admin/*" }
+     *   ]
+     * }
+     * ```
+     *
+     * Additionally, you can redirect traffic from one port to another. This is
+     * commonly used to redirect http to https.
      *
      * ```js
      * {
@@ -777,6 +795,22 @@ export interface ClusterServiceArgs {
          * @default The same port and protocol as `listen`.
          */
         forward?: Input<Port>;
+        /**
+         * Configure path-based routing. Only requests matching the path are forwarded to
+         * the container. Only applicable to "http" protocols.
+         *
+         * The path pattern is case-sensitive, supports wildcards, and can be up to 128
+         * characters.
+         * - `*` matches 0 or more characters.
+         * - `?` matches exactly 1 character.
+         *
+         * For example:
+         * - `/api/*`
+         * - `/api/*.png
+         *
+         * @default Requests to all paths are forwarded.
+         */
+        path?: Input<string>;
         /**
          * The name of the container to forward the traffic to.
          *
