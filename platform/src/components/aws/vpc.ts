@@ -95,6 +95,16 @@ export interface VpcArgs {
            * @default `"t4g.nano"`
            */
           instance: Input<string>;
+          /**
+           * The AMI to use for the NAT.
+           *
+           * By default, the latest public [`fck-nat`](https://github.com/AndrewGuenther/fck-nat)
+           * AMI is used. However, if the AMI is not available in the region you are
+           * deploying to or you want to use a custom AMI, you can specify a different AMI.
+           *
+           * @default The latest `fck-nat` AMI
+           */
+          ami?: Input<string>;
         }>;
       }
   >;
@@ -854,24 +864,26 @@ export class Vpc extends Component implements Link.Linkable {
           { parent: self },
         );
 
-        const ami = ec2.getAmiOutput(
-          {
-            owners: ["568608671756"], // AWS account ID for fck-nat AMI
-            filters: [
-              {
-                name: "name",
-                // The AMI has the SSM agent pre-installed
-                values: ["fck-nat-al2023-*"],
-              },
-              {
-                name: "architecture",
-                values: ["arm64"],
-              },
-            ],
-            mostRecent: true,
-          },
-          { parent: self },
-        );
+        const ami =
+          nat.ec2.ami ??
+          ec2.getAmiOutput(
+            {
+              owners: ["568608671756"], // AWS account ID for fck-nat AMI
+              filters: [
+                {
+                  name: "name",
+                  // The AMI has the SSM agent pre-installed
+                  values: ["fck-nat-al2023-*"],
+                },
+                {
+                  name: "architecture",
+                  values: ["arm64"],
+                },
+              ],
+              mostRecent: true,
+            },
+            { parent: self },
+          ).id;
 
         return all([zones, publicSubnets, keyPair, args.bastion]).apply(
           ([zones, publicSubnets, keyPair, bastion]) =>
@@ -880,7 +892,7 @@ export class Vpc extends Component implements Link.Linkable {
                 `${name}NatInstance${i + 1}`,
                 {
                   instanceType: nat.ec2.instance,
-                  ami: ami.id,
+                  ami,
                   subnetId: publicSubnets[i].id,
                   vpcSecurityGroupIds: [sg.id],
                   iamInstanceProfile: instanceProfile.name,
