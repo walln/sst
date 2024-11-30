@@ -128,7 +128,9 @@ export class Service extends Component implements Link.Linkable {
     const executionRole = createExecutionRole();
     const taskDefinition = createTaskDefinition();
     const certificateArn = createSsl();
-    const { loadBalancer, targets } = createLoadBalancer();
+    const loadBalancer = createLoadBalancer();
+    const targets = createTargets();
+    createListeners();
     const cloudmapService = createCloudmapService();
     const service = createService();
     const autoScalingTarget = createAutoScaling();
@@ -358,6 +360,12 @@ export class Service extends Component implements Link.Linkable {
           const listenParts = v.listen.split("/");
           const listenPort = parseInt(listenParts[0]);
           const listenProtocol = listenParts[1];
+          const listenPath = v.path;
+          if (protocolType(listenProtocol) === "network" && listenPath)
+            throw new VisibleError(
+              `Invalid path "${v.path}" for listen protocol "${v.listen}". Only "http" protocols support path-based routing.`,
+            );
+
           const redirectParts = v.redirect?.split("/");
           const redirectPort = redirectParts && parseInt(redirectParts[0]);
           const redirectProtocol = redirectParts && redirectParts[1];
@@ -370,6 +378,7 @@ export class Service extends Component implements Link.Linkable {
               type: "redirect" as const,
               listenPort,
               listenProtocol,
+              listenPath,
               redirectPort,
               redirectProtocol,
             };
@@ -386,6 +395,7 @@ export class Service extends Component implements Link.Linkable {
             type: "forward" as const,
             listenPort,
             listenProtocol,
+            listenPath,
             forwardPort,
             forwardProtocol,
             container: v.container ?? containers[0].name,
@@ -471,7 +481,7 @@ export class Service extends Component implements Link.Linkable {
     }
 
     function createLoadBalancer() {
-      if (!lbArgs) return {};
+      if (!lbArgs) return;
 
       const securityGroup = new ec2.SecurityGroup(
         ...transform(
@@ -500,7 +510,7 @@ export class Service extends Component implements Link.Linkable {
         ),
       );
 
-      const loadBalancer = new lb.LoadBalancer(
+      return new lb.LoadBalancer(
         ...transform(
           args.transform?.loadBalancer,
           `${name}LoadBalancer`,
@@ -514,104 +524,153 @@ export class Service extends Component implements Link.Linkable {
           { parent: self },
         ),
       );
+    }
 
-      // Create targets
-      const targets = all([lbArgs.ports, lbArgs.health]).apply(
-        ([ports, health]) => {
-          const targets: Record<string, lb.TargetGroup> = {};
+    function createTargets() {
+      if (!loadBalancer || !lbArgs) return;
 
-          ports.forEach((p) => {
-            if (p.type !== "forward") return;
+      return all([lbArgs.ports, lbArgs.health]).apply(([ports, health]) => {
+        const targets: Record<string, lb.TargetGroup> = {};
 
-            const container = p.container;
-            const forwardProtocol = p.forwardProtocol.toUpperCase();
-            const forwardPort = p.forwardPort;
-            const targetId = `${container}${forwardProtocol}${forwardPort}`;
-            const target =
-              targets[targetId] ??
-              new lb.TargetGroup(
-                ...transform(
-                  args.transform?.target,
-                  `${name}Target${targetId}`,
-                  {
-                    // TargetGroup names allow for 32 chars, but an 8 letter suffix
-                    // ie. "-1234567" is automatically added.
-                    // - If we don't specify "name" or "namePrefix", we need to ensure
-                    //   the component name is less than 24 chars. Hard to guarantee.
-                    // - If we specify "name", we need to ensure the $app-$stage-$name
-                    //   if less than 32 chars. Hard to guarantee.
-                    // - Hence we will use "namePrefix".
-                    namePrefix: forwardProtocol,
-                    port: forwardPort,
-                    protocol: forwardProtocol,
-                    targetType: "ip",
-                    vpcId: vpc.id,
-                    healthCheck:
-                      health[`${p.forwardPort}/${p.forwardProtocol}`],
-                  },
-                  { parent: self },
-                ),
-              );
-            targets[targetId] = target;
-          });
-          return targets;
-        },
-      );
+        ports.forEach((p) => {
+          if (p.type !== "forward") return;
 
-      // Create listeners
-      all([lbArgs.ports, targets, certificateArn]).apply(
+          const container = p.container;
+          const forwardProtocol = p.forwardProtocol.toUpperCase();
+          const forwardPort = p.forwardPort;
+          const targetId = `${container}${forwardProtocol}${forwardPort}`;
+          const target =
+            targets[targetId] ??
+            new lb.TargetGroup(
+              ...transform(
+                args.transform?.target,
+                `${name}Target${targetId}`,
+                {
+                  // TargetGroup names allow for 32 chars, but an 8 letter suffix
+                  // ie. "-1234567" is automatically added.
+                  // - If we don't specify "name" or "namePrefix", we need to ensure
+                  //   the component name is less than 24 chars. Hard to guarantee.
+                  // - If we specify "name", we need to ensure the $app-$stage-$name
+                  //   if less than 32 chars. Hard to guarantee.
+                  // - Hence we will use "namePrefix".
+                  namePrefix: forwardProtocol,
+                  port: forwardPort,
+                  protocol: forwardProtocol,
+                  targetType: "ip",
+                  vpcId: vpc.id,
+                  healthCheck: health[`${p.forwardPort}/${p.forwardProtocol}`],
+                },
+                { parent: self },
+              ),
+            );
+          targets[targetId] = target;
+        });
+        return targets;
+      });
+    }
+
+    function createListeners() {
+      if (!lbArgs || !loadBalancer || !targets) return;
+
+      return all([lbArgs.ports, targets, certificateArn]).apply(
         ([ports, targets, cert]) => {
-          const listeners: Record<string, lb.Listener> = {};
-
+          // Group listeners by protocol and port
+          // Because listeners with the same protocol and port but different path
+          // are just rules of the same listener.
+          const listenersById: Record<string, typeof ports> = {};
           ports.forEach((p) => {
             const listenProtocol = p.listenProtocol.toUpperCase();
             const listenPort = p.listenPort;
             const listenerId = `${listenProtocol}${listenPort}`;
-            const listener =
-              listeners[listenerId] ??
-              new lb.Listener(
-                ...transform(
-                  args.transform?.listener,
-                  `${name}Listener${listenerId}`,
+            listenersById[listenerId] = listenersById[listenerId] ?? [];
+            listenersById[listenerId].push(p);
+          });
+
+          // Create listeners
+          return Object.entries(listenersById).map(([listenerId, ports]) => {
+            const listenProtocol = ports[0].listenProtocol.toUpperCase();
+            const listenPort = ports[0].listenPort;
+            const defaultRule = ports.find((p) => !p.listenPath);
+            const customRules = ports.filter((p) => p.listenPath);
+            const buildActions = (p?: (typeof ports)[number]) => [
+              ...(!p
+                ? [
+                    {
+                      type: "fixed-response",
+                      fixedResponse: {
+                        statusCode: "403",
+                        contentType: "text/plain",
+                        messageBody: "Forbidden",
+                      },
+                    },
+                  ]
+                : []),
+              ...(p?.type === "forward"
+                ? [
+                    {
+                      type: "forward",
+                      targetGroupArn:
+                        targets[
+                          `${p.container}${p.forwardProtocol.toUpperCase()}${
+                            p.forwardPort
+                          }`
+                        ].arn,
+                    },
+                  ]
+                : []),
+              ...(p?.type === "redirect"
+                ? [
+                    {
+                      type: "redirect",
+                      redirect: {
+                        port: p.redirectPort.toString(),
+                        protocol: p.redirectProtocol.toUpperCase(),
+                        statusCode: "HTTP_301",
+                      },
+                    },
+                  ]
+                : []),
+            ];
+            const listener = new lb.Listener(
+              ...transform(
+                args.transform?.listener,
+                `${name}Listener${listenerId}`,
+                {
+                  loadBalancerArn: loadBalancer.arn,
+                  port: listenPort,
+                  protocol: listenProtocol,
+                  certificateArn: ["HTTPS", "TLS"].includes(listenProtocol)
+                    ? cert
+                    : undefined,
+                  defaultActions: buildActions(defaultRule),
+                },
+                { parent: self },
+              ),
+            );
+
+            customRules.forEach(
+              (p) =>
+                new lb.ListenerRule(
+                  `${name}Listener${listenerId}Rule${p.listenPath}`,
                   {
-                    loadBalancerArn: loadBalancer.arn,
-                    port: listenPort,
-                    protocol: listenProtocol,
-                    certificateArn: ["HTTPS", "TLS"].includes(listenProtocol)
-                      ? cert
-                      : undefined,
-                    defaultActions: [
-                      p.type === "forward"
-                        ? {
-                            type: "forward",
-                            targetGroupArn:
-                              targets[
-                                `${
-                                  p.container
-                                }${p.forwardProtocol.toUpperCase()}${
-                                  p.forwardPort
-                                }`
-                              ].arn,
-                          }
-                        : {
-                            type: "redirect",
-                            redirect: {
-                              port: p.redirectPort.toString(),
-                              protocol: p.redirectProtocol.toUpperCase(),
-                              statusCode: "HTTP_301",
-                            },
-                          },
+                    listenerArn: listener.arn,
+                    actions: buildActions(p),
+                    conditions: [
+                      {
+                        pathPattern: {
+                          values: [p.listenPath!],
+                        },
+                      },
                     ],
                   },
                   { parent: self },
                 ),
-              );
-            listeners[listenerId] = listener;
+            );
+
+            return listener;
           });
         },
       );
-
-      return { loadBalancer, targets };
     }
 
     function createSsl() {
