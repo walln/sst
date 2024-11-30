@@ -103,6 +103,16 @@ export interface VpcArgs {
            * deploying to or you want to use a custom AMI, you can specify a different AMI.
            *
            * @default The latest `fck-nat` AMI
+           * @example
+           * ```ts
+           * {
+           *   nat: {
+           *     ec2: {
+           *       ami: "ami-1234567890abcdef0"
+           *     }
+           *   }
+           * }
+           * ```
            */
           ami?: Input<string>;
         }>;
