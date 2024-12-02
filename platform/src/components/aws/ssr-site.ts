@@ -540,7 +540,7 @@ export function createServersAndDistribution(
                 ...(await Promise.all(
                   files.map(async (file) => {
                     const source = path.resolve(outputPath, copy.from, file);
-                    const content = await fs.promises.readFile(source, 'utf-8');
+                    const content = await fs.promises.readFile(source, "utf-8");
                     const hash = crypto
                       .createHash("sha256")
                       .update(content)
@@ -801,6 +801,11 @@ export function createServersAndDistribution(
       const edgeFunction = edgeFunctions[behavior.edgeFunction || ""];
 
       if (behavior.cacheType === "static") {
+        const requestFunction = useCfFunction(
+          "assets",
+          "request",
+          behavior.cfFunction ?? "assetsRequestCfFunction",
+        );
         return {
           targetOriginId: behavior.origin,
           viewerProtocolPolicy: "redirect-to-https",
@@ -809,20 +814,28 @@ export function createServersAndDistribution(
           compress: true,
           // CloudFront's managed CachingOptimized policy
           cachePolicyId: "658327ea-f89d-4fab-a63d-7e88639e58f6",
-          functionAssociations: behavior.cfFunction
-            ? [
-                {
-                  eventType: "viewer-request",
-                  functionArn: useCfFunction(
-                    "assets",
-                    "request",
-                    behavior.cfFunction,
-                  ).arn,
-                },
-              ]
-            : [],
+          functionAssociations: requestFunction.apply((fn) => [
+            ...(fn
+              ? [
+                  {
+                    eventType: "viewer-request",
+                    functionArn: fn.arn,
+                  },
+                ]
+              : []),
+          ]),
         };
       } else if (behavior.cacheType === "server") {
+        const requestFunction = useCfFunction(
+          "server",
+          "request",
+          behavior.cfFunction ?? "serverRequestCfFunction",
+        );
+        const responseFunction = useCfFunction(
+          "server",
+          "response",
+          "serverResponseCfFunction",
+        );
         return {
           targetOriginId: behavior.origin,
           viewerProtocolPolicy: "redirect-to-https",
@@ -840,18 +853,26 @@ export function createServersAndDistribution(
           cachePolicyId: args.cachePolicy ?? useServerBehaviorCachePolicy().id,
           // CloudFront's Managed-AllViewerExceptHostHeader policy
           originRequestPolicyId: "b689b0a8-53d0-40ab-baf2-68738e2966ac",
-          functionAssociations: behavior.cfFunction
-            ? [
-                {
-                  eventType: "viewer-request",
-                  functionArn: useCfFunction(
-                    "server",
-                    "request",
-                    behavior.cfFunction,
-                  ).arn,
-                },
-              ]
-            : [],
+          functionAssociations: all([requestFunction, responseFunction]).apply(
+            ([requestFn, responseFn]) => [
+              ...(requestFn
+                ? [
+                    {
+                      eventType: "viewer-request",
+                      functionArn: requestFn.arn,
+                    },
+                  ]
+                : []),
+              ...(responseFn
+                ? [
+                    {
+                      eventType: "viewer-response",
+                      functionArn: responseFn.arn,
+                    },
+                  ]
+                : []),
+            ],
+          ),
           lambdaFunctionAssociations: edgeFunction
             ? [
                 {
@@ -872,7 +893,17 @@ export function createServersAndDistribution(
       type: "request" | "response",
       fnName: string,
     ) {
-      const disableUrlInjection = `
+      return output(args.server).apply((server) => {
+        const frameworkConfig = plan.cloudFrontFunctions?.[fnName];
+        const customConfig =
+          origin === "server"
+            ? type === "request"
+              ? server?.edge?.viewerRequest
+              : server?.edge?.viewerResponse
+            : undefined;
+        const builtInConfig =
+          type === "request" && args.domain
+            ? `
 if (event.request.headers.host.value.includes('cloudfront.net')) {
   return {
     statusCode: 403,
@@ -882,34 +913,29 @@ if (event.request.headers.host.value.includes('cloudfront.net')) {
       data: '<html><head><title>403 Forbidden</title></head><body><center><h1>403 Forbidden</h1></center></body></html>'
     }
   };
-}`;
-      const { injections } = plan.cloudFrontFunctions![fnName];
-      const config =
-        origin === "server"
-          ? output(args.server).apply((server) =>
-              type === "request"
-                ? server?.edge?.viewerRequest
-                : server?.edge?.viewerResponse,
-            )
-          : output(undefined);
-      cfFunctions[fnName] =
-        cfFunctions[fnName] ??
-        new cloudfront.Function(
-          `${name}CloudfrontFunction${logicalName(fnName)}`,
-          {
-            runtime: "cloudfront-js-2.0",
-            keyValueStoreAssociations: config.apply((v) => v?.kvStores ?? []),
-            code: interpolate`
+}`
+            : undefined;
+        if (!frameworkConfig && !customConfig && !builtInConfig) return;
+
+        cfFunctions[fnName] =
+          cfFunctions[fnName] ??
+          new cloudfront.Function(
+            `${name}CloudfrontFunction${logicalName(fnName)}`,
+            {
+              runtime: "cloudfront-js-2.0",
+              keyValueStoreAssociations: customConfig?.kvStores ?? [],
+              code: interpolate`
 async function handler(event) {
-  ${type === "request" && args.domain ? disableUrlInjection : ""}
-  ${injections.join("\n")}
-  ${config.apply((v) => v?.injection ?? "")}
-  return event.request;
+  ${builtInConfig ?? ""}
+  ${frameworkConfig?.injections?.join("\n") ?? ""}
+  ${customConfig?.injection ?? ""}
+  return ${type === "request" ? "event.request" : "event.response"};
 }`,
-          },
-          { parent },
-        );
-      return cfFunctions[fnName];
+            },
+            { parent },
+          );
+        return cfFunctions[fnName];
+      });
     }
 
     function useServerBehaviorCachePolicy() {
@@ -1044,7 +1070,8 @@ async function handler(event) {
                 }).forEach((filePath) =>
                   hash.update(
                     fs.readFileSync(
-                      path.resolve(outputPath, item.from, filePath), 'utf-8'
+                      path.resolve(outputPath, item.from, filePath),
+                      "utf-8",
                     ),
                   ),
                 );
