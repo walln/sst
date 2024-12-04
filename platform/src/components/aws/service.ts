@@ -862,6 +862,23 @@ export class Service extends Component implements Link.Linkable {
                         username: authToken.userName,
                       })),
                   ],
+                  cacheFrom: [
+                    {
+                      registry: {
+                        ref: interpolate`${bootstrapData.assetEcrUrl}:${container.name}-cache`,
+                      },
+                    },
+                  ],
+                  cacheTo: [
+                    {
+                      registry: {
+                        ref: interpolate`${bootstrapData.assetEcrUrl}:${container.name}-cache`,
+                        imageManifest: true,
+                        ociMediaTypes: true,
+                        mode: "max",
+                      },
+                    },
+                  ],
                   push: true,
                 },
                 { parent: self },
