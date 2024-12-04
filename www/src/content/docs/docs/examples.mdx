@@ -769,51 +769,13 @@ View the [full example](https://github.com/sst/sst/tree/dev/examples/aws-efs).
 
 
 ---
-## AWS Express file upload
+## AWS Express Redis
 
-Deploys an Express app to AWS.
+Creates a hit counter app with Express and Redis.
 
-You can get started by running.
+This deploys Express as a Fargate service to ECS and it's linked to Redis.
 
-```bash
-mkdir aws-express-file-upload && cd aws-express-file-upload
-npm init -y
-npm install express
-npx sst@latest init
-```
-
-Now you can add a service.
-
-```ts title="sst.config.ts"
-cluster.addService("MyService", {
-  loadBalancer: {
-    ports: [{ listen: "80/http", forward: "3000/http" }],
-  },
-  dev: {
-    command: "node --watch index.mjs",
-  },
-});
-```
-
-Start your app locally.
-
-```bash
-npx sst dev
-```
-
-This example lets you upload a file to S3 and then download it.
-
-```bash
-curl -F file=@package.json http://localhost:80/
-curl http://localhost:80/latest
-```
-
-Finally, you can deploy it using `npx sst deploy --stage production`.
-```ts title="sst.config.ts"
-const bucket = new sst.aws.Bucket("MyBucket");
-const vpc = new sst.aws.Vpc("MyVpc");
-
-const cluster = new sst.aws.Cluster("MyCluster", { vpc });
+```ts title="sst.config.ts" {8}
 cluster.addService("MyService", {
   loadBalancer: {
     ports: [{ listen: "80/http" }],
@@ -821,11 +783,47 @@ cluster.addService("MyService", {
   dev: {
     command: "node --watch index.mjs",
   },
-  link: [bucket],
+  link: [redis],
 });
 ```
 
-View the [full example](https://github.com/sst/sst/tree/dev/examples/aws-express-file-upload).
+Since our Redis cluster is in a VPC, we’ll need a tunnel to connect to it from our local
+machine.
+
+```bash "sudo"
+sudo bun sst tunnel install
+```
+
+This needs _sudo_ to create a network interface on your machine. You’ll only need to do this
+once on your machine.
+
+To start your app locally run.
+
+```bash
+npx sst dev
+```
+
+Now if you go to `http://localhost:80` you’ll see a counter update as you refresh the page.
+
+Finally, you can deploy it using `npx sst deploy --stage production` using a `Dockerfile`
+that's included in the example.
+```ts title="sst.config.ts"
+const vpc = new sst.aws.Vpc("MyVpc", { bastion: true });
+const redis = new sst.aws.Redis("MyRedis", { vpc });
+const cluster = new sst.aws.Cluster("MyCluster", { vpc });
+
+cluster.addService("MyService", {
+  link: [redis],
+  loadBalancer: {
+    ports: [{ listen: "80/http" }],
+  },
+  dev: {
+    command: "node --watch index.mjs",
+  },
+});
+```
+
+View the [full example](https://github.com/sst/sst/tree/dev/examples/aws-express-redis).
 
 
 ---
@@ -946,7 +944,7 @@ Finally, you can deploy it by:
    +  "build": "tsc"
    }
    ```
-4. Running `npx sst deploy --stage production`.
+And finally, running `npx sst deploy --stage production`.
 ```ts title="sst.config.ts"
 const vpc = new sst.aws.Vpc("MyVpc", { bastion: true });
 const redis = new sst.aws.Redis("MyRedis", { vpc });
