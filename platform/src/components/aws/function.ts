@@ -254,11 +254,11 @@ export interface FunctionArgs {
   /**
    * The runtime environment for the function. Support for other runtimes is on our roadmap.
    *
-   * @default `"nodejs22.x"`
+   * @default `"nodejs20.x"`
    * @example
    * ```js
    * {
-   *   runtime: "nodejs20.x"
+   *   runtime: "nodejs22.x"
    * }
    * ```
    */
@@ -1337,7 +1337,7 @@ export class Function extends Component implements Link.Linkable {
                 links,
                 handler: handler,
                 bundle: bundle,
-                runtime: runtime || "nodejs22.x",
+                runtime: runtime || "nodejs20.x",
                 copyFiles,
                 properties: nodejs,
               };
@@ -1366,7 +1366,7 @@ export class Function extends Component implements Link.Linkable {
     }
 
     function normalizeRuntime() {
-      return all([args.runtime]).apply(([v]) => v ?? "nodejs22.x");
+      return all([args.runtime]).apply(([v]) => v ?? "nodejs20.x");
     }
 
     function normalizeTimeout() {
@@ -1942,7 +1942,7 @@ export class Function extends Component implements Link.Linkable {
 
           // Calculate hash of the zip file
           const hash = crypto.createHash("sha256");
-          hash.update(await fs.promises.readFile(zipPath, 'utf-8'));
+          hash.update(await fs.promises.readFile(zipPath, "utf-8"));
           const hashValue = hash.digest("hex");
           const assetBucket = region.apply((region) =>
             bootstrap.forRegion(region).then((d) => d.asset),
