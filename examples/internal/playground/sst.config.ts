@@ -146,6 +146,12 @@ export default $config({
       const postgres = new sst.aws.Postgres("MyPostgres", {
         vpc,
       });
+      new sst.aws.Function("MyPostgresApp", {
+        handler: "functions/postgres/index.handler",
+        url: true,
+        vpc,
+        link: [postgres],
+      });
       ret.pgHost = postgres.host;
       ret.pgPort = $interpolate`${postgres.port}`;
       ret.pgUsername = postgres.username;
