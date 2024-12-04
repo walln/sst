@@ -123,6 +123,29 @@ export interface PostgresArgs {
    */
   proxy?: Input<boolean>;
   /**
+   * Enable [Multi-AZ](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZ.html)
+   * deployment for the database.
+   *
+   * This creates a standby replica for the database in another availability zone (AZ). The
+   * standby database provides automatic failover in case the primary database fails. However,
+   * when the primary database is healthy, the standby database is not used for serving read
+   * traffic.
+   *
+   * :::caution
+   * Using Multi-AZ will approximately double the cost of the database since it will be
+   * deployed in two AZs.
+   * :::
+   *
+   * @default `false`
+   * @example
+   * ```js
+   * {
+   *   multiAz: true
+   * }
+   * ```
+   */
+  multiAz?: Input<boolean>;
+  /**
    * @internal
    */
   replicas?: Input<number>;
@@ -382,6 +405,7 @@ export class Postgres extends Component implements Link.Linkable {
     }
 
     registerVersion();
+    const multiAz = output(args.multiAz).apply((v) => v ?? false);
     const engineVersion = output(args.version).apply((v) => v ?? "16.4");
     const instanceType = output(args.instance).apply((v) => v ?? "t4g.micro");
     const username = output(args.username).apply((v) => v ?? "postgres");
@@ -637,6 +661,7 @@ Listening on "${dev.host}:${dev.port}"...`,
             storageType: "gp3",
             allocatedStorage: 20,
             maxAllocatedStorage: storage,
+            multiAz,
             backupRetentionPeriod: 7,
             performanceInsightsEnabled: true,
             tags: {
