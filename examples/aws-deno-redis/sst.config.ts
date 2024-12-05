@@ -1,21 +1,21 @@
 /// <reference path="./.sst/platform/config.d.ts" />
 
 /**
- * ## AWS Express Redis
+ * ## AWS Deno Redis
  *
- * Creates a hit counter app with Express and Redis.
+ * Creates a hit counter app with Deno and Redis.
  *
- * This deploys Express as a Fargate service to ECS and it's linked to Redis.
+ * This deploys Deno as a Fargate service to ECS and it's linked to Redis.
  *
- * ```ts title="sst.config.ts" {8}
+ * ```ts title="sst.config.ts" {2}
  * cluster.addService("MyService", {
+ *   link: [redis],
  *   loadBalancer: {
- *     ports: [{ listen: "80/http" }],
+ *     ports: [{ listen: "80/http", forward: "8000/http" }],
  *   },
  *   dev: {
- *     command: "node --watch index.mjs",
+ *     command: "deno task dev",
  *   },
- *   link: [redis],
  * });
  * ```
  *
@@ -23,7 +23,7 @@
  * machine.
  *
  * ```bash "sudo"
- * sudo npx sst tunnel install
+ * sudo sst tunnel install
  * ```
  *
  * This needs _sudo_ to create a network interface on your machine. You’ll only need to do this
@@ -32,18 +32,18 @@
  * To start your app locally run.
  *
  * ```bash
- * npx sst dev
+ * sst dev
  * ```
  *
- * Now if you go to `http://localhost:80` you’ll see a counter update as you refresh the page.
+ * Now if you go to `http://localhost:8000` you’ll see a counter update as you refresh the page.
  *
- * Finally, you can deploy it using `npx sst deploy --stage production` using a `Dockerfile`
+ * Finally, you can deploy it using `sst deploy --stage production` using a `Dockerfile`
  * that's included in the example.
  */
 export default $config({
   app(input) {
     return {
-      name: "aws-express-redis",
+      name: "aws-deno",
       removal: input?.stage === "production" ? "retain" : "remove",
       home: "aws",
     };
@@ -56,10 +56,10 @@ export default $config({
     cluster.addService("MyService", {
       link: [redis],
       loadBalancer: {
-        ports: [{ listen: "80/http" }],
+        ports: [{ listen: "80/http", forward: "8000/http" }],
       },
       dev: {
-        command: "node --watch index.mjs",
+        command: "deno task dev",
       },
     });
   },
