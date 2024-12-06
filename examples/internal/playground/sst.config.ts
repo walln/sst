@@ -18,6 +18,7 @@ export default $config({
     //const email = addEmail();
     //const apiv1 = addApiV1();
     //const apiv2 = addApiV2();
+    //const router = addRouter();
     //const app = addFunction();
     //const service = addService();
     //const postgres = addPostgres();
@@ -116,6 +117,21 @@ export default $config({
         handler: "functions/apiv2/index.handler",
       });
       return api;
+    }
+
+    function addRouter() {
+      const app = new sst.aws.Function("MyApp", {
+        handler: "functions/router/index.handler",
+        url: true,
+      });
+      const router = new sst.aws.Router("MyRouter", {
+        domain: "router.playground.sst.sh",
+        routes: {
+          "/api/*": app.url,
+        },
+      });
+      const router2 = sst.aws.Router.get("MyRouter2", router.distributionID);
+      return router;
     }
 
     function addFunction() {
