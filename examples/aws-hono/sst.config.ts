@@ -15,5 +15,5 @@ export default $config({
       link: [bucket],
       handler: "src/index.handler",
     });
-  }
+  },
 });
