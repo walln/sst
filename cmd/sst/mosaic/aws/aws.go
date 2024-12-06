@@ -14,6 +14,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	appsyncSdk "github.com/aws/aws-sdk-go-v2/service/appsync"
+	appsyncTypes "github.com/aws/aws-sdk-go-v2/service/appsync/types"
 	MQTT "github.com/eclipse/paho.mqtt.golang"
 	"github.com/sst/ion/cmd/sst/mosaic/aws/appsync"
 	"github.com/sst/ion/cmd/sst/mosaic/aws/bridge"
@@ -99,6 +102,7 @@ func Start(
 	nextChan := map[string]chan io.Reader{}
 	workers := map[string]*WorkerInfo{}
 	evts := bus.Subscribe(&watcher.FileChangedEvent{}, &project.CompleteEvent{}, &runtime.BuildInput{}, &FunctionInvokedEvent{})
+
 	bootstrap, err := prov.Bootstrap(prov.Config().Region)
 	if err != nil {
 		return err
@@ -453,4 +457,66 @@ func fileLogger(p *project.Project) {
 			}
 		}
 	}
+}
+
+func resolveAppSync(ctx context.Context, cfg aws.Config) (string, string, error) {
+	client := appsyncSdk.NewFromConfig(cfg)
+	var nextToken *string
+	for {
+		results, err := client.ListApis(ctx, &appsyncSdk.ListApisInput{
+			NextToken: nextToken,
+		})
+		if err != nil {
+			return "", "", err
+		}
+		for _, result := range results.Apis {
+			if *result.Name == "sst" {
+				return result.Dns["HTTP"], result.Dns["REALTIME"], nil
+			}
+		}
+		if results.NextToken == nil {
+			break
+		}
+		nextToken = results.NextToken
+	}
+	api, err := client.CreateApi(ctx, &appsyncSdk.CreateApiInput{
+		Name: aws.String("sst"),
+		EventConfig: &appsyncTypes.EventConfig{
+			AuthProviders: []appsyncTypes.AuthProvider{
+				{AuthType: appsyncTypes.AuthenticationTypeAwsIam},
+				{AuthType: appsyncTypes.AuthenticationTypeApiKey},
+			},
+			ConnectionAuthModes: []appsyncTypes.AuthMode{
+				{AuthType: appsyncTypes.AuthenticationTypeAwsIam},
+				{AuthType: appsyncTypes.AuthenticationTypeApiKey},
+			},
+			DefaultPublishAuthModes: []appsyncTypes.AuthMode{
+				{AuthType: appsyncTypes.AuthenticationTypeAwsIam},
+				{AuthType: appsyncTypes.AuthenticationTypeApiKey},
+			},
+			DefaultSubscribeAuthModes: []appsyncTypes.AuthMode{
+				{AuthType: appsyncTypes.AuthenticationTypeAwsIam},
+				{AuthType: appsyncTypes.AuthenticationTypeApiKey},
+			},
+		},
+	})
+	if err != nil {
+		return "", "", err
+	}
+	_, err = client.CreateChannelNamespace(ctx, &appsyncSdk.CreateChannelNamespaceInput{
+		Name:  aws.String("sst"),
+		ApiId: api.Api.ApiId,
+		PublishAuthModes: []appsyncTypes.AuthMode{
+			{AuthType: appsyncTypes.AuthenticationTypeAwsIam},
+			{AuthType: appsyncTypes.AuthenticationTypeApiKey},
+		},
+		SubscribeAuthModes: []appsyncTypes.AuthMode{
+			{AuthType: appsyncTypes.AuthenticationTypeAwsIam},
+			{AuthType: appsyncTypes.AuthenticationTypeApiKey},
+		},
+	})
+	if err != nil {
+		return "", "", err
+	}
+	return api.Api.Dns["HTTP"], api.Api.Dns["REALTIME"], nil
 }
