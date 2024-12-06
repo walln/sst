@@ -143,7 +143,7 @@ func (r *Runtime) Run(ctx context.Context, input *runtime.RunInput) (runtime.Wor
 	cmd.Env = append(cmd.Env, "NODE_OPTIONS="+os.Getenv("NODE_OPTIONS"))
 	cmd.Env = append(cmd.Env, "VSCODE_INSPECTOR_OPTIONS="+os.Getenv("VSCODE_INSPECTOR_OPTIONS"))
 	cmd.Env = append(cmd.Env, "AWS_LAMBDA_RUNTIME_API="+input.Server)
-	slog.Info("starting worker", "env", cmd.Env, "args", cmd.Args)
+	slog.Info("starting worker", "server", input.Server)
 	cmd.Dir = input.Build.Out
 	stdout, _ := cmd.StdoutPipe()
 	stderr, _ := cmd.StderrPipe()
