@@ -336,6 +336,7 @@ func Start(
 			}
 		}
 	}()
+
 	s.Mux.HandleFunc(`/lambda/{workerID}/runtime/invocation/next`, func(w http.ResponseWriter, r *http.Request) {
 		slog.Info("got next request", "workerID", r.PathValue("workerID"))
 		workerID := r.PathValue("workerID")
@@ -368,6 +369,26 @@ func Start(
 					Input:      buf.Bytes(),
 				})
 			}
+		}
+	})
+
+	s.Mux.HandleFunc(`/lambda/{workerID}/runtime/init/error`, func(w http.ResponseWriter, r *http.Request) {
+		workerID := r.PathValue("workerID")
+		slog.Info("got init error", "workerID", workerID, "requestID", r.PathValue("requestID"))
+		writer := client.NewWriter(bridge.MessageInitError, prefix+"/"+workerID+"/in")
+		var buf bytes.Buffer
+		tee := io.TeeReader(r.Body, &buf)
+		io.Copy(writer, tee)
+		writer.Close()
+		w.WriteHeader(200)
+		info, ok := workers[workerID]
+		if ok {
+			fee := &FunctionErrorEvent{
+				FunctionID: info.FunctionID,
+				WorkerID:   info.WorkerID,
+			}
+			json.Unmarshal(buf.Bytes(), &fee)
+			bus.Publish(fee)
 		}
 	})
 
