@@ -370,6 +370,20 @@ export interface ClusterServiceArgs {
            */
           name: Input<string>;
           /**
+           * Alias domains that should be used.
+           *
+           * @example
+           * ```js {4}
+           * {
+           *   domain: {
+           *     name: "app1.example.com",
+           *     aliases: ["app2.example.com"]
+           *   }
+           * }
+           * ```
+           */
+          aliases?: Input<string[]>;
+          /**
            * The ARN of an ACM (AWS Certificate Manager) certificate that proves ownership of the
            * domain. By default, a certificate is created and validated automatically.
            *
@@ -634,6 +648,20 @@ export interface ClusterServiceArgs {
            * ```
            */
           name: Input<string>;
+          /**
+           * Alias domains that should be used.
+           *
+           * @example
+           * ```js {4}
+           * {
+           *   domain: {
+           *     name: "app1.example.com",
+           *     aliases: ["app2.example.com"]
+           *   }
+           * }
+           * ```
+           */
+          aliases?: Input<string[]>;
           /**
            * The ARN of an ACM (AWS Certificate Manager) certificate that proves ownership of the
            * domain. By default, a certificate is created and validated automatically.
