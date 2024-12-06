@@ -15,8 +15,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
-	"github.com/aws/aws-sdk-go-v2/service/appsync"
-	appsyncTypes "github.com/aws/aws-sdk-go-v2/service/appsync/types"
 	"github.com/aws/aws-sdk-go-v2/service/ecr"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
@@ -457,50 +455,8 @@ var steps = []bootstrapStep{
 		return nil
 	},
 
-	// Step: add appsync events apis for live lambda
+	// Step: add appsync events apis for live lambda - we no longer do this
 	func(ctx context.Context, cfg aws.Config, data *AwsBootstrapData) error {
-		client := appsync.NewFromConfig(cfg)
-		api, err := client.CreateApi(ctx, &appsync.CreateApiInput{
-			Name: aws.String("sst"),
-			EventConfig: &appsyncTypes.EventConfig{
-				AuthProviders: []appsyncTypes.AuthProvider{
-					{AuthType: appsyncTypes.AuthenticationTypeAwsIam},
-					{AuthType: appsyncTypes.AuthenticationTypeApiKey},
-				},
-				ConnectionAuthModes: []appsyncTypes.AuthMode{
-					{AuthType: appsyncTypes.AuthenticationTypeAwsIam},
-					{AuthType: appsyncTypes.AuthenticationTypeApiKey},
-				},
-				DefaultPublishAuthModes: []appsyncTypes.AuthMode{
-					{AuthType: appsyncTypes.AuthenticationTypeAwsIam},
-					{AuthType: appsyncTypes.AuthenticationTypeApiKey},
-				},
-				DefaultSubscribeAuthModes: []appsyncTypes.AuthMode{
-					{AuthType: appsyncTypes.AuthenticationTypeAwsIam},
-					{AuthType: appsyncTypes.AuthenticationTypeApiKey},
-				},
-			},
-		})
-		if err != nil {
-			return err
-		}
-		_, err = client.CreateChannelNamespace(ctx, &appsync.CreateChannelNamespaceInput{
-			Name:  aws.String("sst"),
-			ApiId: api.Api.ApiId,
-			PublishAuthModes: []appsyncTypes.AuthMode{
-				{AuthType: appsyncTypes.AuthenticationTypeAwsIam},
-				{AuthType: appsyncTypes.AuthenticationTypeApiKey},
-			},
-			SubscribeAuthModes: []appsyncTypes.AuthMode{
-				{AuthType: appsyncTypes.AuthenticationTypeAwsIam},
-				{AuthType: appsyncTypes.AuthenticationTypeApiKey},
-			},
-		})
-		if err != nil {
-			return err
-		}
-		data.AppsyncHttp = api.Api.Dns["HTTP"]
-		data.AppsyncRealtime = api.Api.Dns["REALTIME"]
 		return nil
 	},
 }
