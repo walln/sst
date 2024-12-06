@@ -33,6 +33,7 @@ const (
 )
 
 type Message struct {
+	ID     string
 	Type   MessageType
 	Source string
 	Body   io.Reader
@@ -72,6 +73,10 @@ func newWriter(conn *appsync.Connection, source string, channel string, message 
 		position: 0,
 		index:    0,
 	}
+}
+
+func (w *Writer) SetID(id string) {
+	w.id = id
 }
 
 const BUFFER_SIZE = 1024 * 128
@@ -146,6 +151,7 @@ func NewClient(ctx context.Context, as *appsync.Connection, source string, prefi
 				result.pending[packet.ID] = pending
 				result.out <- Message{
 					Type:   packet.Type,
+					ID:     packet.ID,
 					Source: packet.Source,
 					Body:   NewChannelReader(ctx, pending),
 				}
@@ -169,7 +175,7 @@ func (c *Client) Read() <-chan Message {
 	return c.out
 }
 
-func (c *Client) NewWriter(message MessageType, destination string) io.WriteCloser {
+func (c *Client) NewWriter(message MessageType, destination string) *Writer {
 	writer := newWriter(c.as, c.source, destination, message)
 	return writer
 }

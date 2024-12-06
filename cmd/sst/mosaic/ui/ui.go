@@ -348,10 +348,10 @@ func (u *UI) Event(unknown interface{}) {
 		break
 
 	case *project.CompleteEvent:
+		u.complete = evt
 		if evt.Old {
 			break
 		}
-		u.complete = evt
 		u.blank()
 		if len(evt.Errors) == 0 && evt.Finished {
 			u.print(TEXT_SUCCESS_BOLD.Render(IconCheck))
