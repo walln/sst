@@ -432,6 +432,7 @@ export class Service extends Component implements Link.Linkable {
           typeof lb.domain === "string" ? { name: lb.domain } : lb.domain;
         return {
           name: domain.name,
+          aliases: domain.aliases ?? [],
           dns: domain.dns === false ? undefined : domain.dns ?? awsDns(),
           cert: domain.cert,
         };
@@ -684,6 +685,7 @@ export class Service extends Component implements Link.Linkable {
           `${name}Ssl`,
           {
             domainName: domain.name,
+            alternativeNames: domain.aliases,
             dns: domain.dns!,
           },
           { parent: self },
@@ -1117,15 +1119,19 @@ export class Service extends Component implements Link.Linkable {
       lbArgs.domain.apply((domain) => {
         if (!domain?.dns) return;
 
-        domain.dns.createAlias(
-          name,
-          {
-            name: domain.name,
-            aliasName: loadBalancer!.dnsName,
-            aliasZone: loadBalancer!.zoneId,
-          },
-          { parent: self },
-        );
+        for (const recordName of [domain.name, ...domain.aliases]) {
+          const namePrefix =
+            recordName === domain.name ? name : `${name}${recordName}`;
+          domain.dns.createAlias(
+            namePrefix,
+            {
+              name: recordName,
+              aliasName: loadBalancer!.dnsName,
+              aliasZone: loadBalancer!.zoneId,
+            },
+            { parent: self },
+          );
+        }
       });
     }
 
