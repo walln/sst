@@ -95,18 +95,10 @@ func Start(
 		Env              []string
 	}
 
-	type workerResponse struct {
-		response     *http.Response
-		responseBody *bytes.Buffer
-		request      *http.Request
-		requestBody  *bytes.Buffer
-		workerID     string
-	}
-
-	workerResponseChan := make(chan workerResponse, 1000)
 	workerShutdownChan := make(chan *WorkerInfo, 1000)
 	nextChan := map[string]chan io.Reader{}
-	evts := bus.Subscribe(&watcher.FileChangedEvent{}, &project.CompleteEvent{}, &runtime.BuildInput{})
+	workers := map[string]*WorkerInfo{}
+	evts := bus.Subscribe(&watcher.FileChangedEvent{}, &project.CompleteEvent{}, &runtime.BuildInput{}, &FunctionInvokedEvent{})
 	bootstrap, err := prov.Bootstrap(prov.Config().Region)
 	if err != nil {
 		return err
@@ -119,7 +111,6 @@ func Start(
 
 	go fileLogger(p)
 	go func() {
-		workers := map[string]*WorkerInfo{}
 		workerEnv := map[string][]string{}
 		builds := map[string]*runtime.BuildOutput{}
 		targets := map[string]*runtime.BuildInput{}
@@ -267,42 +258,6 @@ func Start(
 					io.ReadAll(msg.Body)
 				}
 
-			case evt := <-workerResponseChan:
-				info, ok := workers[evt.workerID]
-				if !ok {
-					continue
-				}
-				responseBody := evt.responseBody.Bytes()
-				if err != nil {
-					continue
-				}
-				splits := strings.Split(evt.request.URL.Path, "/")
-				if splits[len(splits)-1] == "next" {
-					info.CurrentRequestID = evt.response.Header.Get("lambda-runtime-aws-request-id")
-					bus.Publish(&FunctionInvokedEvent{
-						FunctionID: info.FunctionID,
-						WorkerID:   info.WorkerID,
-						RequestID:  info.CurrentRequestID,
-						Input:      responseBody,
-					})
-				}
-				if splits[len(splits)-1] == "response" {
-					bus.Publish(&FunctionResponseEvent{
-						FunctionID: info.FunctionID,
-						WorkerID:   info.WorkerID,
-						RequestID:  splits[len(splits)-2],
-						Output:     evt.requestBody.Bytes(),
-					})
-				}
-				if splits[len(splits)-1] == "error" {
-					fee := &FunctionErrorEvent{
-						FunctionID: info.FunctionID,
-						WorkerID:   info.WorkerID,
-						RequestID:  splits[len(splits)-2],
-					}
-					json.Unmarshal(evt.requestBody.Bytes(), &fee)
-					bus.Publish(fee)
-				}
 			case info := <-workerShutdownChan:
 				slog.Info("worker died", "workerID", info.WorkerID)
 				existing, ok := workers[info.WorkerID]
@@ -317,6 +272,12 @@ func Start(
 				break
 			case unknown := <-evts:
 				switch evt := unknown.(type) {
+				case *FunctionInvokedEvent:
+					info, ok := workers[evt.WorkerID]
+					if !ok {
+						continue
+					}
+					info.CurrentRequestID = evt.RequestID
 				case *project.CompleteEvent:
 					for _, info := range workers {
 						info.Worker.Stop()
@@ -383,32 +344,72 @@ func Start(
 			json.NewEncoder(writer).Encode(bridge.PingBody{})
 			writer.Close()
 			resp, _ := http.ReadResponse(bufio.NewReader(reader), r)
+			requestID := resp.Header.Get("lambda-runtime-aws-request-id")
 			for key, values := range resp.Header {
 				for _, value := range values {
 					w.Header().Add(key, value)
 				}
 			}
 			w.WriteHeader(resp.StatusCode)
-			io.Copy(w, resp.Body)
+
+			var buf bytes.Buffer
+			tee := io.TeeReader(resp.Body, &buf)
+			io.Copy(w, tee)
+			workerInfo, ok := workers[workerID]
+			if ok {
+				bus.Publish(&FunctionInvokedEvent{
+					FunctionID: workerInfo.FunctionID,
+					WorkerID:   workerID,
+					RequestID:  requestID,
+					Input:      buf.Bytes(),
+				})
+			}
 		}
 	})
 
 	s.Mux.HandleFunc(`/lambda/{workerID}/runtime/invocation/{requestID}/response`, func(w http.ResponseWriter, r *http.Request) {
 		workerID := r.PathValue("workerID")
+		requestID := r.PathValue("requestID")
 		slog.Info("got response", "workerID", workerID, "requestID", r.PathValue("requestID"))
 		writer := client.NewWriter(bridge.MessageResponse, prefix+"/"+workerID+"/in")
-		io.Copy(writer, r.Body)
+		writer.SetID(requestID)
+		var buf bytes.Buffer
+		tee := io.TeeReader(r.Body, &buf)
+		io.Copy(writer, tee)
 		writer.Close()
 		w.WriteHeader(200)
+		info, ok := workers[workerID]
+		if ok {
+			bus.Publish(&FunctionResponseEvent{
+				FunctionID: info.FunctionID,
+				WorkerID:   workerID,
+				RequestID:  requestID,
+				Output:     buf.Bytes(),
+			})
+		}
 	})
 
 	s.Mux.HandleFunc(`/lambda/{workerID}/runtime/invocation/{requestID}/error`, func(w http.ResponseWriter, r *http.Request) {
 		workerID := r.PathValue("workerID")
+		requestID := r.PathValue("requestID")
 		slog.Info("got error", "workerID", workerID, "requestID", r.PathValue("requestID"))
 		writer := client.NewWriter(bridge.MessageError, prefix+"/"+workerID+"/in")
-		io.Copy(writer, r.Body)
+		writer.SetID(requestID)
+		var buf bytes.Buffer
+		tee := io.TeeReader(r.Body, &buf)
+		io.Copy(writer, tee)
 		writer.Close()
 		w.WriteHeader(200)
+		info, ok := workers[workerID]
+		if ok {
+			fee := &FunctionErrorEvent{
+				FunctionID: info.FunctionID,
+				WorkerID:   info.WorkerID,
+				RequestID:  requestID,
+			}
+			json.Unmarshal(buf.Bytes(), &fee)
+			bus.Publish(fee)
+		}
 	})
 
 	<-ctx.Done()

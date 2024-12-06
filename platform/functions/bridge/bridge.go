@@ -130,7 +130,7 @@ func run() error {
 				return nil
 			case msg := <-client.Read():
 				fmt.Println("got message", msg.Type)
-				if msg.Type == bridge.MessageResponse || msg.Type == bridge.MessageError {
+				if msg.Type == bridge.MessageResponse || msg.Type == bridge.MessageError && msg.ID == requestID {
 					endpoint := "response"
 					if msg.Type == bridge.MessageError {
 						endpoint = "error"
