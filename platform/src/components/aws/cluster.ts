@@ -646,6 +646,16 @@ export interface ClusterServiceArgs {
            *   }
            * }
            * ```
+           *
+           * Wildcard domains are supported.
+           *
+           * ```js
+           * {
+           *   domain: {
+           *     name: "*.example.com"
+           *   }
+           * }
+           * ```
            */
           name: Input<string>;
           /**
