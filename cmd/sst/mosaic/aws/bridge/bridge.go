@@ -30,6 +30,7 @@ const (
 	MessageResponse
 	MessageError
 	MessageReboot
+	MessageInitError
 )
 
 type Message struct {

@@ -130,12 +130,16 @@ func run() error {
 				return nil
 			case msg := <-client.Read():
 				fmt.Println("got message", msg.Type)
-				if msg.Type == bridge.MessageResponse || msg.Type == bridge.MessageError && msg.ID == requestID {
-					endpoint := "response"
-					if msg.Type == bridge.MessageError {
-						endpoint = "error"
-					}
-					http.Post("http://"+LAMBDA_RUNTIME_API+"/2018-06-01/runtime/invocation/"+requestID+"/"+endpoint, "application/json", msg.Body)
+				if msg.Type == bridge.MessageResponse && msg.ID == requestID {
+					http.Post("http://"+LAMBDA_RUNTIME_API+"/2018-06-01/runtime/invocation/"+requestID+"/response", "application/json", msg.Body)
+					break loop
+				}
+				if msg.Type == bridge.MessageError && msg.ID == requestID {
+					http.Post("http://"+LAMBDA_RUNTIME_API+"/2018-06-01/runtime/invocation/"+requestID+"/error", "application/json", msg.Body)
+					break loop
+				}
+				if msg.Type == bridge.MessageInitError {
+					http.Post("http://"+LAMBDA_RUNTIME_API+"/2018-06-01/runtime/invocation/"+requestID+"/error", "application/json", msg.Body)
 					break loop
 				}
 				if msg.Type == bridge.MessageReboot {
@@ -146,6 +150,7 @@ func run() error {
 				}
 				if msg.Type == bridge.MessagePing {
 					timeout = time.Minute * 15
+					continue
 				}
 			case <-time.After(timeout):
 				fmt.Println("timeout", requestID)
