@@ -1780,67 +1780,64 @@ export class Function extends Component implements Link.Linkable {
 			// The build artifact directory already exists, with all the user code and
 			// config files. It also has the dockerfile, we need to now just build and push to
 			// the container registry.
+			return all([isContainer, dev, bundle]).apply(
+				([
+					isContainer,
+					dev,
+					bundle, // We need the bundle to be resolved because of implicit dockerfiles even though we don't use it here
+				]) => {
+					if (!isContainer || dev) return;
 
-			return isContainer.apply((isContainer) => {
-				if (!isContainer) return;
+					const authToken = ecr.getAuthorizationTokenOutput({
+						registryId: bootstrapData.assetEcrRegistryId,
+					});
 
-				// TODO: walln - check service implementation for .dockerignore stuff
-
-				const authToken = ecr.getAuthorizationTokenOutput({
-					registryId: bootstrapData.assetEcrRegistryId,
-				});
-
-				// build image
-				//aws-python-container::sst:aws:Function::MyPythonFunction
-				return new Image(
-					`${name}Image`,
-					{
-						// tags: [$interpolate`${bootstrapData.assetEcrUrl}:latest`],
-						tags: [$interpolate`${bootstrapData.assetEcrUrl}:latest`],
-						// Cannot use latest tag it breaks lambda because for whatever reason
-						// .ref is actually digest + tags and is not properly qualified???
-						context: {
-							location: path.join($cli.paths.work, "artifacts", `${name}-src`),
-						},
-						// Use the pushed image as a cache source.
-						cacheFrom: [
-							{
-								registry: {
-									ref: $interpolate`${bootstrapData.assetEcrUrl}:cache`,
+					return new Image(
+						`${name}Image`,
+						{
+							tags: [$interpolate`${bootstrapData.assetEcrUrl}:latest`],
+							context: {
+								location: path.join(
+									$cli.paths.work,
+									"artifacts",
+									`${name}-src`,
+								),
+							},
+							cacheFrom: [
+								{
+									registry: {
+										ref: $interpolate`${bootstrapData.assetEcrUrl}:${name}-cache`,
+									},
 								},
-							},
-						],
-						// TODO: walln - investigate buildx ecr caching best practices
-						// Include an inline cache with our pushed image.
-						// cacheTo: [{
-						//     registry: {
-						//       imageManifest: true,
-						//       ociMediaTypes: true,
-						//       ref: $interpolate`${bootstrapData.assetEcrUrl}:cache`,
-						//     }
-						// }],
-						cacheTo: [
-							{
-								inline: {},
-							},
-						],
-						platforms: [
-							architecture.apply((v) =>
-								v === "arm64" ? "linux/arm64" : "linux/amd64",
-							),
-						],
-						push: true,
-						registries: [
-							authToken.apply((authToken) => ({
-								address: authToken.proxyEndpoint,
-								username: authToken.userName,
-								password: secret(authToken.password),
-							})),
-						],
-					},
-					{ parent },
-				);
-			});
+							],
+							cacheTo: [
+								{
+									registry: {
+										ref: $interpolate`${bootstrapData.assetEcrUrl}:${name}-cache`,
+										imageManifest: true,
+										ociMediaTypes: true,
+										mode: "max",
+									},
+								},
+							],
+							platforms: [
+								architecture.apply((v) =>
+									v === "arm64" ? "linux/arm64" : "linux/amd64",
+								),
+							],
+							push: true,
+							registries: [
+								authToken.apply((authToken) => ({
+									address: authToken.proxyEndpoint,
+									username: authToken.userName,
+									password: secret(authToken.password),
+								})),
+							],
+						},
+						{ parent },
+					);
+				},
+			);
 		}
 
 		function createZipAsset() {
