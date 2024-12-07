@@ -35,7 +35,6 @@ import {
 } from "@pulumi/aws";
 import { Permission, permission } from "./permission.js";
 import { Vpc } from "./vpc.js";
-import { buildPython, buildPythonContainer } from "../../runtime/python.js";
 import { Image } from "@pulumi/docker-build";
 import { rpc } from "../rpc/rpc.js";
 import { parseRoleArn } from "./helpers/arn.js";

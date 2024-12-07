@@ -87,14 +87,21 @@ func (r *PythonRuntime) Build(ctx context.Context, input *runtime.BuildInput) (*
 	///
 	/// 1. Build all packages (future tree shaking would be nice)
 	/// 2. Ensure local packages are built for lambdaric acccess (remove src/ nesting)
+	///			To future readers: we need to do this because of the way python packages are resolved
+	///			if you have a package called "mypackage" and it contains a sub-package called "src/mypackage"
+	///			then within the package you can resolve code via "import mypackage" but not "import mypackage.src.mypackage"
+	///			this means that builds get a little strange for aws lambda which does module level imports via lambdaric
+	///			so we need to ensure that the package is built such that lambdaric can resolve paths in the output bundle
+	///			but the full package is available for local development
 	/// 3. Export the uv package index to requirements.txt
-	/// 4. Install the dependencies into the artifact directory as a target
+	/// 4. Install the dependencies into the artifact directory as a target (local for zip and delegate to the dockerfile for containers)
+
 	file, err := r.getFile(input)
 	if err != nil {
 		return nil, fmt.Errorf("handler not found: %v", err)
 	}
 
-	build, err := r.BuildPythonZip(ctx, input)
+	build, err := r.CreateBuildAsset(ctx, input)
 	if err != nil {
 		return nil, err
 	}
@@ -167,10 +174,14 @@ func (r *PythonRuntime) Run(ctx context.Context, input *runtime.RunInput) (runti
 }
 
 func (r *PythonRuntime) ShouldRebuild(functionID string, file string) bool {
+	// Assume that the build is always stale. We could do a better job here but bc of how the build
+	// process actually works its not a slowdown as the real slow part is starting the python interpreter
+	// This is neglible for now and will get faster when we can move to uv's native build system.
+	// We could also pre-warm the runtime - custom watcher paths would be useful here.
 	return true
 }
 
-func (r *PythonRuntime) BuildPythonZip(ctx context.Context, input *runtime.BuildInput) (*runtime.BuildOutput, error) {
+func (r *PythonRuntime) CreateBuildAsset(ctx context.Context, input *runtime.BuildInput) (*runtime.BuildOutput, error) {
 	workingDir := path.ResolveRootDir(input.CfgPath)
 
 	// 1. Generate non-local package index
