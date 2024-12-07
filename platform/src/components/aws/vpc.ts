@@ -161,7 +161,7 @@ export interface VpcArgs {
    * }
    * ```
    */
-  bastion?: Input<boolean>;
+  bastion?: Input<boolean | {}>;
   /**
    * [Transform](/docs/components#transform) how this component creates its underlying
    * resources.
@@ -211,6 +211,10 @@ export interface VpcArgs {
      * Transform the EC2 bastion instance resource.
      */
     bastionInstance?: Transform<ec2.InstanceArgs>;
+    /**
+     * Transform the EC2 bastion security group resource.
+     */
+    bastionSecurityGroup?: Transform<ec2.SecurityGroupArgs>;
   };
 }
 
@@ -1067,27 +1071,30 @@ export class Vpc extends Component implements Link.Linkable {
           if (natInstances.length) return natInstances[0];
 
           const sg = new ec2.SecurityGroup(
-            `${name}BastionSecurityGroup`,
-            {
-              vpcId: vpc.id,
-              ingress: [
-                {
-                  protocol: "tcp",
-                  fromPort: 22,
-                  toPort: 22,
-                  cidrBlocks: ["0.0.0.0/0"],
-                },
-              ],
-              egress: [
-                {
-                  protocol: "-1",
-                  fromPort: 0,
-                  toPort: 0,
-                  cidrBlocks: ["0.0.0.0/0"],
-                },
-              ],
-            },
-            { parent: self },
+            ...transform(
+              args.transform?.bastionSecurityGroup,
+              `${name}BastionSecurityGroup`,
+              {
+                vpcId: vpc.id,
+                ingress: [
+                  {
+                    protocol: "tcp",
+                    fromPort: 22,
+                    toPort: 22,
+                    cidrBlocks: ["0.0.0.0/0"],
+                  },
+                ],
+                egress: [
+                  {
+                    protocol: "-1",
+                    fromPort: 0,
+                    toPort: 0,
+                    cidrBlocks: ["0.0.0.0/0"],
+                  },
+                ],
+              },
+              { parent: self },
+            ),
           );
 
           const role = new iam.Role(
