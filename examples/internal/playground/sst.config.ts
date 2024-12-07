@@ -18,6 +18,7 @@ export default $config({
     //const email = addEmail();
     //const apiv1 = addApiV1();
     //const apiv2 = addApiV2();
+    //const router = addRouter();
     //const app = addFunction();
     //const service = addService();
     //const postgres = addPostgres();
@@ -118,6 +119,21 @@ export default $config({
       return api;
     }
 
+    function addRouter() {
+      const app = new sst.aws.Function("MyApp", {
+        handler: "functions/router/index.handler",
+        url: true,
+      });
+      const router = new sst.aws.Router("MyRouter", {
+        domain: "router.playground.sst.sh",
+        routes: {
+          "/api/*": app.url,
+        },
+      });
+      const router2 = sst.aws.Router.get("MyRouter2", router.distributionID);
+      return router;
+    }
+
     function addFunction() {
       const app = new sst.aws.Function("MyApp", {
         handler: "functions/handler-example/index.handler",
@@ -145,6 +161,12 @@ export default $config({
     function addPostgres() {
       const postgres = new sst.aws.Postgres("MyPostgres", {
         vpc,
+      });
+      new sst.aws.Function("MyPostgresApp", {
+        handler: "functions/postgres/index.handler",
+        url: true,
+        vpc,
+        link: [postgres],
       });
       ret.pgHost = postgres.host;
       ret.pgPort = $interpolate`${postgres.port}`;

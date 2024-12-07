@@ -4,9 +4,9 @@ description: Build full-stack apps on your own infrastructure.
 ---
 
 import { Tabs, TabItem } from '@astrojs/starlight/components';
-import VideoAside from "../../../components/VideoAside.astro";
 import { LinkCard } from '@astrojs/starlight/components';
 import { Icon } from '@astrojs/starlight/components';
+import VideoAside from "../../../components/VideoAside.astro";
 import config from '../../../../config.ts';
 
 export const github  = config.github;
@@ -18,8 +18,6 @@ SST supports over 150 providers. Check out the [full list](/docs/providers#direc
 :::
 
 What makes SST different is that your _entire_ app is **defined in code** — in a single `sst.config.ts` file. This includes databases, buckets, queues, Stripe webhooks, or any one of **150+ providers**.
-
-<VideoAside title="Watch a video about SST" href="https://www.youtube.com/watch?v=aPmyoZe3xDE" />
 
 With SST, **everything is automated**.
 
@@ -221,6 +219,8 @@ Learn more about [resource linking](/docs/linking/).
 ## Project structure
 
 We've looked at a couple of different types of files. Let's take a step back and see what an SST app looks like in practice.
+
+<VideoAside title="Watch a video about SST's project structure" href="https://youtu.be/mserRA-CWRw" />
 
 ---
 
