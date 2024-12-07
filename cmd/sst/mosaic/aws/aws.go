@@ -83,10 +83,6 @@ func Start(
 	prov := uncasted.(*provider.AwsProvider)
 	config := prov.Config()
 	slog.Info("getting endpoint")
-	// bootstrapData, err := provider.AwsBootstrap(config)
-	// if err != nil {
-	// 	return err
-	// }
 	shutdownChan := make(chan MQTT.Message, 1000)
 	prefix := fmt.Sprintf("/sst/%s/%s", p.App().Name, p.App().Stage)
 
@@ -102,12 +98,12 @@ func Start(
 	nextChan := map[string]chan io.Reader{}
 	workers := map[string]*WorkerInfo{}
 	evts := bus.Subscribe(&watcher.FileChangedEvent{}, &project.CompleteEvent{}, &runtime.BuildInput{}, &FunctionInvokedEvent{})
-
-	bootstrap, err := prov.Bootstrap(prov.Config().Region)
+	rest, realtime, err := resolveAppSync(ctx, config)
 	if err != nil {
 		return err
 	}
-	conn, err := appsync.Dial(ctx, config, bootstrap.AppsyncHttp, bootstrap.AppsyncRealtime)
+	slog.Info("found appsync", "rest", rest, "realtime", realtime)
+	conn, err := appsync.Dial(ctx, config, rest, realtime)
 	if err != nil {
 		return err
 	}
@@ -492,7 +488,13 @@ func resolveAppSync(ctx context.Context, cfg aws.Config) (string, string, error)
 		}
 		for _, result := range results.Apis {
 			if *result.Name == "sst" {
-				return result.Dns["HTTP"], result.Dns["REALTIME"], nil
+				match, err := client.GetApi(ctx, &appsyncSdk.GetApiInput{
+					ApiId: result.ApiId,
+				})
+				if err != nil {
+					return "", "", err
+				}
+				return match.Api.Dns["HTTP"], match.Api.Dns["REALTIME"], nil
 			}
 		}
 		if results.NextToken == nil {
@@ -539,5 +541,6 @@ func resolveAppSync(ctx context.Context, cfg aws.Config) (string, string, error)
 	if err != nil {
 		return "", "", err
 	}
+	slog.Info("got api", "api", api.Api.Dns)
 	return api.Api.Dns["HTTP"], api.Api.Dns["REALTIME"], nil
 }
