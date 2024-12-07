@@ -1538,54 +1538,34 @@ export class Function extends Component implements Link.Linkable {
 		}
 
 		function buildHandler() {
-			return all([runtime, dev]).apply(async ([runtime, dev]) => {
-				if (dev) {
-					return {
-						handler: "bootstrap",
-						bundle: path.join($cli.paths.platform, "dist", "bridge"),
-					};
-				}
+			return all([runtime, dev, isContainer]).apply(
+				async ([runtime, dev, isContainer]) => {
+					if (dev) {
+						return {
+							handler: "bootstrap",
+							bundle: path.join($cli.paths.platform, "dist", "bridge"),
+						};
+					}
 
-				// TODO(walln): remove the python branch and unify with the js builds
-				if (runtime.startsWith("python")) {
-					const buildResult = all([isContainer, buildInput]).apply(
-						async ([container, input]) => {
-							const result = await rpc.call<{
-								handler: string;
-								out: string;
-								errors: string[];
-							}>("Runtime.Build", { ...input, isContainer: container });
-							if (result.errors.length > 0) {
-								throw new Error(result.errors.join("\n"));
-							}
-							return result;
-						},
-					);
-
+					const buildResult = buildInput.apply(async (input) => {
+						const result = await rpc.call<{
+							handler: string;
+							out: string;
+							errors: string[];
+							sourcemaps: string[];
+						}>("Runtime.Build", { ...input, isContainer });
+						if (result.errors.length > 0) {
+							throw new Error(result.errors.join("\n"));
+						}
+						return result;
+					});
 					return {
 						handler: buildResult.handler,
 						bundle: buildResult.out,
+						sourcemaps: buildResult.sourcemaps,
 					};
-				}
-
-				const buildResult = buildInput.apply(async (input) => {
-					const result = await rpc.call<{
-						handler: string;
-						out: string;
-						errors: string[];
-						sourcemaps: string[];
-					}>("Runtime.Build", input);
-					if (result.errors.length > 0) {
-						throw new Error(result.errors.join("\n"));
-					}
-					return result;
-				});
-				return {
-					handler: buildResult.handler,
-					bundle: buildResult.out,
-					sourcemaps: buildResult.sourcemaps,
-				};
-			});
+				},
+			);
 		}
 
 		function buildHandlerWrapper() {

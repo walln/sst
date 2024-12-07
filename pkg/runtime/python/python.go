@@ -283,9 +283,12 @@ func (r *PythonRuntime) BuildPythonZip(ctx context.Context, input *runtime.Build
 		slog.Info("built python function", "handler", adjustedHandler, "out", input.Out())
 
 		errors := []string{}
+		sourcemaps := []string{}
+
 		return &runtime.BuildOutput{
-			Handler: adjustedHandler,
-			Errors:  errors,
+			Handler:    adjustedHandler,
+			Errors:     errors,
+			Sourcemaps: sourcemaps,
 		}, nil
 	} else {
 		// 5. Check if there is a Dockerfile in the handler directory
@@ -324,14 +327,13 @@ func (r *PythonRuntime) BuildPythonZip(ctx context.Context, input *runtime.Build
 			return nil, fmt.Errorf("failed to adjust handler path: %v", err)
 		}
 
-		// TODO(walln): handle dockerignore files
-
-		// TODO(walln): Do we need adjust invalid handler paths bc of lambdaric?
-
 		errors := []string{}
+		sourcemaps := []string{}
+
 		return &runtime.BuildOutput{
-			Handler: adjustedHandler,
-			Errors:  errors,
+			Handler:    adjustedHandler,
+			Errors:     errors,
+			Sourcemaps: sourcemaps,
 		}, nil
 	}
 }
