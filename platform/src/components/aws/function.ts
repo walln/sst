@@ -837,20 +837,34 @@ export interface FunctionArgs {
 	/**
 	 * Configure your python function.
 	 *
-	 * By default, SST will package all files in the same directory as the `handler` file.
-	 * This means that you need to your handler file be the root of all files that need to be
-	 * included in the function package. The only exception to this is a parent `pyproject.toml`
-	 * file. SST will look for this file by finding the closest parent directory that contains
-	 * a `pyproject.toml` file.
+	 * SST uses the [uv](https://docs.rs/uv/latest/uv/) package manager to build python functions.
+	 * To configure the python runtime, you will need to use uv workspaces. When SST builds your function,
+	 * it will require the function handler to be a member of a uv workspace. You should likely use a single
+	 * uv root with multiple packages. This allows you to share code between packages and follow similar conventions
+	 * to the way you would structure nodejs lambda functions. For full examples see the
+	 * [python examples](https://github.com/sst/sst/tree/dev/examples/aws-python). Python functions will work with
+	 * live lambda, support linking, and even have an SDK to access your linked resources.
+	 *
+	 * :::note
+	 * You will need to have uv installed to use python functions. SST no longer installs uv for you.
+	 * You can install uv [here](https://docs.astral.sh/uv/getting-started/installation/).
+	 * :::
+	 *
+	 * In this example we have a `functions` uv workspace package that contains our handler functions and a root
+	 * `pyproject.toml` file to configure our workspaces.
 	 *
 	 * @example
 	 * ```markdown
 	 * project-root/
 	 * ├── functions/
-	 * │   ├── pyproject.toml
-	 * │   ├── handler.py
-	 * │   └── utils.py
+	 * |   ├── src/
+	 * |   |   ├── functions
+	 * |   |   |   ├── __init__.py
+	 * |   |   |   ├── handler.py
+	 * |   |   |   └── utils.py
+	 * |   |   ├── pyproject.toml
 	 * └── sst.config.ts
+	 * └── pyproject.toml
 	 * ```
 	 */
 	python?: Input<{
@@ -858,6 +872,12 @@ export interface FunctionArgs {
 		 * Whether to deploy the function to the container runtime. You should use this
 		 * if you are deploying a function that needs native dependencies, is large,
 		 * or if you need to customize some runtime configuration.
+		 *
+		 * :::note
+		 * Container functions use a default dockerfile that can be overridden.
+		 * See this [example](https://github.com/sst/sst/tree/dev/examples/aws-python-container) for how to customize it.
+		 * :::
+		 *
 		 * @default `false`
 		 * @example
 		 * ```ts
@@ -2022,7 +2042,7 @@ export class Function extends Component implements Link.Linkable {
 										imageConfig: {
 											commands: [
 												all([handler, runtime]).apply(([handler, runtime]) => {
-													// If a python container image we have to rewrite the handler path so lambdaric is happy
+													// If a python container image we have to rewrite the handler path so lambdaric is happy (see python.go for more information)
 													// This means no leading . and replace all / with .
 													if (isContainer && runtime.includes("python")) {
 														return handler
