@@ -24,17 +24,31 @@ export type { VpcArgs as VpcV1Args } from "./vpc-v1";
 
 export interface VpcArgs {
   /**
-   * Number of Availability Zones or AZs for the VPC. By default, it creates a VPC with 2
-   * availability zones since services like RDS and Fargate need at least 2 AZs.
+   * Specify the Availability Zones or AZs for the VPC.
+   *
+   * You can specify a number of AZs or a list of AZs. If you specify a number, it will
+   * look up the availability zones in the region and automatically select that number of
+   * AZs. If you specify a list of AZs, it will use that list of AZs.
+   *
+   * By default, it creates a VPC with 2 availability zones since services like RDS and
+   * Fargate need at least 2 AZs.
    * @default `2`
    * @example
+   * Create a VPC with 3 AZs
    * ```ts
    * {
    *   az: 3
    * }
    * ```
+   *
+   * Create a VPC with specific AZs
+   * ```ts
+   * {
+   *   az: ["us-east-1a", "us-east-1b"]
+   * }
+   * ```
    */
-  az?: Input<number>;
+  az?: Input<number | Input<string>[]>;
   /**
    * Configures NAT. Enabling NAT allows resources in private subnets to connect to the internet.
    *
@@ -654,17 +668,21 @@ export class Vpc extends Component implements Link.Linkable {
     }
 
     function normalizeAz() {
-      const zones = getAvailabilityZonesOutput(
-        {
-          state: "available",
-        },
-        { parent: self },
-      );
-      return all([zones, args.az ?? 2]).apply(([zones, az]) =>
-        Array(az)
-          .fill(0)
-          .map((_, i) => zones.names[i]),
-      );
+      return output(args.az).apply((az) => {
+        if (Array.isArray(az)) return output(az);
+
+        const zones = getAvailabilityZonesOutput(
+          {
+            state: "available",
+          },
+          { parent: self },
+        );
+        return all([zones, args.az ?? 2]).apply(([zones, az]) =>
+          Array(az)
+            .fill(0)
+            .map((_, i) => zones.names[i]),
+        );
+      });
     }
 
     function normalizeNat() {
