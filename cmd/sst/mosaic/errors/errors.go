@@ -33,7 +33,7 @@ var transformers = []ErrorTransformer{
 	exact(project.ErrBuildFailed, project.ErrBuildFailed.Error()),
 	exact(project.ErrVersionMismatch, project.ErrVersionMismatch.Error()),
 	match(func(err *project.ErrProviderVersionTooLow) string {
-		return fmt.Sprintf("You specified a version (%s) of the %s provider that is too low. This version of sst needs %s or higher", err.Version, err.Name, err.Needed)
+		return fmt.Sprintf("You specified version %s of the \"%s\" provider. SST needs %s or higher.", err.Version, err.Name, err.Needed)
 	}),
 	func(err error) (bool, error) {
 		msg := err.Error()
