@@ -30,6 +30,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 	github.com/manifoldco/promptui v0.9.0
+	github.com/mattn/go-libvterm v0.0.0-20220218002314-74b0d3133396
 	github.com/posthog/posthog-go v0.0.0-20240221135834-4944045455b4
 	github.com/pulumi/pulumi/sdk/v3 v3.136.1
 	github.com/spf13/pflag v1.0.5
@@ -54,6 +55,7 @@ require (
 	github.com/google/btree v1.1.3 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/gorilla/schema v1.4.1 // indirect
+	github.com/mattn/go-pointer v0.0.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
