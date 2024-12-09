@@ -20,7 +20,7 @@ export function functionBuilder(
   definition: Input<string | FunctionArn | FunctionArgs>,
   defaultArgs: Pick<
     FunctionArgs,
-    "url" | "description" | "link" | "environment" | "permissions"
+    "url" | "description" | "link" | "environment" | "permissions" | "_skipHint"
   >,
   argsTransform?: Transform<FunctionArgs>,
   opts?: ComponentResourceOptions,

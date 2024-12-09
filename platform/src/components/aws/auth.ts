@@ -145,10 +145,17 @@ export class Auth extends Component implements Link.Linkable {
     this._table = table;
     this._authorizer = authorizer;
     this._router = router;
+    registerOutputs();
+
+    function registerOutputs() {
+      self.registerOutputs({
+        _hint: self.url,
+      });
+    }
 
     function createTable() {
       return new Dynamo(
-        `${name}Table`,
+        `${name}Storage`,
         {
           fields: { pk: "string", sk: "string" },
           primaryIndex: { hashKey: "pk", rangeKey: "sk" },
@@ -171,6 +178,7 @@ export class Auth extends Component implements Link.Linkable {
               options: { table: table.name },
             }),
           },
+          _skipHint: true,
         },
         undefined,
         { parent: self },
@@ -187,6 +195,7 @@ export class Auth extends Component implements Link.Linkable {
           routes: {
             "/": authorizer.url,
           },
+          _skipHint: true,
         },
         { parent: self },
       );
