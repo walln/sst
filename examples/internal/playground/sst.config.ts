@@ -43,7 +43,7 @@ export default $config({
 
     function addAuth() {
       const auth = new sst.aws.Auth("MyAuth", {
-        authorizer: "functions/auth/index.authorizer",
+        authorizer: "functions/auth/index.handler",
       });
       return auth;
     }

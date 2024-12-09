@@ -130,7 +130,7 @@ export class Auth extends Component implements Link.Linkable {
         `There is a new version of "Auth" that has breaking changes.`,
         ``,
         `What changed:`,
-        `  - The latest version is now powered by [OpenAuth](https://openauth.js.org).`,
+        `  - The latest version is now powered by OpenAuth - https://openauth.js.org`,
         ``,
         `To upgrade:`,
         `  - Set \`forceUpgrade: "v${_version}"\` on the "Auth" component. Learn more https://sst.dev/docs/component/aws/auth#forceupgrade`,
