@@ -71,6 +71,7 @@ const sidebar = [
       "docs/component/aws/efs",
       "docs/component/aws/vpc",
       "docs/component/aws/cron",
+      //"docs/component/aws/auth",
       "docs/component/aws/nuxt",
       "docs/component/aws/astro",
       "docs/component/aws/redis",

@@ -1,65 +1,241 @@
 import {
   ComponentResourceOptions,
+  jsonStringify,
   Output,
-  output,
-  secret,
 } from "@pulumi/pulumi";
-import { Component, Transform } from "../component";
+import { Component } from "../component";
 import { Link } from "../link";
-import { FunctionArgs, Function } from "./function";
-import { PrivateKey } from "@pulumi/tls";
-import { s3 } from "@pulumi/aws";
+import { FunctionArgs, Function, Dynamo, CdnArgs, Router } from ".";
+import { functionBuilder } from "./helpers/function-builder";
+import { env } from "../linkable";
+import { Auth as AuthV1 } from "./auth-v1";
+import { Input } from "../input";
 
 export interface AuthArgs {
-  authenticator: FunctionArgs;
-  transform?: {
-    bucketPolicy?: Transform<s3.BucketPolicyArgs>;
-  };
+  /**
+   * The authenticator function.
+   *
+   * @example
+   * ```js
+   * {
+   *   authenticator: "src/auth.handler"
+   * }
+   * ```
+   */
+  authenticator: Input<string | FunctionArgs>;
+  /**
+   * Set a custom domain for your Auth server.
+   *
+   * Automatically manages domains hosted on AWS Route 53, Cloudflare, and Vercel. For other
+   * providers, you'll need to pass in a `cert` that validates domain ownership and add the
+   * DNS records.
+   *
+   * :::tip
+   * Built-in support for AWS Route 53, Cloudflare, and Vercel. And manual setup for other
+   * providers.
+   * :::
+   *
+   * @example
+   *
+   * By default this assumes the domain is hosted on Route 53.
+   *
+   * ```js
+   * {
+   *   domain: "auth.example.com"
+   * }
+   * ```
+   *
+   * For domains hosted on Cloudflare.
+   *
+   * ```js
+   * {
+   *   domain: {
+   *     name: "auth.example.com",
+   *     dns: sst.cloudflare.dns()
+   *   }
+   * }
+   * ```
+   */
+  domain?: CdnArgs["domain"];
+  /**
+   * Force upgrade from `Auth.v1` to the latest `Auth` version. The only valid value
+   * is `v2`, which is the version of the new `Auth`.
+   *
+   * The latest `Auth` is powered by [OpenAuth](https://github.com/openauthjs/openauth).
+   *
+   * To upgrade, add the prop.
+   *
+   * ```ts
+   * {
+   *   forceUpgrade: "v2"
+   * }
+   * ```
+   *
+   * Run `sst deploy`.
+   *
+   * :::tip
+   * You can remove this prop after you upgrade.
+   * :::
+   *
+   * This upgrades your component and the resources it created. You can now optionally
+   * remove the prop.
+   */
+  forceUpgrade?: "v2";
 }
 
+/**
+ * The `Auth` component lets you create centralized auth servers on AWS. It deploys
+ * [OpenAuth](https://github.com/openauthjs/openauth) to [AWS Lambda](https://aws.amazon.com/lambda/)
+ * and uses [AWS DynamoDB](https://aws.amazon.com/dynamodb/) for storage.
+ *
+ * @example
+ *
+ * #### Create a Auth server
+ *
+ * ```ts title="sst.config.ts"
+ * const auth = new sst.aws.Auth("MyAuth", {
+ *   authenticator: "src/auth.handler"
+ * });
+ * ```
+ *
+ * #### Add a custom domain
+ *
+ * Set a custom domain for your Auth server.
+ *
+ * ```js {2} title="sst.config.ts"
+ * new sst.aws.Auth("MyAuth", {
+ *   authenticator: "src/auth.handler"
+ *   domain: "auth.example.com"
+ * });
+ * ```
+ */
 export class Auth extends Component implements Link.Linkable {
-  private readonly _key: PrivateKey;
+  private readonly _table: Dynamo;
   private readonly _authenticator: Output<Function>;
+  private readonly _router?: Router;
+  public static v1 = AuthV1;
 
   constructor(name: string, args: AuthArgs, opts?: ComponentResourceOptions) {
     super(__pulumiType, name, args, opts);
+    const _version = 2;
+    const self = this;
 
-    this._key = new PrivateKey(`${name}Keypair`, {
-      algorithm: "RSA",
+    self.registerVersion({
+      new: _version,
+      old: $cli.state.version[name],
+      message: [
+        `There is a new version of "Auth" that has breaking changes.`,
+        ``,
+        `What changed:`,
+        `  - The latest version is now powered by [OpenAuth](https://github.com/openauthjs/openauth).`,
+        ``,
+        `To upgrade:`,
+        `  - Set \`forceUpgrade: "v${_version}"\` on the "Auth" component. Learn more https://sst.dev/docs/component/aws/auth#forceupgrade`,
+        ``,
+        `To continue using v${$cli.state.version[name]}:`,
+        `  - Rename "Auth" to "Auth.v${$cli.state.version[name]}". Learn more about versioning - https://sst.dev/docs/components/#versioning`,
+      ].join("\n"),
+      forceUpgrade: args.forceUpgrade,
     });
 
-    this._authenticator = output(args.authenticator).apply((args) => {
-      return new Function(`${name}Authenticator`, {
-        url: true,
-        ...args,
-        environment: {
-          ...args.environment,
-          AUTH_PRIVATE_KEY: secret(this.key.privateKeyPemPkcs8),
-          AUTH_PUBLIC_KEY: secret(this.key.publicKeyPem),
+    const table = createTable();
+    const authenticator = createAuthenticator();
+    const router = createRouter();
+
+    this._table = table;
+    this._authenticator = authenticator;
+    this._router = router;
+
+    function createTable() {
+      return new Dynamo(
+        `${name}Table`,
+        {
+          fields: { pk: "string", sk: "string" },
+          primaryIndex: { hashKey: "pk", rangeKey: "sk" },
+          ttl: "expiry",
         },
-        _skipHint: true,
-      });
-    });
+        { parent: self },
+      );
+    }
+
+    function createAuthenticator() {
+      return functionBuilder(
+        `${name}Authenticator`,
+        args.authenticator,
+        {
+          url: true,
+          link: [table],
+          environment: {
+            OPENAUTH_STORAGE: jsonStringify({
+              type: "dynamo",
+              options: { table: table.name },
+            }),
+          },
+        },
+        undefined,
+        { parent: self },
+      ).apply((v) => v.getFunction());
+    }
+
+    function createRouter() {
+      if (!args.domain) return;
+
+      return new Router(
+        `${name}Router`,
+        {
+          domain: args.domain,
+          routes: {
+            "/": authenticator.url,
+          },
+        },
+        { parent: self },
+      );
+    }
   }
 
-  public get key() {
-    return this._key;
-  }
-
-  public get authenticator() {
-    return this._authenticator;
-  }
-
+  /**
+   * The URL of the Auth component.
+   *
+   * If the `domain` is set, this is the URL with the custom domain.
+   * Otherwise, it's the autogenerated function URL for the authenticator.
+   */
   public get url() {
-    return this._authenticator.url!;
+    return (
+      this._router?.url ?? this._authenticator.url.apply((v) => v.slice(0, -1))
+    );
+  }
+
+  /**
+   * The underlying [resources](/docs/components/#nodes) this component creates.
+   */
+  public get nodes() {
+    return {
+      /**
+       * The DynamoDB component.
+       */
+      table: this._table,
+      /**
+       * The Function component for the authenticator.
+       */
+      authenticator: this._authenticator,
+      /**
+       * The Router component for the custom domain.
+       */
+      router: this._router,
+    };
   }
 
   /** @internal */
   public getSSTLink() {
     return {
       properties: {
-        publicKey: secret(this.key.publicKeyPem),
+        url: this.url,
       },
+      include: [
+        env({
+          OPENAUTH_ISSUER: this.url,
+        }),
+      ],
     };
   }
 }
