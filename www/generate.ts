@@ -315,7 +315,10 @@ function generateCliDoc() {
 
 function generateCommonErrorsDoc() {
   const content = fs.readFileSync("common-errors-doc.json");
-  const json = JSON.parse(content.toString()) as CommonError[];
+  const json = [
+    ...(JSON.parse(content.toString()) as CommonError[]),
+    ...commonErrors(),
+  ];
   const outputFilePath = `src/content/docs/docs/common-errors.mdx`;
 
   fs.writeFileSync(
@@ -2219,4 +2222,21 @@ async function buildExamples() {
       c.children?.length === 1 &&
       c.children[0].comment
   );
+}
+
+function commonErrors(): CommonError[] {
+  return [
+    {
+      code: "Cluster: Unhealthy health check",
+      message: "Unhealthy: Health checks failed",
+      long: [
+        "This error usually occurs when the load balancer health check fails. When it fails, the load balancer will terminate the containers, causing the request to fail.",
+        "",
+        "Follow these steps to troubleshoot the issue:",
+        "1. Verify the health check path. By default, the load balancer checks the `/` path. Ensure the `/` path is accessible for your containers. If your application runs on a different path, update the health check path accordingly.",
+        `2. Confirm the containers are operational. Navigate to the AWS ECS console, select the cluster, and go to the Tasks tab. Choose "Any desired status" under the "Filter desired status" dropdown. Select a task and check for errors under the "Logs" tab. This indicates the container failed to start.`,
+        `3. If the container was terminated by the load balancer while still starting up, consider increasing the health check interval and timeout.`,
+      ],
+    },
+  ];
 }
