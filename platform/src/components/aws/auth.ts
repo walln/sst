@@ -196,7 +196,7 @@ export class Auth extends Component implements Link.Linkable {
         {
           domain: args.domain,
           routes: {
-            "/": authorizer.url,
+            "/*": authorizer.url,
           },
           _skipHint: true,
         },
