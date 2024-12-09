@@ -32,9 +32,26 @@ You can learn more about it over on the [OpenAuth GitHub](https://github.com/ope
 
 ---
 
+## Why  build OpenAuth
+
+Auth has been one of the most requested features in SST. With v1 and v2 of our `Auth` components, we found that most folks wanted a standalone, easy to self-host auth provider.
+
+Most of the existing solutions were either libraries, or SaaS services that held your user data. And the standalone self-hosted ones were just too complicated to set up.
+
+We also think a universal, standards-based auth provider is something that should exist outside of SST, which is why we built OpenAuth as a separate project.
+
+---
+
 ## Using it in SST
 
 OpenAuth needs some minimal infrastructure to run. The new [`Auth`](/docs/component/aws/auth) component in SST v3 can do this for you.
+
+```ts title="sst.config.ts"
+new sst.aws.Auth("MyAuth", {
+  domain: "auth.myapp.com",
+  authorizer: "src/auth.handler"
+});
+```
 
 ---
 

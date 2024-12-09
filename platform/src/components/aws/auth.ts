@@ -61,9 +61,8 @@ export interface AuthArgs {
    * Force upgrade from `Auth.v1` to the latest `Auth` version. The only valid value
    * is `v2`, which is the version of the new `Auth`.
    *
-   * The latest `Auth` is powered by [OpenAuth](https://github.com/openauthjs/openauth).
-   *
-   * To upgrade, add the prop.
+   * The latest `Auth` is powered by [OpenAuth](https://openauth.js.org). To
+   * upgrade, add the prop.
    *
    * ```ts
    * {
@@ -85,8 +84,12 @@ export interface AuthArgs {
 
 /**
  * The `Auth` component lets you create centralized auth servers on AWS. It deploys
- * [OpenAuth](https://github.com/openauthjs/openauth) to [AWS Lambda](https://aws.amazon.com/lambda/)
- * and uses [AWS DynamoDB](https://aws.amazon.com/dynamodb/) for storage.
+ * [OpenAuth](https://openauth.js.org) to [AWS Lambda](https://aws.amazon.com/lambda/)
+ * and uses [Amazon DynamoDB](https://aws.amazon.com/dynamodb/) for storage.
+ *
+ * :::note
+ * `Auth` and OpenAuth are currently in beta.
+ * :::
  *
  * @example
  *
@@ -104,7 +107,7 @@ export interface AuthArgs {
  *
  * ```js {2} title="sst.config.ts"
  * new sst.aws.Auth("MyAuth", {
- *   authorizer: "src/auth.handler"
+ *   authorizer: "src/auth.handler",
  *   domain: "auth.example.com"
  * });
  * ```
@@ -127,7 +130,7 @@ export class Auth extends Component implements Link.Linkable {
         `There is a new version of "Auth" that has breaking changes.`,
         ``,
         `What changed:`,
-        `  - The latest version is now powered by [OpenAuth](https://github.com/openauthjs/openauth).`,
+        `  - The latest version is now powered by [OpenAuth](https://openauth.js.org).`,
         ``,
         `To upgrade:`,
         `  - Set \`forceUpgrade: "v${_version}"\` on the "Auth" component. Learn more https://sst.dev/docs/component/aws/auth#forceupgrade`,
