@@ -17,6 +17,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.48.1
 	github.com/aws/aws-sdk-go-v2/service/ssm v1.44.7
 	github.com/briandowns/spinner v1.23.0
+	github.com/charmbracelet/bubbletea/v2 v2.0.0-alpha.2
 	github.com/charmbracelet/huh v0.3.0
 	github.com/charmbracelet/x/ansi v0.4.3
 	github.com/cloudflare/cloudflare-go v0.89.0
@@ -29,9 +30,7 @@ require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/joho/godotenv v1.5.1
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
-	github.com/liamg/darktile v0.0.11
 	github.com/manifoldco/promptui v0.9.0
-	github.com/mattn/go-libvterm v0.0.0-20220218002314-74b0d3133396
 	github.com/posthog/posthog-go v0.0.0-20240221135834-4944045455b4
 	github.com/pulumi/pulumi/sdk/v3 v3.136.1
 	github.com/spf13/pflag v1.0.5
@@ -46,10 +45,7 @@ require (
 require (
 	github.com/ajg/form v1.5.1 // indirect
 	github.com/catppuccin/go v0.2.0 // indirect
-	github.com/charmbracelet/bubbles/v2 v2.0.0-alpha.2 // indirect
-	github.com/charmbracelet/bubbletea/v2 v2.0.0-alpha.2 // indirect
 	github.com/charmbracelet/colorprofile v0.1.6 // indirect
-	github.com/charmbracelet/lipgloss/v2 v2.0.0-alpha.2 // indirect
 	github.com/charmbracelet/x/cellbuf v0.0.3 // indirect
 	github.com/charmbracelet/x/term v0.2.0 // indirect
 	github.com/charmbracelet/x/wcwidth v0.0.0-20241011142426-46044092ad91 // indirect
@@ -64,7 +60,6 @@ require (
 	github.com/google/btree v1.1.3 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/gorilla/schema v1.4.1 // indirect
-	github.com/mattn/go-pointer v0.0.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	go.uber.org/multierr v1.11.0 // indirect

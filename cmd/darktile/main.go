@@ -21,7 +21,7 @@ type UpdateMsg struct{}
 func (m model) Init() (tea.Model, tea.Cmd) {
 	updates := make(chan struct{})
 	m.term = termutil.New(
-		termutil.WithInitialCommand("vim main.go"),
+		termutil.WithInitialCommand("btop"),
 	)
 	go m.term.Run(updates, 100, 100)
 	return m, func() tea.Msg { return UpdateMsg{} }
