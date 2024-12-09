@@ -1402,12 +1402,20 @@ export class Function extends Component implements Link.Linkable {
 				dev,
 				bootstrapData,
 				Function.encryptionKey().base64,
-			]).apply(([environment, dev, bootstrap, key]) => {
+				args.link,
+			]).apply(([environment, dev, bootstrap, key, link]) => {
 				const result = environment ?? {};
 				result.SST_RESOURCE_App = JSON.stringify({
 					name: $app.name,
 					stage: $app.stage,
 				});
+				for (const linkable of link || []) {
+					if (!Link.isLinkable(linkable)) continue;
+					const def = linkable.getSSTLink();
+					for (const item of def.include || []) {
+						if (item.type === "environment") Object.assign(result, item.env);
+					}
+				}
 				result.SST_KEY = key;
 				result.SST_KEY_FILE = "resource.enc";
 				if (dev) {
