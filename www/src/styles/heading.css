@@ -1,0 +1,23 @@
+.sl-markdown-content :is(h1, h2, h3, h4, h5, h6) > a {
+  text-decoration: none;
+  cursor: none;
+  color: var(--__sl-font-headings);
+
+  &:hover {
+    cursor: pointer;
+    text-decoration: none;
+    color: var(--__sl-font-headings);
+  }
+
+  &:hover::after {
+    content: '#';
+    animation: fadeInBackdrop 0.3s ease forwards;
+    margin-left: 0.25em;
+    color: var(--color-text-dimmed);
+    display: inline;
+    width: auto;
+    height: auto;
+    background-color: transparent;
+    font-weight: normal;
+  }
+}
