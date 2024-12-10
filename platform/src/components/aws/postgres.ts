@@ -257,6 +257,10 @@ export interface PostgresArgs {
      * Transform the database instance in the RDS Cluster.
      */
     instance?: Transform<rds.InstanceArgs>;
+    /**
+     * Transform the RDS Proxy.
+     */
+    proxy?: Transform<rds.ProxyArgs>;
   };
 }
 
@@ -733,20 +737,23 @@ Listening on "${dev.host}:${dev.port}"...`,
         );
 
         const rdsProxy = new rds.Proxy(
-          `${name}Proxy`,
-          {
-            engineFamily: "POSTGRESQL",
-            auths: [
-              {
-                authScheme: "SECRETS",
-                iamAuth: "DISABLED",
-                secretArn: secret.arn,
-              },
-            ],
-            roleArn: role.arn,
-            vpcSubnetIds: vpc.subnets,
-          },
-          { parent: self },
+          ...transform(
+            args.transform?.proxy,
+            `${name}Proxy`,
+            {
+              engineFamily: "POSTGRESQL",
+              auths: [
+                {
+                  authScheme: "SECRETS",
+                  iamAuth: "DISABLED",
+                  secretArn: secret.arn,
+                },
+              ],
+              roleArn: role.arn,
+              vpcSubnetIds: vpc.subnets,
+            },
+            { parent: self },
+          ),
         );
 
         const targetGroup = new rds.ProxyDefaultTargetGroup(
