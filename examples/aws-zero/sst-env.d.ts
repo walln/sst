@@ -20,6 +20,7 @@ declare module "sst" {
     "Zero": {
       "service": string
       "type": "sst.aws.Service"
+      "url": string
     }
   }
 }

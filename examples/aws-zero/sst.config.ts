@@ -3,7 +3,7 @@
 export default $config({
   app(input) {
     return {
-      name: "aws-express",
+      name: "aws-zero",
       removal: input?.stage === "production" ? "retain" : "remove",
       home: "aws",
     };
