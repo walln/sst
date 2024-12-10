@@ -4,8 +4,8 @@
   color: var(--__sl-font-headings);
 
   &:hover {
-    text-decoration: none;
     cursor: pointer;
+    text-decoration: none;
     color: var(--__sl-font-headings);
   }
 
@@ -13,22 +13,11 @@
     content: '#';
     animation: fadeInBackdrop 0.3s ease forwards;
     margin-left: 0.25em;
-    color: var(--sl-color-accent);
+    color: var(--color-text-dimmed);
     display: inline;
     width: auto;
     height: auto;
     background-color: transparent;
-  }
-}
-
-@media (prefers-color-scheme: light) {
-  .sl-markdown-content :is(h1, h2, h3, h4, h5, h6) > a:hover::after {
-    color: var(--sl-color-text-accent);
-  }
-}
-
-@media (prefers-color-scheme: dark) {
-  .sl-markdown-content :is(h1, h2, h3, h4, h5, h6) > a:hover::after {
-    color: var(--sl-color-accent);
+    font-weight: normal;
   }
 }
