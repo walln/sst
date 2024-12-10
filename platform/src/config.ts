@@ -234,7 +234,15 @@ export interface App {
   home: "aws" | "cloudflare" | "local";
 
   /**
-   * Prevents `sst remove` from being executed on this stage
+   * Prevents `sst remove` from being executed on this stage.
+   *
+   * @example
+   * Prevent the "production" stage from being removed.
+   * ```ts
+   * {
+   *   protected: input.stage === "production"
+   * }
+   * ```
    */
   protected?: boolean;
 }
