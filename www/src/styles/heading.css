@@ -1,4 +1,9 @@
-.sl-markdown-content :is(h1, h2, h3, h4, h5, h6) > a {
+/**
+ * Linkable headings
+ *
+ * Exclude links that are custom created, like the blog post list links.
+ */
+.sl-markdown-content :is(h1, h2, h3, h4, h5, h6) > a:not([class]) {
   text-decoration: none;
   cursor: none;
   color: var(--__sl-font-headings);
@@ -12,7 +17,7 @@
   &:hover::after {
     content: '#';
     animation: fadeInBackdrop 0.3s ease forwards;
-    margin-left: 0.25em;
+    margin-left: 0.25rem;
     color: var(--color-text-dimmed);
     display: inline;
     width: auto;
