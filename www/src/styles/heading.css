@@ -17,7 +17,7 @@
   &:hover::after {
     content: '#';
     animation: fadeInBackdrop 0.3s ease forwards;
-    margin-left: 0.25rem;
+    margin-left: 0.25em;
     color: var(--color-text-dimmed);
     display: inline;
     width: auto;
