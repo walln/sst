@@ -17,6 +17,7 @@ import { VisibleError } from "../error";
 import { Postgres as PostgresV1 } from "./postgres-v1";
 import { SizeGbTb, toGBs } from "../size";
 import { DevCommand } from "../experimental/dev-command.js";
+import { RdsRoleLookup } from "./providers/rds-role-lookup";
 export type { PostgresArgs as PostgresV1Args } from "./postgres-v1";
 
 export interface PostgresArgs {
@@ -736,6 +737,12 @@ Listening on "${dev.host}:${dev.port}"...`,
           { parent: self },
         );
 
+        const lookup = new RdsRoleLookup(
+          `${name}ProxyRoleLookup`,
+          { name: "AWSServiceRoleForRDS" },
+          { parent: self },
+        );
+
         const rdsProxy = new rds.Proxy(
           ...transform(
             args.transform?.proxy,
@@ -752,7 +759,7 @@ Listening on "${dev.host}:${dev.port}"...`,
               roleArn: role.arn,
               vpcSubnetIds: vpc.subnets,
             },
-            { parent: self },
+            { parent: self, dependsOn: [lookup] },
           ),
         );
 
