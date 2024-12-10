@@ -57,6 +57,13 @@ export interface PostgresArgs {
    *   password: "Passw0rd!"
    * }
    * ```
+   *
+   * Use [Secrets](/docs/component/secret) to manage the password.
+   * ```js
+   * {
+   *   password: new sst.Secret("MyDBPassword").value
+   * }
+   * ```
    */
   password?: Input<string>;
   /**
@@ -122,7 +129,56 @@ export interface PostgresArgs {
    * }
    * ```
    */
-  proxy?: Input<boolean>;
+  proxy?: Input<
+    | boolean
+    | {
+        /**
+         * Additional credentials the proxy can use to connect to the database. You don't
+         * need to specify the master user credentials as they are always added by default.
+         *
+         * :::note
+         * This component will not create the Postgres users listed here. You need to
+         * create them manually in the database.
+         * :::
+         *
+         * @example
+         * ```js
+         * {
+         *   credentials: [
+         *     {
+         *       username: "metabase",
+         *       password: "Passw0rd!",
+         *     }
+         *   ]
+         * }
+         * ```
+         *
+         * Use [Secrets](/docs/component/secret) to manage the password.
+         * ```js
+         * {
+         *   credentials: [
+         *     {
+         *       username: "metabase",
+         *       password: new sst.Secret("MyDBPassword").value,
+         *     }
+         *   ]
+         * }
+         * ```
+         */
+        credentials?: Input<
+          Input<{
+            /**
+             * The username of the user.
+             */
+            username: Input<string>;
+            /**
+             * The password of the user.
+             */
+            password: Input<string>;
+          }>[]
+        >;
+      }
+  >;
   /**
    * Enable [Multi-AZ](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZ.html)
    * deployment for the database.
@@ -711,8 +767,34 @@ Listening on "${dev.host}:${dev.port}"...`,
     }
 
     function createProxy() {
-      return output(args.proxy).apply((proxy) => {
+      return all([args.proxy]).apply(([proxy]) => {
         if (!proxy) return;
+
+        const credentials = proxy === true ? [] : proxy.credentials ?? [];
+
+        // Create secrets
+        const secrets = credentials.map((credential) => {
+          const secret = new secretsmanager.Secret(
+            `${name}ProxySecret${credential.username}`,
+            {
+              recoveryWindowInDays: 0,
+            },
+            { parent: self },
+          );
+
+          new secretsmanager.SecretVersion(
+            `${name}ProxySecretVersion${credential.username}`,
+            {
+              secretId: secret.id,
+              secretString: jsonStringify({
+                username: credential.username,
+                password: credential.password,
+              }),
+            },
+            { parent: self },
+          );
+          return secret;
+        });
 
         const role = new iam.Role(
           `${name}ProxyRole`,
@@ -727,7 +809,7 @@ Listening on "${dev.host}:${dev.port}"...`,
                   statements: [
                     {
                       actions: ["secretsmanager:GetSecretValue"],
-                      resources: [secret.arn],
+                      resources: [secret.arn, ...secrets.map((s) => s.arn)],
                     },
                   ],
                 }).json,
@@ -755,6 +837,11 @@ Listening on "${dev.host}:${dev.port}"...`,
                   iamAuth: "DISABLED",
                   secretArn: secret.arn,
                 },
+                ...secrets.map((s) => ({
+                  authScheme: "SECRETS",
+                  iamAuth: "DISABLED",
+                  secretArn: s.arn,
+                })),
               ],
               roleArn: role.arn,
               vpcSubnetIds: vpc.subnets,
