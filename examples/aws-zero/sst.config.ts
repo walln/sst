@@ -9,7 +9,9 @@ export default $config({
     };
   },
   async run() {
-    const vpc = new sst.aws.Vpc("Vpc");
+    const vpc = new sst.aws.Vpc("Vpc", {
+      bastion: true,
+    });
     const db = new sst.aws.Postgres("Database", {
       vpc,
       transform: {
