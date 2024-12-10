@@ -42,7 +42,7 @@ export default $config({
         command: "npx zero-cache",
       },
       loadBalancer: {
-        ports: [{ listen: "4848/http" }],
+        ports: [{ listen: "80/http", forward: "4848/http" }],
       },
       environment: {
         ZERO_UPSTREAM_DB: $interpolate`${connection}/${db.database}`,
