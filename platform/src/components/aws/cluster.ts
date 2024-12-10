@@ -1571,7 +1571,7 @@ export interface ClusterServiceArgs {
        * The command that `sst dev` runs to start this in dev mode. Same as the top-level
        * [`dev.command`](#dev-command).
        */
-      command?: Input<string>;
+      command: Input<string>;
       /**
        * Configure if you want to automatically start this when `sst dev` starts. Same as the
        * top-level [`dev.autostart`](#dev-autostart).
