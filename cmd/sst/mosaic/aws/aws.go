@@ -338,7 +338,7 @@ func Start(
 		case <-r.Context().Done():
 			return
 		case reader := <-ch:
-			writer := client.NewWriter(bridge.MessageNext, prefix+"/"+r.PathValue("workerID")+"/in")
+			writer := client.NewWriter(bridge.MessagePing, prefix+"/"+r.PathValue("workerID")+"/in")
 			json.NewEncoder(writer).Encode(bridge.PingBody{})
 			writer.Close()
 			resp, _ := http.ReadResponse(bufio.NewReader(reader), r)

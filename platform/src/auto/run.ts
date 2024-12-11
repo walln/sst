@@ -30,7 +30,7 @@ export async function run(program: automation.PulumiFn) {
   }));
   Link.reset();
   const outputs = (await program()) || {};
-  outputs._protected = $app.stage;
+  outputs._protect = $app.protect;
   return outputs;
 }
 

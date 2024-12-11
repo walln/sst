@@ -121,8 +121,8 @@ func run() error {
 		writer := client.NewWriter(bridge.MessageNext, prefix+"/in")
 		resp.Write(writer)
 		writer.Close()
-
 		timeout := time.Second * 3
+
 	loop:
 		for {
 			select {
