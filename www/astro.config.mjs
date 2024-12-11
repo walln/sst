@@ -12,6 +12,7 @@ const sidebar = [
   { label: "Enterprise", slug: "docs/enterprise" },
   {
     label: "Get Started",
+    collapsed: true,
     items: [
       { label: "Bun", slug: "docs/start/aws/bun" },
       { label: "Nuxt", slug: "docs/start/aws/nuxt" },
@@ -53,6 +54,7 @@ const sidebar = [
   },
   {
     label: "How to",
+    collapsed: true,
     items: [
       { label: "AWS Accounts", slug: "docs/aws-accounts" },
       { label: "IAM Credentials", slug: "docs/iam-credentials" },
@@ -67,6 +69,7 @@ const sidebar = [
   },
   {
     label: "AWS",
+    collapsed: true,
     items: [
       "docs/component/aws/efs",
       "docs/component/aws/vpc",
@@ -103,6 +106,7 @@ const sidebar = [
   },
   {
     label: "Cloudflare",
+    collapsed: true,
     items: [
       "docs/component/cloudflare/kv",
       "docs/component/cloudflare/d1",
@@ -112,6 +116,7 @@ const sidebar = [
   },
   {
     label: "Reference",
+    collapsed: true,
     items: [
       "docs/reference/cli",
       "docs/reference/sdk",
