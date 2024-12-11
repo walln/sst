@@ -16,10 +16,11 @@
 
   &:hover::after {
     content: '#';
-    animation: fadeInBackdrop 0.3s ease forwards;
+    transform: scale(0.9);
+    transform-origin: left bottom;
+    display: inline-block;
     margin-left: 0.25em;
     color: var(--color-text-dimmed);
-    display: inline;
     width: auto;
     height: auto;
     background-color: transparent;
