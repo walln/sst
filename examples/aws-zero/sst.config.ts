@@ -54,5 +54,9 @@ export default $config({
         ZERO_NUM_SYNC_WORKERS: "1",
       },
     });
+
+    return {
+      connection: $interpolate`${connection}/${db.database}`,
+    };
   },
 });
