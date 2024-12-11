@@ -27,7 +27,7 @@ export interface PostgresArgs {
    * @example
    * ```js
    * {
-   *   version: "15.8"
+   *   version: "17.2"
    * }
    * ```
    */
@@ -661,7 +661,7 @@ Listening on "${dev.host}:${dev.port}"...`,
           args.transform?.parameterGroup,
           `${name}ParameterGroup`,
           {
-            family: "postgres16",
+            family: engineVersion.apply((v) => `postgres${v.split(".")[0]}`),
             parameters: [
               {
                 name: "rds.force_ssl",
