@@ -489,6 +489,7 @@ export class Service extends Component implements Link.Linkable {
           args?.transform?.loadBalancerSecurityGroup,
           `${name}LoadBalancerSecurityGroup`,
           {
+            description: "Managed by SST",
             vpcId: vpc.id,
             egress: [
               {
