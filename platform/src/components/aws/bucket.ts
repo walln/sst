@@ -15,7 +15,7 @@ import {
 import { Component, Prettify, Transform, transform } from "../component";
 import { Link } from "../link";
 import type { Input } from "../input";
-import { FunctionArgs, FunctionArn } from "./function";
+import { Function, FunctionArgs, FunctionArn } from "./function";
 import { Duration, toSeconds } from "../duration";
 import { VisibleError } from "../error";
 import { parseBucketArn } from "./helpers/arn";
@@ -383,6 +383,22 @@ export interface BucketNotificationsArgs {
      * Transform the S3 Bucket Notification resource.
      */
     notification?: Transform<s3.BucketNotificationArgs>;
+  };
+}
+
+export interface BucketNotificationsOutput {
+  /**
+   * The underlying [resources](/docs/components/#nodes) this function creates.
+   */
+  nodes: {
+    /**
+     * The functions that will be notified.
+     */
+    functions: Output<Function[]>;
+    /**
+     * The notification resource that's created.
+     */
+    notification: s3.BucketNotification;
   };
 }
 
@@ -875,13 +891,15 @@ export class Bucket extends Component implements Link.Linkable {
    * });
    * ```
    */
-  public addNotifications(args: BucketNotificationsArgs) {
+  public addNotifications(
+    args: BucketNotificationsArgs,
+  ): BucketNotificationsOutput {
     const parent = this;
     const name = parent.constructorName;
     ensureCalledOnce();
     const notifications = normalizeNotifications();
     const config = createNotificationsConfig();
-    createNotification();
+    const notification = createNotification();
 
     return {
       nodes: {
@@ -892,6 +910,7 @@ export class Bucket extends Component implements Link.Linkable {
               .map((c) => c!.functionBuilder!.getFunction()),
           );
         },
+        notification,
       },
     };
 
