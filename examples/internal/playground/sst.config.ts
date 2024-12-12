@@ -185,11 +185,33 @@ export default $config({
       const cluster = new sst.aws.Cluster("MyCluster", { vpc });
       const service = cluster.addService("MyService", {
         loadBalancer: {
-          ports: [{ listen: "80/http" }],
+          ports: [
+            { listen: "80/http" },
+            //{ listen: "80/http", container: "web" },
+            //{ listen: "8080/http", container: "sidecar" },
+          ],
         },
         image: {
-          context: "cluster",
+          context: "images/web",
         },
+        //containers: [
+        //  {
+        //    name: "web",
+        //    image: {
+        //      context: "images/web",
+        //    },
+        //    cpu: "0.125 vCPU",
+        //    memory: "0.25 GB",
+        //  },
+        //  {
+        //    name: "sidecar",
+        //    image: {
+        //      context: "images/sidecar",
+        //    },
+        //    cpu: "0.125 vCPU",
+        //    memory: "0.25 GB",
+        //  },
+        //],
         link: [bucket],
       });
       return service;
