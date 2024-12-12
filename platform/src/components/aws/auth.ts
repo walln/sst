@@ -173,7 +173,9 @@ export class Auth extends Component implements Link.Linkable {
         `${name}Authorizer`,
         args.authorizer,
         {
-          url: true,
+          url: {
+            cors: false,
+          },
           link: [table],
           environment: {
             OPENAUTH_STORAGE: jsonStringify({
