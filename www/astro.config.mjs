@@ -3,8 +3,8 @@ import starlight from "@astrojs/starlight";
 import sitemap from "@astrojs/sitemap";
 import config from "./config";
 import sst from "astro-sst";
-import { rehypeHeadingIds } from '@astrojs/markdown-remark'
-import rehypeAutolinkHeadings from 'rehype-autolink-headings'
+import { rehypeHeadingIds } from "@astrojs/markdown-remark";
+import rehypeAutolinkHeadings from "rehype-autolink-headings";
 
 const sidebar = [
   { label: "Intro", slug: "docs" },
@@ -156,7 +156,6 @@ const sidebar = [
       "docs/component/aws/apigatewayv1-authorizer",
       "docs/component/aws/apigatewayv2-authorizer",
       "docs/component/aws/queue-lambda-subscriber",
-      "docs/component/aws/bucket-lambda-subscriber",
       "docs/component/aws/sns-topic-queue-subscriber",
       "docs/component/aws/dynamo-lambda-subscriber",
       "docs/component/aws/realtime-lambda-subscriber",
@@ -306,7 +305,7 @@ export default defineConfig({
       [
         rehypeAutolinkHeadings,
         {
-          behavior: 'wrap',
+          behavior: "wrap",
         },
       ],
     ],

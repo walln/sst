@@ -37,6 +37,35 @@ export default $config({
 
     function addBucket() {
       const bucket = new sst.aws.Bucket("MyBucket");
+
+      //const queue = new sst.aws.Queue("MyQueue");
+      //queue.subscribe("functions/bucket/index.handler");
+
+      //const topic = new sst.aws.SnsTopic("MyTopic");
+      //topic.subscribe("MyTopicSubscriber", "functions/bucket/index.handler");
+
+      //bucket.addNotifications({
+      //  notifications: [
+      //    {
+      //      name: "LambdaSubscriber",
+      //      function: "functions/bucket/index.handler",
+      //      filterSuffix: ".json",
+      //      events: ["s3:ObjectCreated:*"],
+      //    },
+      //    {
+      //      name: "QueueSubscriber",
+      //      queue,
+      //      filterSuffix: ".png",
+      //      events: ["s3:ObjectCreated:*"],
+      //    },
+      //    {
+      //      name: "TopicSubscriber",
+      //      topic,
+      //      filterSuffix: ".csv",
+      //      events: ["s3:ObjectCreated:*"],
+      //    },
+      //  ],
+      //});
       ret.bucket = bucket.name;
       return bucket;
     }
