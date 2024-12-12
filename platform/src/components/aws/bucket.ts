@@ -814,7 +814,7 @@ export class Bucket extends Component implements Link.Linkable {
    * Notify a function.
    *
    * ```js
-   * bucket.addNotifications({
+   * bucket.notify({
    *   notifications: [
    *     {
    *       name: "MySubscriber",
@@ -827,7 +827,7 @@ export class Bucket extends Component implements Link.Linkable {
    * Notify on specific S3 events.
    *
    * ```js
-   * bucket.addNotifications({
+   * bucket.notify({
    *   notifications: [
    *     {
    *       name: "MySubscriber",
@@ -841,7 +841,7 @@ export class Bucket extends Component implements Link.Linkable {
    * Notify on specific S3 events from a specific folder.
    *
    * ```js
-   * bucket.addNotifications({
+   * bucket.notify({
    *   notifications: [
    *     {
    *       name: "MySubscriber",
@@ -862,7 +862,7 @@ export class Bucket extends Component implements Link.Linkable {
    * You can notify it by passing in the queue.
    *
    * ```js
-   * bucket.addNotifications({
+   * bucket.notify({
    *   notifications: [
    *     {
    *       name: "MySubscriber",
@@ -881,7 +881,7 @@ export class Bucket extends Component implements Link.Linkable {
    * You can notify it by passing in the topic.
    *
    * ```js
-   * bucket.addNotifications({
+   * bucket.notify({
    *   notifications: [
    *     {
    *       name: "MySubscriber",
@@ -891,9 +891,7 @@ export class Bucket extends Component implements Link.Linkable {
    * });
    * ```
    */
-  public addNotifications(
-    args: BucketNotificationsArgs,
-  ): BucketNotificationsOutput {
+  public notify(args: BucketNotificationsArgs): BucketNotificationsOutput {
     const parent = this;
     const name = parent.constructorName;
     ensureCalledOnce();
@@ -917,7 +915,7 @@ export class Bucket extends Component implements Link.Linkable {
     function ensureCalledOnce() {
       if (parent.isSubscribed) {
         throw new VisibleError(
-          `Cannot call "addNotifications" on the "${name}" bucket multiple times. Calling it again will override previous notifications.`,
+          `Cannot call "notify" on the "${name}" bucket multiple times. Calling it again will override previous notifications.`,
         );
       }
       parent.isSubscribed = true;
@@ -1087,10 +1085,10 @@ export class Bucket extends Component implements Link.Linkable {
   /**
    * Subscribe to events from this bucket.
    *
-   * @deprecated The `addNotifications` function is now the recommended way to subscribe to events
+   * @deprecated The `notify` function is now the recommended way to subscribe to events
    * from this bucket. It allows you to configure multiple subscribers at once. To migrate,
    * remove the current subscriber, deploy the changes, and then add the subscriber
-   * back using the new `addNotifications` function.
+   * back using the new `notify` function.
    *
    * @param subscriber The function that'll be notified.
    * @param args Configure the subscription.
@@ -1154,10 +1152,10 @@ export class Bucket extends Component implements Link.Linkable {
   /**
    * Subscribe to events of an S3 bucket that was not created in your app.
    *
-   * @deprecated The `subscribe` function is now the recommended way to subscribe to events
+   * @deprecated The `notify` function is now the recommended way to subscribe to events
    * from this bucket. It allows you to configure multiple subscribers at once. To migrate,
    * remove the current subscriber, deploy the changes, and then add the subscriber
-   * back using the new `subscribe` function.
+   * back using the new `notify` function.
    *
    * @param bucketArn The ARN of the S3 bucket to subscribe to.
    * @param subscriber The function that'll be notified.
@@ -1252,10 +1250,10 @@ export class Bucket extends Component implements Link.Linkable {
   /**
    * Subscribe to events from this bucket with an SQS Queue.
    *
-   * @deprecated The `subscribeQueue` function is now the recommended way to subscribe to events
+   * @deprecated The `notify` function is now the recommended way to subscribe to events
    * from this bucket. It allows you to configure multiple subscribers at once. To migrate,
    * remove the current subscriber, deploy the changes, and then add the subscriber
-   * back using the new `subscribeQueue` function.
+   * back using the new `notify` function.
    *
    * @param queueArn The ARN of the queue that'll be notified.
    * @param args Configure the subscription.
@@ -1309,10 +1307,10 @@ export class Bucket extends Component implements Link.Linkable {
   /**
    * Subscribe to events of an S3 bucket that was not created in your app with an SQS Queue.
    *
-   * @deprecated The `subscribeQueue` function is now the recommended way to subscribe to events
+   * @deprecated The `notify` function is now the recommended way to subscribe to events
    * from this bucket. It allows you to configure multiple subscribers at once. To migrate,
    * remove the current subscriber, deploy the changes, and then add the subscriber
-   * back using the new `subscribeQueue` function.
+   * back using the new `notify` function.
    *
    * @param bucketArn The ARN of the S3 bucket to subscribe to.
    * @param queueArn The ARN of the queue that'll be notified.
@@ -1396,10 +1394,10 @@ export class Bucket extends Component implements Link.Linkable {
   /**
    * Subscribe to events from this bucket with an SNS Topic.
    *
-   * @deprecated The `subscribeTopic` function is now the recommended way to subscribe to events
+   * @deprecated The `notify` function is now the recommended way to subscribe to events
    * from this bucket. It allows you to configure multiple subscribers at once. To migrate,
    * remove the current subscriber, deploy the changes, and then add the subscriber
-   * back using the new `subscribeTopic` function.
+   * back using the new `notify` function.
    *
    * @param topicArn The ARN of the topic that'll be notified.
    * @param args Configure the subscription.
@@ -1453,10 +1451,10 @@ export class Bucket extends Component implements Link.Linkable {
   /**
    * Subscribe to events of an S3 bucket that was not created in your app with an SNS Topic.
    *
-   * @deprecated The `subscribeTopic` function is now the recommended way to subscribe to events
+   * @deprecated The `notify` function is now the recommended way to subscribe to events
    * from this bucket. It allows you to configure multiple subscribers at once. To migrate,
    * remove the current subscriber, deploy the changes, and then add the subscriber
-   * back using the new `subscribeTopic` function.
+   * back using the new `notify` function.
    *
    * @param bucketArn The ARN of the S3 bucket to subscribe to.
    * @param topicArn The ARN of the topic that'll be notified.

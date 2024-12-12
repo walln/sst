@@ -44,7 +44,7 @@ export default $config({
       //const topic = new sst.aws.SnsTopic("MyTopic");
       //topic.subscribe("MyTopicSubscriber", "functions/bucket/index.handler");
 
-      //bucket.addNotifications({
+      //bucket.notify({
       //  notifications: [
       //    {
       //      name: "LambdaSubscriber",

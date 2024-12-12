@@ -18,7 +18,7 @@ export default $config({
     queue.subscribe("subscriber.handler");
 
     const bucket = new sst.aws.Bucket("MyBucket");
-    bucket.addNotifications({
+    bucket.notify({
       notifications: [
         {
           name: "MySubscriber",
