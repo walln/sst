@@ -265,6 +265,7 @@ func Start(
 				if existing == info {
 					slog.Info("deleting worker", "workerID", info.WorkerID)
 					delete(workers, info.WorkerID)
+					delete(nextChan, info.WorkerID)
 				}
 				break
 			case unknown := <-evts:
