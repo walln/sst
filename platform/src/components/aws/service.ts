@@ -261,6 +261,8 @@ export class Service extends Component implements Link.Linkable {
       const containers = args.containers ?? [
         {
           name: name,
+          cpu: undefined,
+          memory: undefined,
           image: args.image,
           logging: args.logging,
           environment: args.environment,
@@ -890,6 +892,8 @@ export class Service extends Component implements Link.Linkable {
 
             return interpolate`${bootstrapData.assetEcrUrl}@${image.digest}`;
           })(),
+          cpu: container.cpu ? toNumber(container.cpu) : undefined,
+          memory: container.memory ? toMBs(container.memory) : undefined,
           command: container.command,
           entrypoint: container.entrypoint,
           healthCheck: container.health && {
