@@ -261,6 +261,8 @@ export class Service extends Component implements Link.Linkable {
       const containers = args.containers ?? [
         {
           name: name,
+          cpu: undefined,
+          memory: undefined,
           image: args.image,
           logging: args.logging,
           environment: args.environment,
@@ -489,6 +491,7 @@ export class Service extends Component implements Link.Linkable {
           args?.transform?.loadBalancerSecurityGroup,
           `${name}LoadBalancerSecurityGroup`,
           {
+            description: "Managed by SST",
             vpcId: vpc.id,
             egress: [
               {
@@ -889,6 +892,8 @@ export class Service extends Component implements Link.Linkable {
 
             return interpolate`${bootstrapData.assetEcrUrl}@${image.digest}`;
           })(),
+          cpu: container.cpu ? toNumber(container.cpu) : undefined,
+          memory: container.memory ? toMBs(container.memory) : undefined,
           command: container.command,
           entrypoint: container.entrypoint,
           healthCheck: container.health && {
@@ -1136,7 +1141,7 @@ export class Service extends Component implements Link.Linkable {
     }
 
     function registerReceiver() {
-      containers.apply((val) => {
+      all([containers]).apply(([val]) => {
         for (const container of val) {
           const title = val.length == 1 ? name : `${name}${container.name}`;
           new DevCommand(`${title}Dev`, {
@@ -1144,12 +1149,12 @@ export class Service extends Component implements Link.Linkable {
             dev: {
               title,
               autostart: true,
-              directory: output(args.image).apply((image) => {
-                if (!image) return "";
-                if (typeof image === "string") return "";
-                if (image.context) return path.dirname(image.context);
+              directory: (() => {
+                if (!container.image) return "";
+                if (typeof container.image === "string") return "";
+                if (container.image.context) return container.image.context;
                 return "";
-              }),
+              })(),
               ...container.dev,
             },
             environment: {

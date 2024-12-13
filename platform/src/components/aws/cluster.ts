@@ -179,59 +179,7 @@ export interface ClusterArgs {
          */
         cloudmapNamespaceName: Input<string>;
       }>;
-  /**
-   * Force upgrade from `Cluster.v1` to the latest `Cluster` version. The only valid value
-   * is `v2`, which is the version of the new `Cluster`.
-   *
-   * In `Cluster.v1`, load balancers are deployed in public subnets, and services are
-   * deployed in private subnets. The VPC is required to have NAT gateways.
-   *
-   * In the latest `Cluster`, both the load balancer and the services are deployed in
-   * public subnets. The VPC is not required to have NAT gateways. So the new default makes
-   * this cheaper to run.
-   *
-   * To upgrade, add the prop.
-   *
-   * ```ts
-   * {
-   *   forceUpgrade: "v2"
-   * }
-   * ```
-   *
-   * Run `sst deploy`.
-   *
-   * :::tip
-   * You can remove this prop after you upgrade.
-   * :::
-   *
-   * This upgrades your component and the resources it created. You can now optionally
-   * remove the prop.
-   *
-   * After the upgrade, new services will be deployed in public subnets.
-   *
-   * :::caution
-   * New service will be deployed in public subnets.
-   * :::
-   *
-   * To continue deploying in private subnets, set `vpc.serviceSubnets` to a list of
-   * private subnets.
-   *
-   * ```js title="sst.config.ts" {4,8}
-   * const myVpc = new sst.aws.Vpc("MyVpc", { nat: "managed" });
-   *
-   * const cluster = new sst.aws.Cluster("MyCluster", {
-   *   forceUpgrade: "v2",
-   *   vpc: {
-   *     id: myVpc.id,
-   *     loadBalancerSubnets: myVpc.publicSubnets,
-   *     serviceSubnets: myVpc.privateSubnets,
-   *     securityGroups: myVpc.securityGroups,
-   *     cloudmapNamespaceId: myVpc.nodes.cloudmapNamespace.id,
-   *     cloudmapNamespaceName: myVpc.nodes.cloudmapNamespace.name,
-   *   }
-   * });
-   * ```
-   */
+  /** @internal */
   forceUpgrade?: "v2";
   /**
    * [Transform](/docs/components#transform) how this component creates its underlying
@@ -865,28 +813,83 @@ export interface ClusterServiceArgs {
       }[]
     >;
     /**
-     * Configure the health check for the load balancer.
+     * Configure the health check that the load balancer runs on your containers.
      *
-     * Health checks are used to ensure that only healthy containers receive traffic.
-     * The load balancer checks each target container at the specified health check path
-     * and only routes traffic to containers that pass these checks.
+     * :::tip
+     * This health check is different from the [`health`](#health) check.
+     * :::
      *
-     * The health check cannot be disabled.
-     * - The default for "http" protocols is `{ path: "/", interval: "30 seconds", timeout: "5 seconds", healthyThreshold: 5, unhealthyThreshold: 2, successCodes: "200" }`.
-     * - The default for "tcp" and "udp" protocols is `{ interval: "30 seconds", timeout: "6 seconds", healthyThreshold: 5, unhealthyThreshold: 2 }`
+     * This health check is run by the load balancer. While, `health` is run by ECS. This
+     * cannot be disabled if you are using a load balancer. While the other is off by default.
+     *
+     * Since this cannot be disabled, here are some tips on how to debug an unhealthy
+     * health check.
+     *
+     * <details>
+     * <summary>How to debug a load balancer health check</summary>
+     *
+     * If you notice a `Unhealthy: Health checks failed` error, it's because the health
+     * check has failed. When it fails, the load balancer will terminate the containers,
+     * causing any requests to fail.
+     *
+     * Here's how to debug it:
+     *
+     * 1. Verify the health check path.
+     *
+     *    By default, the load balancer checks the `/` path. Ensure it's accessible in your
+     *    containers. If your application runs on a different path, then update the path in
+     *    the health check config accordingly.
+     *
+     * 2. Confirm the containers are operational.
+     *
+     *    Navigate to **ECS console** > select the **cluster** > go to the **Tasks tab** >
+     *    choose **Any desired status** under the **Filter desired status** dropdown > select
+     *    a task and check for errors under the **Logs tab**. If it has error that means that
+     *    the container failed to start.
+     *
+     * 3. If the container was terminated by the load balancer while still starting up, try
+     *    increasing the health check interval and timeout.
+     * </details>
+     *
+     * For `http` and `https` the default is:
+     *
+     * ```js
+     * {
+     *   path: "/",
+     *   healthyThreshold: 5,
+     *   successCodes: "200",
+     *   timeout: "5 seconds",
+     *   unhealthyThreshold: 2,
+     *   interval: "30 seconds"
+     * }
+     * ```
+     *
+     * For `tcp` and `udp` the default is:
+     *
+     * ```js
+     * {
+     *   healthyThreshold: 5,
+     *   timeout: "6 seconds",
+     *   unhealthyThreshold: 2,
+     *   interval: "30 seconds"
+     * }
+     * ```
      *
      * @example
-     * Here we are configuring a health check that pings the `/health` path on port `8080`
+     *
+     * To configure the health check, we use the _port/protocol_ format. Here we are
+     * configuring a health check that pings the `/health` path on port `8080`
      * every 10 seconds.
+     *
      * ```js
      * {
      *   ports: [
      *     { listen: "80/http", forward: "8080/http" }
-     *   ]
+     *   ],
      *   health: {
      *     "8080/http": {
      *       path: "/health",
-     *       interval: "10 seconds",
+     *       interval: "10 seconds"
      *     }
      *   }
      * }
@@ -899,36 +902,37 @@ export interface ClusterServiceArgs {
         Input<{
           /**
            * The URL path to ping on the service for health checks. Only applicable to
-           * "http" protocols.
+           * `http` and `https` protocols.
            * @default `"/"`
            */
           path?: Input<string>;
           /**
-           * The time period between each health check. Must be between 5 and 300 seconds.
+           * The time period between each health check request. Must be between `5 seconds`
+           * and `300 seconds`.
            * @default `"30 seconds"`
            */
           interval?: Input<DurationMinutes>;
           /**
-           * The timeout for each health check. If no response is received within this time,
-           * the health check is considered failed. Must be between 2 and 120 seconds.
+           * The timeout for each health check request. If no response is received within this
+           * time, it is considered failed. Must be between `2 seconds` and `120 seconds`.
            * @default `"5 seconds"`
            */
           timeout?: Input<DurationMinutes>;
           /**
-           * The number of consecutive successful health checks required to consider the
+           * The number of consecutive successful health check requests required to consider the
            * target healthy. Must be between 2 and 10.
            * @default `5`
            */
           healthyThreshold?: Input<number>;
           /**
-           * The number of consecutive failed health checks required to consider the
+           * The number of consecutive failed health check requests required to consider the
            * target unhealthy. Must be between 2 and 10.
            * @default `2`
            */
           unhealthyThreshold?: Input<number>;
           /**
            * One or more HTTP response codes the health check treats as successful. Only
-           * applicable to "http" protocols.
+           * applicable to `http` and `https` protocols.
            *
            * @default `"200"`
            * @example
@@ -978,7 +982,9 @@ export interface ClusterServiceArgs {
    */
   architecture?: Input<"x86_64" | "arm64">;
   /**
-   * The amount of CPU allocated to the container in this service.
+   * The amount of CPU allocated to the container in this service. If there are multiple
+   * containers in the service, this is the total amount of CPU shared across all the
+   * containers.
    *
    * :::note
    * [View the valid combinations](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/fargate-tasks-services.html#fargate-tasks-size) of CPU and memory.
@@ -994,7 +1000,9 @@ export interface ClusterServiceArgs {
    */
   cpu?: keyof typeof supportedCpus;
   /**
-   * The amount of memory allocated to the container in this service.
+   * The amount of memory allocated to the container in this service. If there are multiple
+   * containers in the service, this is the total amount of memory shared across all the
+   * containers.
    *
    * :::note
    * [View the valid combinations](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/fargate-tasks-services.html#fargate-tasks-size) of CPU and memory.
@@ -1384,11 +1392,20 @@ export interface ClusterServiceArgs {
     path: Input<string>;
   }>[];
   /**
-   * Configure the health check for the container. This configuration maps to the
-   * `HEALTHCHECK` parameter of docker run.
-   * Learn more about [container health checks](https://docs.aws.amazon.com/AmazonECS/latest/APIReference/API_HealthCheck.html).
+   * Configure the health check that ECS runs on your containers.
    *
-   * @default No container health check
+   * :::tip
+   * This health check is different from the [`loadBalancer.health`](#loadbalancer-health) check.
+   * :::
+   *
+   * This health check is run by ECS. While, `loadBalancer.health` is run by the load balancer,
+   * if you are using one. This is off by default. While the load balancer one
+   * cannot be disabled.
+   *
+   * This config maps to the `HEALTHCHECK` parameter of the `docker run` command. Learn
+   * more about [container health checks](https://docs.aws.amazon.com/AmazonECS/latest/APIReference/API_HealthCheck.html).
+   *
+   * @default Health check is disabled
    * @example
    * ```js
    * {
@@ -1397,7 +1414,7 @@ export interface ClusterServiceArgs {
    *     startPeriod: "60 seconds"
    *     timeout: "5 seconds",
    *     interval: "30 seconds",
-   *     retries: 3,
+   *     retries: 3
    *   }
    * }
    * ```
@@ -1407,8 +1424,8 @@ export interface ClusterServiceArgs {
      * A string array representing the command that the container runs to determine if it is
      * healthy.
      *
-     * The string array must start with `CMD` to run the command arguments directly, or
-     * `CMD-SHELL` to run the command with the container's default shell.
+     * It must start with `CMD` to run the command arguments directly. Or `CMD-SHELL` to run
+     * the command with the container's default shell.
      *
      * @example
      * ```js
@@ -1426,13 +1443,14 @@ export interface ClusterServiceArgs {
      */
     startPeriod?: Input<DurationMinutes>;
     /**
-     * The time to wait before considering the check to have hung. Must be between `2 seconds`
-     * and `60 seconds`.
+     * The maximum time to allow one command to run. Must be between `2 seconds` and
+     * `60 seconds`.
      * @default `"5 seconds"`
      */
     timeout?: Input<DurationMinutes>;
     /**
-     * The time between running the check. Must be between `5 seconds` and `300 seconds`.
+     * The time between running the command for the health check. Must be between `5 seconds`
+     * and `300 seconds`.
      * @default `"30 seconds"`
      */
     interval?: Input<DurationMinutes>;
@@ -1499,6 +1517,41 @@ export interface ClusterServiceArgs {
      * This is used as the `--name` option in the Docker run command.
      */
     name: Input<string>;
+    /**
+     * The amount of CPU allocated to the container.
+     *
+     * By default, a container can use up to all the CPU allocated to the service. If set,
+     * the container is capped at this allocation even if the service has idle CPU available.
+     *
+     * Note that the sum of all the containers' CPU must be less than or equal to the
+     * service's CPU.
+     *
+     * @example
+     * ```js
+     * {
+     *   cpu: "0.25 vCPU"
+     * }
+     * ```
+     */
+    cpu?: `${number} vCPU`;
+    /**
+     * The amount of memory allocated to the container.
+     *
+     * By default, a container can use up to all the memory allocated to the service. If set,
+     * the container is capped at this allocation. If exceeded, the container will be killed
+     * even if the service has idle memory available.
+     *
+     * Note that the sum of all the containers' memory must be less than or equal to the
+     * service's memory.
+     *
+     * @example
+     * ```js
+     * {
+     *   memory: "0.5 GB"
+     * }
+     * ```
+     */
+    memory?: `${number} GB`;
     /**
      * Configure the Docker image for the container. Same as the top-level [`image`](#image).
      */
@@ -1571,7 +1624,7 @@ export interface ClusterServiceArgs {
        * The command that `sst dev` runs to start this in dev mode. Same as the top-level
        * [`dev.command`](#dev-command).
        */
-      command?: Input<string>;
+      command: Input<string>;
       /**
        * Configure if you want to automatically start this when `sst dev` starts. Same as the
        * top-level [`dev.autostart`](#dev-autostart).
@@ -1881,62 +1934,63 @@ export class Cluster extends Component {
     };
   }
 
-  /**
-   * Add a service to the cluster.
-   *
-   * @param name Name of the service.
-   * @param args Configure the service.
-   *
-   * @example
-   *
-   * ```ts title="sst.config.ts"
-   * cluster.addService("MyService");
-   * ```
-   *
-   * You can also configure the service. For example, set a custom domain.
-   *
-   * ```js {2} title="sst.config.ts"
-   * cluster.addService("MyService", {
-   *   domain: "example.com"
-   * });
-   * ```
-   *
-   * Enable auto-scaling.
-   *
-   * ```ts title="sst.config.ts"
-   * cluster.addService("MyService", {
-   *   scaling: {
-   *     min: 4,
-   *     max: 16,
-   *     cpuUtilization: 50,
-   *     memoryUtilization: 50,
-   *   }
-   * });
-   * ```
-   *
-   * By default this starts a single container. To add multiple containers in the service, pass in an array of containers args.
-   *
-   * ```ts title="sst.config.ts"
-   * cluster.addService("MyService", {
-   *   architecture: "arm64",
-   *   containers: [
-   *     {
-   *       name: "app",
-   *       image: "nginxdemos/hello:plain-text"
-   *     },
-   *     {
-   *       name: "admin",
-   *       image: {
-   *         context: "./admin",
-   *         dockerfile: "Dockerfile"
-   *       }
-   *     }
-   *   ]
-   * });
-   * ```
-   *
-   * This is useful for running sidecar containers.
-   */
+  // /**
+  //  * Add a service to the cluster.
+  //  *
+  //  * @param name Name of the service.
+  //  * @param args Configure the service.
+  //  *
+  //  * @example
+  //  *
+  //  * ```ts title="sst.config.ts"
+  //  * cluster.addService("MyService");
+  //  * ```
+  //  *
+  //  * You can also configure the service. For example, set a custom domain.
+  //  *
+  //  * ```js {2} title="sst.config.ts"
+  //  * cluster.addService("MyService", {
+  //  *   domain: "example.com"
+  //  * });
+  //  * ```
+  //  *
+  //  * Enable auto-scaling.
+  //  *
+  //  * ```ts title="sst.config.ts"
+  //  * cluster.addService("MyService", {
+  //  *   scaling: {
+  //  *     min: 4,
+  //  *     max: 16,
+  //  *     cpuUtilization: 50,
+  //  *     memoryUtilization: 50,
+  //  *   }
+  //  * });
+  //  * ```
+  //  *
+  //  * By default this starts a single container. To add multiple containers in the service, pass in an array of containers args.
+  //  *
+  //  * ```ts title="sst.config.ts"
+  //  * cluster.addService("MyService", {
+  //  *   architecture: "arm64",
+  //  *   containers: [
+  //  *     {
+  //  *       name: "app",
+  //  *       image: "nginxdemos/hello:plain-text"
+  //  *     },
+  //  *     {
+  //  *       name: "admin",
+  //  *       image: {
+  //  *         context: "./admin",
+  //  *         dockerfile: "Dockerfile"
+  //  *       }
+  //  *     }
+  //  *   ]
+  //  * });
+  //  * ```
+  //  *
+  //  * This is useful for running sidecar containers.
+  //  */
+  /** @internal */
   public addService(name: string, args?: ClusterServiceArgs) {
     // Do not prefix the service to allow `Resource.MyService` to work.
     return new Service(

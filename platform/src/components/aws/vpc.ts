@@ -778,6 +778,7 @@ export class Vpc extends Component implements Link.Linkable {
           args.transform?.securityGroup,
           `${name}SecurityGroup`,
           {
+            description: "Managed by SST",
             vpcId: vpc.id,
             egress: [
               {

@@ -373,10 +373,7 @@ var root = &cli.Command{
 					"The multiplexer makes it so that you won't have to start your frontend or",
 					"your container applications separately.",
 					"",
-					":::tip",
-					"The `sst dev` CLI also starts your frontend. So you don't need to start it",
-					"separately.",
-					":::",
+					"<VideoAside title=\"Learn more about SST's dev mode\" href=\"https://youtu.be/mefLc137EB0\" />",
 					"",
 					"While `sst dev` does a deploy when it starts up, it does not deploy components like",
 					"`Service`, or the frontends like `Nextjs`, `Remix`, `Astro`, `StaticSite`, etc.",
@@ -924,7 +921,7 @@ var root = &cli.Command{
 				}
 				defer p.Cleanup()
 
-				err = p.Cancel()
+				err = p.ForceUnlock()
 				if err != nil {
 					return err
 				}
@@ -1089,20 +1086,19 @@ var root = &cli.Command{
 						}
 						defer p.Cleanup()
 
-						var parsed provider.Summary
-						parsed.Version = version
-						parsed.UpdateID = id.Descending()
-						parsed.TimeStarted = time.Now().UTC().Format(time.RFC3339)
-						err = p.Lock(parsed.UpdateID, "edit")
+						var update provider.Update
+						update.Version = version
+						update.ID = id.Descending()
+						update.TimeStarted = time.Now().UTC().Format(time.RFC3339)
+						err = p.Lock(update.ID, "edit")
 						if err != nil {
 							return util.NewReadableError(err, "Could not lock state")
 						}
 						defer p.Unlock()
 						defer func() {
-							parsed.TimeCompleted = time.Now().UTC().Format(time.RFC3339)
-							provider.PutSummary(p.Backend(), p.App().Name, p.App().Stage, parsed.UpdateID, parsed)
+							update.TimeCompleted = time.Now().UTC().Format(time.RFC3339)
+							provider.PutUpdate(p.Backend(), p.App().Name, p.App().Stage, update)
 						}()
-
 						path, err := p.PullState()
 						if err != nil {
 							return util.NewReadableError(err, "Could not pull state")
@@ -1124,7 +1120,7 @@ var root = &cli.Command{
 							return util.NewReadableError(err, "Editor exited with error")
 						}
 
-						return p.PushState(parsed.UpdateID)
+						return p.PushState(update.ID)
 					},
 				},
 			},

@@ -37,6 +37,35 @@ export default $config({
 
     function addBucket() {
       const bucket = new sst.aws.Bucket("MyBucket");
+
+      //const queue = new sst.aws.Queue("MyQueue");
+      //queue.subscribe("functions/bucket/index.handler");
+
+      //const topic = new sst.aws.SnsTopic("MyTopic");
+      //topic.subscribe("MyTopicSubscriber", "functions/bucket/index.handler");
+
+      //bucket.notify({
+      //  notifications: [
+      //    {
+      //      name: "LambdaSubscriber",
+      //      function: "functions/bucket/index.handler",
+      //      filterSuffix: ".json",
+      //      events: ["s3:ObjectCreated:*"],
+      //    },
+      //    {
+      //      name: "QueueSubscriber",
+      //      queue,
+      //      filterSuffix: ".png",
+      //      events: ["s3:ObjectCreated:*"],
+      //    },
+      //    {
+      //      name: "TopicSubscriber",
+      //      topic,
+      //      filterSuffix: ".csv",
+      //      events: ["s3:ObjectCreated:*"],
+      //    },
+      //  ],
+      //});
       ret.bucket = bucket.name;
       return bucket;
     }
@@ -156,11 +185,33 @@ export default $config({
       const cluster = new sst.aws.Cluster("MyCluster", { vpc });
       const service = cluster.addService("MyService", {
         loadBalancer: {
-          ports: [{ listen: "80/http" }],
+          ports: [
+            { listen: "80/http" },
+            //{ listen: "80/http", container: "web" },
+            //{ listen: "8080/http", container: "sidecar" },
+          ],
         },
         image: {
-          context: "cluster",
+          context: "images/web",
         },
+        //containers: [
+        //  {
+        //    name: "web",
+        //    image: {
+        //      context: "images/web",
+        //    },
+        //    cpu: "0.125 vCPU",
+        //    memory: "0.25 GB",
+        //  },
+        //  {
+        //    name: "sidecar",
+        //    image: {
+        //      context: "images/sidecar",
+        //    },
+        //    cpu: "0.125 vCPU",
+        //    memory: "0.25 GB",
+        //  },
+        //],
         link: [bucket],
       });
       return service;

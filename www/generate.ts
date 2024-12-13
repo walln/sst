@@ -695,6 +695,7 @@ function renderImports(outputFilePath: string) {
   return [
     ``,
     `import { Tabs, TabItem } from '@astrojs/starlight/components';`,
+    `import VideoAside from '${relativePath}/src/components/VideoAside.astro';`,
     `import Segment from '${relativePath}/src/components/tsdoc/Segment.astro';`,
     `import Section from '${relativePath}/src/components/tsdoc/Section.astro';`,
     `import NestedTitle from '${relativePath}/src/components/tsdoc/NestedTitle.astro';`,
@@ -723,6 +724,7 @@ function renderType(
     if (type.type === "templateLiteral") return renderTemplateLiteralType(type);
     if (type.type === "union") return renderUnionType(type);
     if (type.type === "array") return renderArrayType(type);
+    if (type.type === "tuple") return renderTupleType(type);
     if (type.type === "reference" && type.package === "typescript") {
       return renderTypescriptType(type);
     }
@@ -823,6 +825,9 @@ function renderType(
         )}<code class="symbol">)[]</code>`
       : `${renderSomeType(type.elementType)}<code class="symbol">[]</code>`;
   }
+  function renderTupleType(type: TypeDoc.TupleType) {
+    return `${renderSomeType(type.elements[0])}<code class="symbol">[]</code>`;
+  }
   function renderTypescriptType(type: TypeDoc.ReferenceType) {
     // ie. Record<string, string>
     return [
@@ -915,9 +920,6 @@ function renderType(
       AppSyncResolver: "app-sync-resolver",
       Bucket: "bucket",
       BucketArgs: "bucket",
-      BucketLambdaSubscriber: "bucket-lambda-subscriber",
-      BucketQueueSubscriber: "bucket-queue-subscriber",
-      BucketTopicSubscriber: "bucket-topic-subscriber",
       Cdn: "cdn",
       CdnArgs: "cdn",
       CognitoIdentityProvider: "cognito-identity-provider",
@@ -936,6 +938,7 @@ function renderType(
       KinesisStreamLambdaSubscriber: "kinesis-stream-lambda-subscriber",
       RealtimeLambdaSubscriber: "realtime-lambda-subscriber",
       Service: "service",
+      SnsTopic: "sns-topic",
       SnsTopicLambdaSubscriber: "sns-topic-lambda-subscriber",
       SnsTopicQueueSubscriber: "sns-topic-queue-subscriber",
       Vpc: "vpc",
@@ -1728,7 +1731,11 @@ function renderSignatureArg(prop: TypeDoc.ParameterReflection) {
     );
   }
 
-  return `${prop.name}${prop.flags.isOptional || prop.defaultValue ? "?" : ""}`;
+  return [
+    prop.type?.type === "tuple" ? "..." : "",
+    prop.name,
+    prop.flags.isOptional || prop.defaultValue ? "?" : "",
+  ].join("");
 }
 
 function renderDescription(
@@ -1926,7 +1933,8 @@ function useClassMethods(module: TypeDoc.DeclarationReflection) {
         !c.flags.isExternal &&
         !c.flags.isPrivate &&
         c.signatures &&
-        !c.signatures[0].comment?.modifierTags.has("@internal")
+        !c.signatures[0].comment?.modifierTags.has("@internal") &&
+        !c.signatures[0].comment?.blockTags.find((t) => t.tag === "@deprecated")
     );
 }
 function useClassMethodByName(
@@ -2105,9 +2113,6 @@ async function buildComponents() {
       "../platform/src/components/aws/app-sync-resolver.ts",
       "../platform/src/components/aws/auth.ts",
       "../platform/src/components/aws/bucket.ts",
-      "../platform/src/components/aws/bucket-lambda-subscriber.ts",
-      "../platform/src/components/aws/bucket-queue-subscriber.ts",
-      "../platform/src/components/aws/bucket-topic-subscriber.ts",
       "../platform/src/components/aws/cluster.ts",
       "../platform/src/components/aws/cluster-v1.ts",
       "../platform/src/components/aws/cognito-identity-pool.ts",

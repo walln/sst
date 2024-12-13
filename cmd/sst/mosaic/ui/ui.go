@@ -343,10 +343,6 @@ func (u *UI) Event(unknown interface{}) {
 			u.printEvent(TEXT_INFO, "Info", "Downloaded provider "+splits[1])
 		}
 
-	case *project.ProviderDownloadEvent:
-		u.printEvent(TEXT_INFO, "Info", "Downloading provider "+evt.Name+" v"+evt.Version)
-		break
-
 	case *project.CompleteEvent:
 		u.complete = evt
 		if evt.Old {

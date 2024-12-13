@@ -1,18 +1,15 @@
 package project
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"os"
 	"path"
 	"path/filepath"
 	"reflect"
-	"regexp"
 	"strings"
 	"time"
 
@@ -35,6 +32,7 @@ import (
 	"github.com/sst/ion/pkg/project/provider"
 	"github.com/sst/ion/pkg/telemetry"
 	"github.com/sst/ion/pkg/types"
+	"github.com/zeebo/xxh3"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -51,11 +49,6 @@ type StackInput struct {
 }
 
 type ConcurrentUpdateEvent struct{}
-
-type ProviderDownloadEvent struct {
-	Name    string
-	Version string
-}
 
 type BuildSuccessEvent struct {
 	Files []string
@@ -162,9 +155,14 @@ var CommonErrors = []CommonError{
 var ErrStackRunFailed = fmt.Errorf("stack run had errors")
 var ErrStageNotFound = fmt.Errorf("stage not found")
 var ErrPassphraseInvalid = fmt.Errorf("passphrase invalid")
+var ErrProtectedStage = fmt.Errorf("cannot remove protected stage")
 
 func (p *Project) Run(ctx context.Context, input *StackInput) error {
 	slog.Info("running stack command", "cmd", input.Command)
+
+	if p.app.Protect && input.Command == "remove" {
+		return ErrProtectedStage
+	}
 
 	bus.Publish(&StackCommandEvent{
 		App:     p.app.Name,
@@ -186,7 +184,7 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 		defer p.Unlock()
 	}
 
-	_, err := p.PullState()
+	statePath, err := p.PullState()
 	if err != nil {
 		if errors.Is(err, provider.ErrStateNotFound) {
 			if input.Command != "deploy" {
@@ -195,9 +193,6 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 		} else {
 			return err
 		}
-	}
-	if input.Command != "diff" {
-		defer p.PushState(updateID)
 	}
 
 	passphrase, err := provider.Passphrase(p.home, p.app.Name, p.app.Stage)
@@ -419,6 +414,38 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 	errors := []Error{}
 	finished := false
 	importDiffs := map[string][]ImportDiff{}
+	partial := make(chan int, 1000)
+	partialDone := make(chan error)
+
+	go func() {
+		last := uint64(0)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case cmd := <-partial:
+				data, err := os.ReadFile(statePath)
+				if err == nil {
+					next := xxh3.Hash(data)
+					if next != last && next != 0 && input.Command != "diff" {
+						err := provider.PushPartialState(p.Backend(), updateID, p.App().Name, p.App().Stage, data)
+						if err != nil && cmd == 0 {
+							partialDone <- err
+							return
+						}
+					}
+					last = next
+					if cmd == 0 {
+						partialDone <- provider.PushSnapshot(p.Backend(), updateID, p.App().Name, p.App().Stage, data)
+						return
+					}
+				}
+			case <-time.After(time.Second * 5):
+				partial <- 1
+				continue
+			}
+		}
+	}()
 
 	go func() {
 		for {
@@ -476,6 +503,10 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 					}
 				}
 
+				if event.ResOutputsEvent != nil || event.CancelEvent != nil || event.SummaryEvent != nil {
+					partial <- 1
+				}
+
 				for _, field := range getNotNilFields(event) {
 					bus.Publish(field)
 				}
@@ -494,107 +525,15 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 		}
 	}()
 
-	defer func() {
-		slog.Info("parsing state")
-		defer slog.Info("done parsing state")
-		complete, err := getCompletedEvent(context.Background(), stack)
-		if err != nil {
-			return
-		}
-		complete.Finished = finished
-		complete.Errors = errors
-		complete.ImportDiffs = importDiffs
-		defer bus.Publish(complete)
-		if input.Command == "diff" {
-			return
-		}
-
-		outputsFilePath := filepath.Join(p.PathWorkingDir(), "outputs.json")
-		outputsFile, _ := os.Create(outputsFilePath)
-		defer outputsFile.Close()
-		json.NewEncoder(outputsFile).Encode(complete.Outputs)
-		types.Generate(p.PathConfig(), complete.Links)
-	}()
-
 	slog.Info("running stack command", "cmd", input.Command)
 	var summary auto.UpdateSummary
 	started := time.Now().Format(time.RFC3339)
-	defer func() {
-		if input.Command == "diff" {
-			return
-		}
-		var parsed provider.Summary
-		parsed.Command = input.Command
-		parsed.Version = p.Version()
-		parsed.UpdateID = updateID
-		parsed.TimeStarted = summary.StartTime
-		if parsed.TimeStarted == "" {
-			parsed.TimeStarted = started
-		}
-		parsed.TimeCompleted = time.Now().Format(time.RFC3339)
-		if summary.EndTime != nil {
-			parsed.TimeCompleted = *summary.EndTime
-		}
-		if summary.ResourceChanges != nil {
-			if match, ok := (*summary.ResourceChanges)["same"]; ok {
-				parsed.ResourceSame = match
-			}
-			if match, ok := (*summary.ResourceChanges)["create"]; ok {
-				parsed.ResourceCreated = match
-			}
-			if match, ok := (*summary.ResourceChanges)["update"]; ok {
-				parsed.ResourceUpdated = match
-			}
-			if match, ok := (*summary.ResourceChanges)["delete"]; ok {
-				parsed.ResourceDeleted = match
-			}
-		}
-		for _, err := range errors {
-			parsed.Errors = append(parsed.Errors, provider.SummaryError{
-				URN:     err.URN,
-				Message: err.Message,
-			})
-		}
-		provider.PutSummary(p.home, p.app.Name, p.app.Stage, updateID, parsed)
-		provider.PutUpdate(p.home, p.app.Name, p.app.Stage, provider.Update{
-			ID:            updateID,
-			Version:       parsed.Version,
-			Command:       parsed.Command,
-			Errors:        parsed.Errors,
-			TimeStarted:   parsed.TimeStarted,
-			TimeCompleted: parsed.TimeCompleted,
-		})
-	}()
 
 	pulumiLog, err := os.Create(p.PathLog("pulumi"))
 	if err != nil {
 		return err
 	}
 	defer pulumiLog.Close()
-
-	pulumiErrReader, pulumiErrWriter := io.Pipe()
-	defer pulumiErrReader.Close()
-	defer pulumiErrWriter.Close()
-
-	go func() {
-		scanner := bufio.NewScanner(pulumiErrReader)
-		match := regexp.MustCompile(`\[resource plugin ([^\]]*)`)
-		for scanner.Scan() {
-			text := scanner.Text()
-			slog.Error("pulumi error", "line", text)
-			matches := match.FindStringSubmatch(text)
-			if len(matches) > 1 {
-				plugin := matches[1]
-				splits := strings.Split(plugin, "-")
-				for _, item := range p.lock {
-					if item.Name == splits[0] {
-						bus.Publish(&ProviderDownloadEvent{Name: splits[0], Version: splits[1]})
-						break
-					}
-				}
-			}
-		}
-	}()
 
 	logLevel := uint(3)
 	debugLogging := debug.LoggingOptions{
@@ -617,7 +556,6 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 			optup.Target(input.Target),
 			optup.TargetDependents(),
 			optup.ProgressStreams(pulumiLog),
-			optup.ErrorProgressStreams(pulumiErrWriter),
 			optup.EventStreams(stream),
 		)
 		err = derr
@@ -630,7 +568,6 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 			optdestroy.Target(input.Target),
 			optdestroy.TargetDependents(),
 			optdestroy.ProgressStreams(pulumiLog),
-			optdestroy.ErrorProgressStreams(pulumiErrWriter),
 			optdestroy.EventStreams(stream),
 		)
 		err = derr
@@ -641,7 +578,6 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 			optrefresh.DebugLogging(debugLogging),
 			optrefresh.Target(input.Target),
 			optrefresh.ProgressStreams(pulumiLog),
-			optrefresh.ErrorProgressStreams(pulumiErrWriter),
 			optrefresh.EventStreams(stream),
 		)
 		err = derr
@@ -652,10 +588,61 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 			optpreview.Diff(),
 			optpreview.Target(input.Target),
 			optpreview.ProgressStreams(pulumiLog),
-			optpreview.ErrorProgressStreams(pulumiErrWriter),
 			optpreview.EventStreams(stream),
 		)
 		err = derr
+	}
+
+	slog.Info("waiting for partial state to finish")
+	partial <- 0
+	err = <-partialDone
+	if err != nil {
+		return err
+	}
+
+	slog.Info("parsing state")
+	defer slog.Info("done parsing state")
+	complete, err := getCompletedEvent(context.Background(), stack)
+	if err != nil {
+		return err
+	}
+	complete.Finished = finished
+	complete.Errors = errors
+	complete.ImportDiffs = importDiffs
+	defer bus.Publish(complete)
+	if input.Command == "diff" {
+		return err
+	}
+
+	outputsFilePath := filepath.Join(p.PathWorkingDir(), "outputs.json")
+	outputsFile, _ := os.Create(outputsFilePath)
+	defer outputsFile.Close()
+	json.NewEncoder(outputsFile).Encode(complete.Outputs)
+	types.Generate(p.PathConfig(), complete.Links)
+
+	if input.Command != "diff " {
+		var update provider.Update
+		update.ID = updateID
+		update.Command = input.Command
+		update.Version = p.Version()
+		update.TimeStarted = summary.StartTime
+		if update.TimeStarted == "" {
+			update.TimeStarted = started
+		}
+		update.TimeCompleted = time.Now().Format(time.RFC3339)
+		if summary.EndTime != nil {
+			update.TimeCompleted = *summary.EndTime
+		}
+		for _, err := range errors {
+			update.Errors = append(update.Errors, provider.SummaryError{
+				URN:     err.URN,
+				Message: err.Message,
+			})
+		}
+		err = provider.PutUpdate(p.home, p.app.Name, p.app.Stage, update)
+		if err != nil {
+			return err
+		}
 	}
 
 	slog.Info("done running stack command")
@@ -697,7 +684,11 @@ func (s *Project) Unlock() error {
 			}
 		}
 	}
-	return provider.Unlock(s.home, s.app.Name, s.app.Stage)
+	return provider.Unlock(s.home, s.version, s.app.Name, s.app.Stage)
+}
+
+func (s *Project) ForceUnlock() error {
+	return provider.ForceUnlock(s.home, s.version, s.app.Name, s.app.Stage)
 }
 
 func (s *Project) PullState() (string, error) {
@@ -732,14 +723,6 @@ func (s *Project) PushState(version string) error {
 		s.app.Name,
 		s.app.Stage,
 		filepath.Join(pulumiDir, "stacks", s.app.Name, fmt.Sprintf("%v.json", s.app.Stage)),
-	)
-}
-
-func (s *Project) Cancel() error {
-	return provider.Unlock(
-		s.home,
-		s.app.Name,
-		s.app.Stage,
 	)
 }
 
