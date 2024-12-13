@@ -693,16 +693,17 @@ func (s *Project) ForceUnlock() error {
 
 func (s *Project) PullState() (string, error) {
 	pulumiDir := filepath.Join(s.PathWorkingDir(), ".pulumi")
+	appDir := filepath.Join(pulumiDir, "stacks", s.app.Name)
+	path := filepath.Join(appDir, fmt.Sprintf("%v.json", s.app.Stage))
+
 	err := os.RemoveAll(pulumiDir)
 	if err != nil {
-		return "", err
+		return path, err
 	}
-	appDir := filepath.Join(pulumiDir, "stacks", s.app.Name)
 	err = os.MkdirAll(appDir, 0755)
 	if err != nil {
-		return "", err
+		return path, err
 	}
-	path := filepath.Join(appDir, fmt.Sprintf("%v.json", s.app.Stage))
 	err = provider.PullState(
 		s.home,
 		s.app.Name,
@@ -710,7 +711,7 @@ func (s *Project) PullState() (string, error) {
 		path,
 	)
 	if err != nil {
-		return "", err
+		return path, err
 	}
 	return path, nil
 }
