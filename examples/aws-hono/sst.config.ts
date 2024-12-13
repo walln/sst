@@ -16,5 +16,10 @@ export default $config({
       link: [bucket],
       handler: "src/index.handler",
     });
+    new sst.aws.Function("Hono3", {
+      url: true,
+      link: [bucket],
+      handler: "src/index.handler",
+    });
   },
 });
