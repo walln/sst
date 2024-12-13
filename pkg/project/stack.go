@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"os"
 	"path"
@@ -536,10 +535,6 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 	}
 	defer pulumiLog.Close()
 
-	pulumiErrReader, pulumiErrWriter := io.Pipe()
-	defer pulumiErrReader.Close()
-	defer pulumiErrWriter.Close()
-
 	logLevel := uint(3)
 	debugLogging := debug.LoggingOptions{
 		LogLevel: &logLevel,
@@ -561,7 +556,6 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 			optup.Target(input.Target),
 			optup.TargetDependents(),
 			optup.ProgressStreams(pulumiLog),
-			optup.ErrorProgressStreams(pulumiErrWriter),
 			optup.EventStreams(stream),
 		)
 		err = derr
@@ -574,7 +568,6 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 			optdestroy.Target(input.Target),
 			optdestroy.TargetDependents(),
 			optdestroy.ProgressStreams(pulumiLog),
-			optdestroy.ErrorProgressStreams(pulumiErrWriter),
 			optdestroy.EventStreams(stream),
 		)
 		err = derr
@@ -585,7 +578,6 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 			optrefresh.DebugLogging(debugLogging),
 			optrefresh.Target(input.Target),
 			optrefresh.ProgressStreams(pulumiLog),
-			optrefresh.ErrorProgressStreams(pulumiErrWriter),
 			optrefresh.EventStreams(stream),
 		)
 		err = derr
@@ -596,7 +588,6 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 			optpreview.Diff(),
 			optpreview.Target(input.Target),
 			optpreview.ProgressStreams(pulumiLog),
-			optpreview.ErrorProgressStreams(pulumiErrWriter),
 			optpreview.EventStreams(stream),
 		)
 		err = derr
