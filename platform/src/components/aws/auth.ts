@@ -173,9 +173,6 @@ export class Auth extends Component implements Link.Linkable {
         `${name}Authorizer`,
         args.authorizer,
         {
-          url: {
-            cors: false,
-          },
           link: [table],
           environment: {
             OPENAUTH_STORAGE: jsonStringify({
@@ -185,7 +182,11 @@ export class Auth extends Component implements Link.Linkable {
           },
           _skipHint: true,
         },
-        undefined,
+        (args) => {
+          args.url = {
+            cors: false,
+          };
+        },
         { parent: self },
       ).apply((v) => v.getFunction());
     }
