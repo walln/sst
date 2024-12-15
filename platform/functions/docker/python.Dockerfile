@@ -1,32 +1,40 @@
-# If any docker wizard is interested, a multi-stage build would be better for caching
-# and reducing the size of the final image (we need gcc and git to support installing
-# git dependencies).
-
-# The python version to use is supplied as an arg from SST
+# Specify the Python version as an ARG
 ARG PYTHON_VERSION=3.11
-
-# Use an official AWS Lambda base image for Python
-FROM public.ecr.aws/lambda/python:${PYTHON_VERSION}
-
-# # Ensure git is installed so we can install git based dependencies (such as sst)
 ARG PYTHON_RUNTIME
 
-# Install git and gcc using appropriate package manager based on Python version
+# Stage 1: Build environment (install build tools and dependencies)
+FROM public.ecr.aws/lambda/python:${PYTHON_VERSION} AS build
+
+# Ensure git and gcc are installed for building dependencies
 RUN if [[ "$PYTHON_RUNTIME" == 3.1[2-9]* ]]; then \
   dnf install -y git gcc; \
   else \
   yum install -y git gcc; \
   fi
 
+# COPY requirements.txt ${LAMBDA_TASK_ROOT}/requirements.txt
+# RUN uv pip install -r requirements.txt --target ${LAMBDA_TASK_ROOT} --system
 
-# Install UV to manage your python runtime
+# # Copy the rest of the code
+# COPY . ${LAMBDA_TASK_ROOT}
+
+# Copy requirements and install dependencies
+COPY requirements.txt ${LAMBDA_TASK_ROOT}/requirements.txt
+
+# Mount the uv image to install the dependencies - uv will not be installed in the final image
+RUN --mount=from=ghcr.io/astral-sh/uv,source=/uv,target=/bin/uv \
+  uv pip install -r requirements.txt --target ${LAMBDA_TASK_ROOT} --system --compile-bytecode
+
+# Stage 2: Final runtime image
+FROM public.ecr.aws/lambda/python:${PYTHON_VERSION}
+
+# Install UV into the final image
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 
-# Install the dependencies to the lambda runtime
-COPY requirements.txt ${LAMBDA_TASK_ROOT}/requirements.txt
-RUN uv pip install -r requirements.txt --target ${LAMBDA_TASK_ROOT} --system
+# Copy the installed dependencies from the build stage
+COPY --from=build ${LAMBDA_TASK_ROOT} ${LAMBDA_TASK_ROOT}
 
-# Copy the rest of the code
+# Copy the application code into the final image
 COPY . ${LAMBDA_TASK_ROOT}
 
 # No need to configure the handler or entrypoint - SST will do that

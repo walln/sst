@@ -194,7 +194,7 @@ func (r *PythonRuntime) CreateBuildAsset(ctx context.Context, input *runtime.Bui
 	syncOutput, err := syncCmd.CombinedOutput()
 	if err != nil {
 		slog.Error("failed to run uv sync", "error", err, "output", string(syncOutput))
-		return nil, fmt.Errorf("failed to run uv sync: %v", err)
+		return nil, fmt.Errorf("failed to run uv sync: %v\n%s", err, string(syncOutput))
 	}
 	slog.Error("uv sync output", "output", string(syncOutput))
 
