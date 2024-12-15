@@ -147,6 +147,7 @@ func (r *PythonRuntime) Run(ctx context.Context, input *runtime.RunInput) (runti
 		ctx,
 		"uv",
 		"run",
+		"--with=requests",
 		lambdaBridgePath,
 		filepath.Join(input.Build.Out, input.Build.Handler),
 		input.WorkerID,
