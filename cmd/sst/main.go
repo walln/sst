@@ -373,7 +373,7 @@ var root = &cli.Command{
 					"The multiplexer makes it so that you won't have to start your frontend or",
 					"your container applications separately.",
 					"",
-					"<VideoAside title=\"Learn more about SST's dev mode\" href=\"https://youtu.be/mefLc137EB0\" />",
+					"<VideoAside title=\"Watch a video about dev mode\" href=\"https://youtu.be/mefLc137EB0\" />",
 					"",
 					"While `sst dev` does a deploy when it starts up, it does not deploy components like",
 					"`Service`, or the frontends like `Nextjs`, `Remix`, `Astro`, `StaticSite`, etc.",

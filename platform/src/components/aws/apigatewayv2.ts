@@ -691,7 +691,7 @@ export class ApiGatewayV2 extends Component implements Link.Linkable {
     const vpcLink = createVpcLink();
     const api = createApi();
     const logGroup = createLogGroup();
-    createStage();
+    const stage = createStage();
 
     const certificateArn = createSsl();
     const apigDomain = createDomainName();
@@ -832,7 +832,7 @@ export class ApiGatewayV2 extends Component implements Link.Linkable {
     }
 
     function createStage() {
-      new apigatewayv2.Stage(
+      return new apigatewayv2.Stage(
         ...transform(
           args.transform?.stage,
           `${name}Stage`,
@@ -944,7 +944,7 @@ export class ApiGatewayV2 extends Component implements Link.Linkable {
             {
               apiId: api.id,
               domainName: apigDomain.id,
-              stage: "$default",
+              stage: stage.name,
               apiMappingKey: path,
             },
             { parent },
