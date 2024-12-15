@@ -279,12 +279,19 @@ func (r *PythonRuntime) CreateBuildAsset(ctx context.Context, input *runtime.Bui
 	if !input.IsContainer || input.Dev {
 
 		// 5. Install the dependencies as a target
-		installCmd := process.CommandContext(ctx, "uv", "pip", "install", "-r", outputRequirementsFile, "--target", input.Out())
-		installCmd.Dir = input.Out()
-		err = installCmd.Run()
-		if err != nil {
-			return nil, fmt.Errorf("failed to run uv pip install: %v", err)
+		args := []string{"pip", "install", "-r", outputRequirementsFile, "--target", input.Out()}
+		if !input.Dev {
+			// If we are not in dev mode then we need to install the dependencies for the target platform
+			// which is amazon linux
+			args = append(args, "--python-platform", "linux")
 		}
+		installCmd := process.CommandContext(ctx, "uv", args...)
+		installCmd.Dir = input.Out()
+		installOutput, err := installCmd.CombinedOutput()
+		if err != nil {
+			return nil, fmt.Errorf("failed to run uv pip install: %v\n%s", err, string(installOutput))
+		}
+		slog.Error("uv pip install output", "output", string(installOutput), "error", err)
 
 		// Adjust handler path if it contains the pattern {package_name}/src/{package_name}
 		adjustedHandler, err := r.adjustHandlerPath(input)
