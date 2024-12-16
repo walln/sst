@@ -46,6 +46,7 @@ type StackInput struct {
 	ServerPort int
 	Dev        bool
 	Verbose    bool
+	Continue   bool
 }
 
 type ConcurrentUpdateEvent struct{}
@@ -609,12 +610,18 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 
 	switch input.Command {
 	case "deploy":
-		result, derr := stack.Up(ctx,
+		opts := []optup.Option{
 			optup.DebugLogging(debugLogging),
 			optup.Target(input.Target),
 			optup.TargetDependents(),
 			optup.ProgressStreams(pulumiLog),
 			optup.EventStreams(stream),
+		}
+		if input.Continue {
+			opts = append(opts, optup.ContinueOnError())
+		}
+		result, derr := stack.Up(ctx,
+			opts...,
 		)
 		err = derr
 		summary = result.Summary
@@ -627,11 +634,13 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 			optdestroy.TargetDependents(),
 			optdestroy.ProgressStreams(pulumiLog),
 			optdestroy.EventStreams(stream),
+			optdestroy.ContinueOnError(),
 		)
 		err = derr
 		summary = result.Summary
 
 	case "refresh":
+
 		result, derr := stack.Refresh(ctx,
 			optrefresh.DebugLogging(debugLogging),
 			optrefresh.Target(input.Target),
