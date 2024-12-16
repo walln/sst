@@ -480,9 +480,8 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 		last := uint64(0)
 		for {
 			select {
-			case <-ctx.Done():
-				return
 			case cmd := <-partial:
+				slog.Info("partial loop", "cmd", cmd)
 				data, err := os.ReadFile(statePath)
 				if err == nil {
 					next := xxh3.Hash(data)

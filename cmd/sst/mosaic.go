@@ -266,6 +266,12 @@ func CmdMosaic(c *cli.Cli) error {
 		})
 	}
 
+	wg.Go(func() error {
+		<-c.Context.Done()
+		fmt.Println("Cleaning up...")
+		return nil
+	})
+
 	err = wg.Wait()
 	slog.Info("done mosaic", "err", err)
 	return err
