@@ -22,9 +22,6 @@ RUN --mount=from=ghcr.io/astral-sh/uv,source=/uv,target=/bin/uv \
 # Stage 2: Final runtime image
 FROM public.ecr.aws/lambda/python:${PYTHON_VERSION}
 
-# Install UV into the final image
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
-
 # Copy the installed dependencies from the build stage
 COPY --from=build ${LAMBDA_TASK_ROOT} ${LAMBDA_TASK_ROOT}
 
