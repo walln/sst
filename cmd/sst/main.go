@@ -1099,10 +1099,15 @@ var root = &cli.Command{
 							update.TimeCompleted = time.Now().UTC().Format(time.RFC3339)
 							provider.PutUpdate(p.Backend(), p.App().Name, p.App().Stage, update)
 						}()
-						path, err := p.PullState()
+						workdir, err := p.NewWorkdir()
+						if err != nil {
+							return err
+						}
+						path, err := workdir.Pull()
 						if err != nil {
 							return util.NewReadableError(err, "Could not pull state")
 						}
+						defer workdir.Cleanup()
 						editor := os.Getenv("EDITOR")
 						if editor == "" {
 							editor = "vim"
@@ -1120,7 +1125,7 @@ var root = &cli.Command{
 							return util.NewReadableError(err, "Editor exited with error")
 						}
 
-						return p.PushState(update.ID)
+						return workdir.Push(update.ID)
 					},
 				},
 			},

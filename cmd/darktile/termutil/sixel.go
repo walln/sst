@@ -86,7 +86,7 @@ func (t *Terminal) handleSixel(readChan chan MeasuredRune) (renderRequired bool)
 			continue
 		case 0x5c:
 			if inEscape {
-				img, err := sixel.Decode(strings.NewReader(string(data)), t.theme.DefaultBackground())
+				img, err := sixel.Decode(strings.NewReader(string(data)), DefaultBackground())
 				if err != nil {
 					return false
 				}

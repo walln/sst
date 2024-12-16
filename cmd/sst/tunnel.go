@@ -61,6 +61,7 @@ var CmdTunnel = &cli.Command{
 		if tunnel.NeedsInstall() {
 			return util.NewReadableError(nil, "The sst tunnel needs to be installed or upgraded. Run `sudo sst tunnel install`")
 		}
+		slog.Info("starting tunnel")
 		proj, err := c.InitProject()
 		if err != nil {
 			return err
@@ -92,6 +93,8 @@ var CmdTunnel = &cli.Command{
 			"SST_SKIP_LOCAL=true",
 			"SST_SKIP_DEPENDENCY_CHECK=true",
 			"SSH_PRIVATE_KEY="+tun.PrivateKey,
+			"SST_PRINT_LOGS=true",
+			"SST_LOG="+strings.Replace(os.Getenv("SST_LOG"), ".log", "_sudo.log")
 		)
 		tunnelCmd.Stdout = os.Stdout
 		slog.Info("starting tunnel", "cmd", tunnelCmd.Args)
@@ -122,7 +125,7 @@ var CmdTunnel = &cli.Command{
 					"Install the tunnel.",
 					"",
 					"To be able to create a tunnel, SST needs to create a network interface on your local",
-					"machine. This needs _sudo_ access.",
+
 					"",
 					"```bash \"sudo\"",
 					"sudo sst tunnel install",

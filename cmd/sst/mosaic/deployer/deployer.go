@@ -42,6 +42,7 @@ func Start(ctx context.Context, p *project.Project, server *server.Server) error
 						ServerPort: server.Port,
 					})
 					if err != nil {
+						slog.Error("stack deploy error", "error", err)
 						transformed := errors.Transform(err)
 						if _, ok := transformed.(*util.ReadableError); ok {
 							bus.Publish(&DeployFailedEvent{Error: transformed.Error()})

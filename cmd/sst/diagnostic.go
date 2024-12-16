@@ -84,10 +84,15 @@ var CmdDiagnostic = &cli.Command{
 		if err != nil {
 			return err
 		}
-		statePath, err := p.PullState()
+		workdir, err := p.NewWorkdir()
 		if err != nil {
 			return err
 		}
+		statePath, err := workdir.Pull()
+		if err != nil {
+			return err
+		}
+		defer workdir.Cleanup()
 		err = addFile(statePath, "state.json")
 		if err != nil {
 			return err

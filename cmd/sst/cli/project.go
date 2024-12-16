@@ -57,7 +57,6 @@ func (c *Cli) InitProject() (*project.Project, error) {
 		}
 		sstLog := p.PathLog("sst")
 		logPath := p.PathLog("")
-		os.RemoveAll(logPath)
 		os.MkdirAll(logPath, 0755)
 		nextLogFile, err := os.Create(sstLog)
 		if err != nil {

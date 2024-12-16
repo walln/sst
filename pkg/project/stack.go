@@ -157,6 +157,63 @@ var ErrStageNotFound = fmt.Errorf("stage not found")
 var ErrPassphraseInvalid = fmt.Errorf("passphrase invalid")
 var ErrProtectedStage = fmt.Errorf("cannot remove protected stage")
 
+type PulumiWorkdir struct {
+	path    string
+	project *Project
+}
+
+func (p *Project) NewWorkdir() (*PulumiWorkdir, error) {
+	workdir := PulumiWorkdir{
+		path:    filepath.Join(p.PathWorkingDir(), "pulumi", id.Descending()),
+		project: p,
+	}
+	err := os.MkdirAll(workdir.path, 0755)
+	if err != nil {
+		return nil, err
+	}
+	return &workdir, nil
+}
+
+func (w *PulumiWorkdir) Cleanup() {
+	os.RemoveAll(w.path)
+}
+
+func (w *PulumiWorkdir) Push(updateID string) error {
+	stage := w.project.app.Stage
+	app := w.project.app.Name
+	return provider.PushState(
+		w.project.home,
+		updateID,
+		app,
+		stage,
+		filepath.Join(w.Backend(), ".pulumi", "stacks", app, fmt.Sprintf("%v.json", stage)),
+	)
+}
+
+func (w *PulumiWorkdir) Pull() (string, error) {
+	appDir := filepath.Join(w.path, ".pulumi", "stacks", w.project.app.Name)
+	path := filepath.Join(appDir, fmt.Sprintf("%v.json", w.project.app.Stage))
+
+	err := os.MkdirAll(appDir, 0755)
+	if err != nil {
+		return path, err
+	}
+	err = provider.PullState(
+		w.project.home,
+		w.project.app.Name,
+		w.project.app.Stage,
+		path,
+	)
+	if err != nil {
+		return path, err
+	}
+	return path, nil
+}
+
+func (w *PulumiWorkdir) Backend() string {
+	return w.path
+}
+
 func (p *Project) Run(ctx context.Context, input *StackInput) error {
 	slog.Info("running stack command", "cmd", input.Command)
 
@@ -184,7 +241,8 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 		defer p.Unlock()
 	}
 
-	statePath, err := p.PullState()
+	workdir, err := p.NewWorkdir()
+	statePath, err := workdir.Pull()
 	if err != nil {
 		if errors.Is(err, provider.ErrStateNotFound) {
 			if input.Command != "deploy" {
@@ -194,6 +252,7 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 			return err
 		}
 	}
+	defer workdir.Cleanup()
 
 	passphrase, err := provider.Passphrase(p.home, p.app.Name, p.app.Stage)
 	if err != nil {
@@ -264,13 +323,13 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 	}
 	ws, err := auto.NewLocalWorkspace(ctx,
 		auto.Pulumi(pulumi),
-		auto.WorkDir(p.PathWorkingDir()),
+		auto.WorkDir(workdir.Backend()),
 		auto.PulumiHome(global.ConfigDir()),
 		auto.Project(workspace.Project{
 			Name:    tokens.PackageName(p.app.Name),
 			Runtime: workspace.NewProjectRuntimeInfo("nodejs", nil),
 			Backend: &workspace.ProjectBackend{
-				URL: fmt.Sprintf("file://%v", p.PathWorkingDir()),
+				URL: fmt.Sprintf("file://%v", workdir.Backend()),
 			},
 			Main: outfile,
 		}),
@@ -601,7 +660,6 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 	}
 
 	slog.Info("parsing state")
-	defer slog.Info("done parsing state")
 	complete, err := getCompletedEvent(context.Background(), stack)
 	if err != nil {
 		return err
@@ -689,42 +747,6 @@ func (s *Project) Unlock() error {
 
 func (s *Project) ForceUnlock() error {
 	return provider.ForceUnlock(s.home, s.version, s.app.Name, s.app.Stage)
-}
-
-func (s *Project) PullState() (string, error) {
-	pulumiDir := filepath.Join(s.PathWorkingDir(), ".pulumi")
-	appDir := filepath.Join(pulumiDir, "stacks", s.app.Name)
-	path := filepath.Join(appDir, fmt.Sprintf("%v.json", s.app.Stage))
-
-	err := os.RemoveAll(pulumiDir)
-	if err != nil {
-		return path, err
-	}
-	err = os.MkdirAll(appDir, 0755)
-	if err != nil {
-		return path, err
-	}
-	err = provider.PullState(
-		s.home,
-		s.app.Name,
-		s.app.Stage,
-		path,
-	)
-	if err != nil {
-		return path, err
-	}
-	return path, nil
-}
-
-func (s *Project) PushState(version string) error {
-	pulumiDir := filepath.Join(s.PathWorkingDir(), ".pulumi")
-	return provider.PushState(
-		s.home,
-		version,
-		s.app.Name,
-		s.app.Stage,
-		filepath.Join(pulumiDir, "stacks", s.app.Name, fmt.Sprintf("%v.json", s.app.Stage)),
-	)
 }
 
 func decrypt(input interface{}) interface{} {
@@ -890,10 +912,16 @@ func (p *Project) GetCompleted(ctx context.Context) (*CompleteEvent, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, err = p.PullState()
+	workdir, err := p.NewWorkdir()
 	if err != nil {
 		return nil, err
 	}
+	defer workdir.Cleanup()
+	_, err = workdir.Pull()
+	if err != nil {
+		return nil, err
+	}
+	defer workdir.Cleanup()
 	pulumi, err := auto.NewPulumiCommand(&auto.PulumiCommandOptions{
 		Root:             filepath.Join(global.BinPath(), ".."),
 		SkipVersionCheck: true,
@@ -903,13 +931,13 @@ func (p *Project) GetCompleted(ctx context.Context) (*CompleteEvent, error) {
 	}
 	ws, err := auto.NewLocalWorkspace(ctx,
 		auto.Pulumi(pulumi),
-		auto.WorkDir(p.PathWorkingDir()),
+		auto.WorkDir(workdir.Backend()),
 		auto.PulumiHome(global.ConfigDir()),
 		auto.Project(workspace.Project{
 			Name:    tokens.PackageName(p.app.Name),
 			Runtime: workspace.NewProjectRuntimeInfo("nodejs", nil),
 			Backend: &workspace.ProjectBackend{
-				URL: fmt.Sprintf("file://%v", p.PathWorkingDir()),
+				URL: fmt.Sprintf("file://%v", workdir.Backend()),
 			},
 		}),
 		auto.EnvVars(
@@ -921,7 +949,7 @@ func (p *Project) GetCompleted(ctx context.Context) (*CompleteEvent, error) {
 	if err != nil {
 		return nil, err
 	}
-	stack, err := auto.UpsertStack(ctx,
+	stack, err := auto.SelectStack(ctx,
 		p.app.Stage,
 		ws,
 	)
