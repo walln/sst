@@ -1934,63 +1934,62 @@ export class Cluster extends Component {
     };
   }
 
-  // /**
-  //  * Add a service to the cluster.
-  //  *
-  //  * @param name Name of the service.
-  //  * @param args Configure the service.
-  //  *
-  //  * @example
-  //  *
-  //  * ```ts title="sst.config.ts"
-  //  * cluster.addService("MyService");
-  //  * ```
-  //  *
-  //  * You can also configure the service. For example, set a custom domain.
-  //  *
-  //  * ```js {2} title="sst.config.ts"
-  //  * cluster.addService("MyService", {
-  //  *   domain: "example.com"
-  //  * });
-  //  * ```
-  //  *
-  //  * Enable auto-scaling.
-  //  *
-  //  * ```ts title="sst.config.ts"
-  //  * cluster.addService("MyService", {
-  //  *   scaling: {
-  //  *     min: 4,
-  //  *     max: 16,
-  //  *     cpuUtilization: 50,
-  //  *     memoryUtilization: 50,
-  //  *   }
-  //  * });
-  //  * ```
-  //  *
-  //  * By default this starts a single container. To add multiple containers in the service, pass in an array of containers args.
-  //  *
-  //  * ```ts title="sst.config.ts"
-  //  * cluster.addService("MyService", {
-  //  *   architecture: "arm64",
-  //  *   containers: [
-  //  *     {
-  //  *       name: "app",
-  //  *       image: "nginxdemos/hello:plain-text"
-  //  *     },
-  //  *     {
-  //  *       name: "admin",
-  //  *       image: {
-  //  *         context: "./admin",
-  //  *         dockerfile: "Dockerfile"
-  //  *       }
-  //  *     }
-  //  *   ]
-  //  * });
-  //  * ```
-  //  *
-  //  * This is useful for running sidecar containers.
-  //  */
-  /** @internal */
+  /**
+   * Add a service to the cluster.
+   *
+   * @param name Name of the service.
+   * @param args Configure the service.
+   *
+   * @example
+   *
+   * ```ts title="sst.config.ts"
+   * cluster.addService("MyService");
+   * ```
+   *
+   * You can also configure the service. For example, set a custom domain.
+   *
+   * ```js {2} title="sst.config.ts"
+   * cluster.addService("MyService", {
+   *   domain: "example.com"
+   * });
+   * ```
+   *
+   * Enable auto-scaling.
+   *
+   * ```ts title="sst.config.ts"
+   * cluster.addService("MyService", {
+   *   scaling: {
+   *     min: 4,
+   *     max: 16,
+   *     cpuUtilization: 50,
+   *     memoryUtilization: 50,
+   *   }
+   * });
+   * ```
+   *
+   * By default this starts a single container. To add multiple containers in the service, pass in an array of containers args.
+   *
+   * ```ts title="sst.config.ts"
+   * cluster.addService("MyService", {
+   *   architecture: "arm64",
+   *   containers: [
+   *     {
+   *       name: "app",
+   *       image: "nginxdemos/hello:plain-text"
+   *     },
+   *     {
+   *       name: "admin",
+   *       image: {
+   *         context: "./admin",
+   *         dockerfile: "Dockerfile"
+   *       }
+   *     }
+   *   ]
+   * });
+   * ```
+   *
+   * This is useful for running sidecar containers.
+   */
   public addService(name: string, args?: ClusterServiceArgs) {
     // Do not prefix the service to allow `Resource.MyService` to work.
     return new Service(
