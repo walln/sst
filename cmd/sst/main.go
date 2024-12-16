@@ -109,19 +109,23 @@ func run() error {
 
 	if !flag.SST_SKIP_DEPENDENCY_CHECK {
 		spin := spinner.New(spinner.CharSets[14], 100*time.Millisecond)
-		spin.Suffix = "  Updating dependencies..."
+		spin.Suffix = "  Download dependencies..."
 		if global.NeedsPulumi() {
+			spin.Suffix = "  Installing pulumi..."
 			spin.Start()
-			err := global.InstallPulumi()
+			err := global.InstallPulumi(ctx)
 			if err != nil {
-				return err
+				spin.Stop()
+				return util.NewHintedError(err, "Could not install pulumi")
 			}
 		}
 		if global.NeedsBun() {
+			spin.Suffix = "  Installing bun..."
 			spin.Start()
-			err := global.InstallBun()
+			err := global.InstallBun(ctx)
 			if err != nil {
-				return err
+				spin.Stop()
+				return util.NewHintedError(err, "Could not install bun")
 			}
 		}
 		spin.Stop()
