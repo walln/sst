@@ -2,6 +2,7 @@ package python
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
@@ -183,6 +184,26 @@ func (r *PythonRuntime) ShouldRebuild(functionID string, file string) bool {
 }
 
 func (r *PythonRuntime) CreateBuildAsset(ctx context.Context, input *runtime.BuildInput) (*runtime.BuildOutput, error) {
+	// Get the architecture from the input.properties.architecture json field
+	slog.Info("input properties", "json", string(input.Properties))
+
+	type Properties struct {
+		Architecture string `json:"architecture"`
+		Container    bool   `json:"container"`
+	}
+	var props Properties
+	if err := json.Unmarshal(input.Properties, &props); err != nil {
+		return nil, fmt.Errorf("failed to parse properties: %v", err)
+	}
+
+	arch := props.Architecture
+	if arch == "" {
+		arch = "x86_64" // Default to x86_64
+	}
+
+	if arch != "x86_64" && arch != "arm64" {
+		return nil, fmt.Errorf("invalid architecture %q - must be x86_64 or arm64 - %v", arch, string(input.Properties))
+	}
 	workingDir := path.ResolveRootDir(input.CfgPath)
 
 	// 1. Generate non-local package index
@@ -283,8 +304,12 @@ func (r *PythonRuntime) CreateBuildAsset(ctx context.Context, input *runtime.Bui
 		args := []string{"pip", "install", "-r", outputRequirementsFile, "--target", input.Out()}
 		if !input.Dev {
 			// If we are not in dev mode then we need to install the dependencies for the target platform
-			// which is amazon linux
-			args = append(args, "--python-platform", "linux")
+			// which is amazon linux for the correct architecture
+			pythonPlatform := "x86_64-unknown-linux-gnu"
+			if arch == "arm64" {
+				pythonPlatform = "aarch64-unknown-linux-gnu"
+			}
+			args = append(args, "--python-platform", pythonPlatform)
 		}
 		installCmd := process.CommandContext(ctx, "uv", args...)
 		installCmd.Dir = input.Out()

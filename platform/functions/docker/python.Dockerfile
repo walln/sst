@@ -12,12 +12,6 @@ RUN if [[ "$PYTHON_RUNTIME" == 3.1[2-9]* ]]; then \
   yum install -y git gcc; \
   fi
 
-# COPY requirements.txt ${LAMBDA_TASK_ROOT}/requirements.txt
-# RUN uv pip install -r requirements.txt --target ${LAMBDA_TASK_ROOT} --system
-
-# # Copy the rest of the code
-# COPY . ${LAMBDA_TASK_ROOT}
-
 # Copy requirements and install dependencies
 COPY requirements.txt ${LAMBDA_TASK_ROOT}/requirements.txt
 
