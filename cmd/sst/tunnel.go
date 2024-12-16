@@ -93,7 +93,7 @@ var CmdTunnel = &cli.Command{
 			"SST_SKIP_LOCAL=true",
 			"SST_SKIP_DEPENDENCY_CHECK=true",
 			"SSH_PRIVATE_KEY="+tun.PrivateKey,
-			"SST_LOG="+strings.Replace(os.Getenv("SST_LOG"), ".log", "_sudo.log"),
+			"SST_LOG="+strings.ReplaceAll(os.Getenv("SST_LOG"), ".log", "_sudo.log"),
 		)
 		tunnelCmd.Stdout = os.Stdout
 		slog.Info("starting tunnel", "cmd", tunnelCmd.Args)
