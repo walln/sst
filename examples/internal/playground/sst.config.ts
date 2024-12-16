@@ -19,6 +19,7 @@ export default $config({
     //const email = addEmail();
     //const apiv1 = addApiV1();
     //const apiv2 = addApiV2();
+    //const apiws = addApiWebsocket();
     //const router = addRouter();
     //const app = addFunction();
     //const service = addService();
@@ -153,6 +154,30 @@ export default $config({
       api.route("GET /", {
         handler: "functions/apiv2/index.handler",
       });
+      return api;
+    }
+
+    function addApiWebsocket() {
+      const api = new sst.aws.ApiGatewayWebSocket("MyApiWebsocket", {});
+      const authorizer = api.addAuthorizer("MyAuthorizer", {
+        lambda: {
+          function: "functions/apiws/index.authorizer",
+          identitySources: ["route.request.querystring.Authorization"],
+        },
+      });
+      api.route("$connect", "functions/apiws/index.connect", {
+        auth: { lambda: authorizer.id },
+      });
+      api.route("$disconnect", "functions/apiws/index.disconnect");
+      api.route("$default", {
+        handler: "functions/apiws/index.catchAll",
+        link: [api],
+      });
+      api.route("sendmessage", "functions/apiws/index.sendMessage");
+
+      return {
+        managementEndpoint: api.managementEndpoint,
+      };
       return api;
     }
 
