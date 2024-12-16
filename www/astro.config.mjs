@@ -150,6 +150,7 @@ const sidebar = [
       },
       "docs/component/aws/app-sync-resolver",
       "docs/component/aws/app-sync-function",
+      "docs/component/aws/bucket-notification",
       "docs/component/aws/app-sync-data-source",
       "docs/component/aws/cognito-user-pool-client",
       "docs/component/aws/apigatewayv2-url-route",
