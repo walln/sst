@@ -209,6 +209,11 @@ func Start(
 					continue
 				}
 				slog.Info("got bridge message", "type", msg.Type, "from", msg.Source)
+				ch, ok := nextChan[msg.Source]
+				if !ok {
+					ch = make(chan io.Reader, 100)
+					nextChan[msg.Source] = ch
+				}
 				switch msg.Type {
 				case bridge.MessageInit:
 					init := bridge.InitBody{}
@@ -253,11 +258,6 @@ func Start(
 						}
 					}
 				case bridge.MessageNext:
-					ch, ok := nextChan[msg.Source]
-					if !ok {
-						ch = make(chan io.Reader, 100)
-						nextChan[msg.Source] = ch
-					}
 					_, ok = workers[msg.Source]
 					if !ok {
 						slog.Info("asking for reboot", "workerID", msg.Source)
