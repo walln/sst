@@ -15,6 +15,7 @@ import (
 	"github.com/sst/ion/cmd/sst/mosaic/cloudflare"
 	"github.com/sst/ion/cmd/sst/mosaic/deployer"
 	"github.com/sst/ion/cmd/sst/mosaic/dev"
+	"github.com/sst/ion/cmd/sst/mosaic/monoplexer"
 	"github.com/sst/ion/cmd/sst/mosaic/multiplexer"
 	"github.com/sst/ion/cmd/sst/mosaic/socket"
 	"github.com/sst/ion/cmd/sst/mosaic/watcher"
@@ -192,6 +193,11 @@ func CmdMosaic(c *cli.Cli) error {
 		return server.Start(c.Context, p)
 	})
 
+	wg.Go(func() error {
+		defer c.Cancel()
+		return deployer.Start(c.Context, p, server)
+	})
+
 	currentExecutable, _ := os.Executable()
 
 	mode := c.String("mode")
@@ -255,14 +261,56 @@ func CmdMosaic(c *cli.Cli) error {
 		})
 	}
 
-	wg.Go(func() error {
-		defer c.Cancel()
-		return deployer.Start(c.Context, p, server)
-	})
-
 	if mode == "basic" {
 		wg.Go(func() error {
 			return CmdUI(c)
+		})
+	}
+
+	if mode == "mono" {
+		mono := monoplexer.New()
+		mono.AddProcess("deploy", []string{currentExecutable, "ui", "--filter=sst"}, "", "SST")
+		mono.AddProcess("function", []string{currentExecutable, "ui", "--filter=function"}, "", "Function")
+
+		wg.Go(func() error {
+			defer c.Cancel()
+			return mono.Start(c.Context)
+		})
+
+		wg.Go(func() error {
+			evts := bus.Subscribe(&project.CompleteEvent{})
+			defer c.Cancel()
+			for {
+				select {
+				case <-c.Context.Done():
+					return nil
+				case unknown := <-evts:
+					switch evt := unknown.(type) {
+					case *project.CompleteEvent:
+						for _, d := range evt.Devs {
+							if d.Command == "" {
+								continue
+							}
+							dir := filepath.Join(cwd, d.Directory)
+							words, _ := shellquote.Split(d.Command)
+							title := d.Title
+							if title == "" {
+								title = d.Name
+							}
+							mono.AddProcess(
+								d.Name,
+								append([]string{currentExecutable, "dev", "--"}, words...),
+								dir,
+								title,
+							)
+						}
+						for range evt.Tunnels {
+							mono.AddProcess("tunnel", []string{currentExecutable, "tunnel", "--stage", p.App().Stage}, "", "Tunnel")
+						}
+						break
+					}
+				}
+			}
 		})
 	}
 
