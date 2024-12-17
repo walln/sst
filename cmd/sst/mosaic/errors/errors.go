@@ -34,6 +34,7 @@ var transformers = []ErrorTransformer{
 	exact(project.ErrVersionMismatch, project.ErrVersionMismatch.Error()),
 	exact(project.ErrProtectedStage, "Cannot remove protected stage. To remove a protected stage edit your sst.config.ts and remove the `protect` property."),
 	exact(provider.ErrLockNotFound, "This app / stage is not locked"),
+	exact(aws.ErrAppsyncNotReady, "SST creates an appsync event api to power live lambda. After 10 seconds of waiting this cli could not connect to it."),
 	match(func(err *project.ErrProviderVersionTooLow) string {
 		return fmt.Sprintf("You specified version %s of the \"%s\" provider. SST needs %s or higher.", err.Version, err.Name, err.Needed)
 	}),
