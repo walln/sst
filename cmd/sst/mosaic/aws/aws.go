@@ -353,8 +353,10 @@ func Start(
 		ch := nextChan[workerID]
 		select {
 		case <-r.Context().Done():
+			slog.Info("worker disconnected", "workerID", workerID)
 			return
 		case reader := <-ch:
+			slog.Info("worker got next request", "workerID", workerID)
 			writer := client.NewWriter(bridge.MessagePing, prefix+"/"+r.PathValue("workerID")+"/in")
 			json.NewEncoder(writer).Encode(bridge.PingBody{})
 			writer.Close()
