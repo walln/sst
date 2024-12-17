@@ -158,63 +158,6 @@ var ErrStageNotFound = fmt.Errorf("stage not found")
 var ErrPassphraseInvalid = fmt.Errorf("passphrase invalid")
 var ErrProtectedStage = fmt.Errorf("cannot remove protected stage")
 
-type PulumiWorkdir struct {
-	path    string
-	project *Project
-}
-
-func (p *Project) NewWorkdir() (*PulumiWorkdir, error) {
-	workdir := PulumiWorkdir{
-		path:    filepath.Join(p.PathWorkingDir(), "pulumi", id.Descending()),
-		project: p,
-	}
-	err := os.MkdirAll(workdir.path, 0755)
-	if err != nil {
-		return nil, err
-	}
-	return &workdir, nil
-}
-
-func (w *PulumiWorkdir) Cleanup() {
-	os.RemoveAll(w.path)
-}
-
-func (w *PulumiWorkdir) Push(updateID string) error {
-	stage := w.project.app.Stage
-	app := w.project.app.Name
-	return provider.PushState(
-		w.project.home,
-		updateID,
-		app,
-		stage,
-		filepath.Join(w.Backend(), ".pulumi", "stacks", app, fmt.Sprintf("%v.json", stage)),
-	)
-}
-
-func (w *PulumiWorkdir) Pull() (string, error) {
-	appDir := filepath.Join(w.path, ".pulumi", "stacks", w.project.app.Name)
-	path := filepath.Join(appDir, fmt.Sprintf("%v.json", w.project.app.Stage))
-
-	err := os.MkdirAll(appDir, 0755)
-	if err != nil {
-		return path, err
-	}
-	err = provider.PullState(
-		w.project.home,
-		w.project.app.Name,
-		w.project.app.Stage,
-		path,
-	)
-	if err != nil {
-		return path, err
-	}
-	return path, nil
-}
-
-func (w *PulumiWorkdir) Backend() string {
-	return w.path
-}
-
 func (p *Project) Run(ctx context.Context, input *StackInput) error {
 	slog.Info("running stack command", "cmd", input.Command)
 
@@ -585,8 +528,6 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 	}()
 
 	slog.Info("running stack command", "cmd", input.Command)
-	var summary auto.UpdateSummary
-	started := time.Now().Format(time.RFC3339)
 
 	pulumiLog, err := os.Create(p.PathLog("pulumi"))
 	if err != nil {
@@ -608,6 +549,8 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 		}
 	}
 
+	started := time.Now().Format(time.RFC3339)
+	var runError error
 	switch input.Command {
 	case "deploy":
 		opts := []optup.Option{
@@ -620,14 +563,12 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 		if input.Continue {
 			opts = append(opts, optup.ContinueOnError())
 		}
-		result, derr := stack.Up(ctx,
+		_, runError = stack.Up(ctx,
 			opts...,
 		)
-		err = derr
-		summary = result.Summary
 
 	case "remove":
-		result, derr := stack.Destroy(ctx,
+		_, runError = stack.Destroy(ctx,
 			optdestroy.DebugLogging(debugLogging),
 			optdestroy.ContinueOnError(),
 			optdestroy.Target(input.Target),
@@ -636,28 +577,23 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 			optdestroy.EventStreams(stream),
 			optdestroy.ContinueOnError(),
 		)
-		err = derr
-		summary = result.Summary
 
 	case "refresh":
 
-		result, derr := stack.Refresh(ctx,
+		_, runError = stack.Refresh(ctx,
 			optrefresh.DebugLogging(debugLogging),
 			optrefresh.Target(input.Target),
 			optrefresh.ProgressStreams(pulumiLog),
 			optrefresh.EventStreams(stream),
 		)
-		err = derr
-		summary = result.Summary
 	case "diff":
-		_, derr := stack.Preview(ctx,
+		_, runError = stack.Preview(ctx,
 			optpreview.DebugLogging(debugLogging),
 			optpreview.Diff(),
 			optpreview.Target(input.Target),
 			optpreview.ProgressStreams(pulumiLog),
 			optpreview.EventStreams(stream),
 		)
-		err = derr
 	}
 
 	slog.Info("waiting for partial state to finish")
@@ -691,14 +627,8 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 		update.ID = updateID
 		update.Command = input.Command
 		update.Version = p.Version()
-		update.TimeStarted = summary.StartTime
-		if update.TimeStarted == "" {
-			update.TimeStarted = started
-		}
+		update.TimeStarted = started
 		update.TimeCompleted = time.Now().Format(time.RFC3339)
-		if summary.EndTime != nil {
-			update.TimeCompleted = *summary.EndTime
-		}
 		for _, err := range errors {
 			update.Errors = append(update.Errors, provider.SummaryError{
 				URN:     err.URN,
@@ -716,175 +646,19 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 		slog.Error("stack run failed", "error", err)
 		return ErrStackRunFailed
 	}
-	return nil
+	return runError
 }
 
 func (p *Project) Lock(updateID string, command string) error {
 	return provider.Lock(p.home, updateID, p.Version(), command, p.app.Name, p.app.Stage)
 }
 
-type PreviewInput struct {
-	Out chan interface{}
-}
-
-type ImportOptions struct {
-	Type   string
-	Name   string
-	ID     string
-	Parent string
-}
-
 func (s *Project) Unlock() error {
-	if !flag.SST_NO_CLEANUP {
-		dir := s.PathWorkingDir()
-		files, err := os.ReadDir(dir)
-		if err != nil {
-			return err
-		}
-		for _, file := range files {
-			if strings.HasPrefix(file.Name(), "Pulumi") {
-				err := os.Remove(filepath.Join(dir, file.Name()))
-				if err != nil {
-					return err
-				}
-			}
-		}
-	}
 	return provider.Unlock(s.home, s.version, s.app.Name, s.app.Stage)
 }
 
 func (s *Project) ForceUnlock() error {
 	return provider.ForceUnlock(s.home, s.version, s.app.Name, s.app.Stage)
-}
-
-func decrypt(input interface{}) interface{} {
-	switch cast := input.(type) {
-	case map[string]interface{}:
-		if cast["plaintext"] != nil {
-			var parsed any
-			str, ok := cast["plaintext"].(string)
-			if ok {
-				json.Unmarshal([]byte(str), &parsed)
-				return parsed
-			}
-			return cast["plaintext"]
-		}
-		for key, value := range cast {
-			cast[key] = decrypt(value)
-		}
-		return cast
-	case []interface{}:
-		for i, value := range cast {
-			cast[i] = decrypt(value)
-		}
-		return cast
-	default:
-		return cast
-	}
-}
-
-type upOptionFunc func(*optup.Options)
-
-// ApplyOption is an implementation detail
-func (o upOptionFunc) ApplyOption(opts *optup.Options) {
-	o(opts)
-}
-
-func getCompletedEvent(ctx context.Context, stack auto.Stack) (*CompleteEvent, error) {
-	exported, err := stack.Export(ctx)
-	if err != nil {
-		return nil, err
-	}
-	var deployment apitype.DeploymentV3
-	json.Unmarshal(exported.Deployment, &deployment)
-	complete := &CompleteEvent{
-		Links:       common.Links{},
-		Versions:    map[string]int{},
-		ImportDiffs: map[string][]ImportDiff{},
-		Devs:        Devs{},
-		Tunnels:     map[string]Tunnel{},
-		Hints:       map[string]string{},
-		Outputs:     map[string]interface{}{},
-		Errors:      []Error{},
-		Finished:    false,
-		Resources:   []apitype.ResourceV3{},
-	}
-	if len(deployment.Resources) == 0 {
-		return complete, nil
-	}
-	complete.Resources = deployment.Resources
-
-	for _, resource := range complete.Resources {
-		outputs := decrypt(resource.Outputs).(map[string]interface{})
-		if resource.URN.Type().Module().Package().Name() == "sst" {
-			if resource.Type == "sst:sst:Version" {
-				if outputs["target"] != nil && outputs["version"] != nil {
-					complete.Versions[outputs["target"].(string)] = int(outputs["version"].(float64))
-				}
-			}
-
-			if resource.Type != "sst:sst:Version" {
-				name := resource.URN.Name()
-				_, ok := complete.Versions[name]
-				if !ok {
-					complete.Versions[name] = 1
-				}
-			}
-		}
-		if match, ok := outputs["_dev"].(map[string]interface{}); ok {
-			data, _ := json.Marshal(match)
-			var entry Dev
-			json.Unmarshal(data, &entry)
-			entry.Name = resource.URN.Name()
-			complete.Devs[entry.Name] = entry
-		}
-
-		if match, ok := outputs["_tunnel"].(map[string]interface{}); ok {
-			tunnel := Tunnel{
-				IP:         match["ip"].(string),
-				Username:   match["username"].(string),
-				PrivateKey: match["privateKey"].(string),
-				Subnets:    []string{},
-			}
-			subnets, ok := match["subnets"].([]interface{})
-			if ok {
-				for _, subnet := range subnets {
-					tunnel.Subnets = append(tunnel.Subnets, subnet.(string))
-				}
-				complete.Tunnels[resource.URN.Name()] = tunnel
-			}
-		}
-
-		if hint, ok := outputs["_hint"].(string); ok {
-			complete.Hints[string(resource.URN)] = hint
-		}
-
-		if resource.Type == "sst:sst:LinkRef" && outputs["target"] != nil && outputs["properties"] != nil {
-			link := common.Link{
-				Properties: outputs["properties"].(map[string]interface{}),
-				Include:    []common.LinkInclude{},
-			}
-			if outputs["include"] != nil {
-				for _, include := range outputs["include"].([]interface{}) {
-					link.Include = append(link.Include, common.LinkInclude{
-						Type:  include.(map[string]interface{})["type"].(string),
-						Other: include.(map[string]interface{}),
-					})
-				}
-			}
-			complete.Links[outputs["target"].(string)] = link
-		}
-	}
-
-	outputs := decrypt(deployment.Resources[0].Outputs).(map[string]interface{})
-	for key, value := range outputs {
-		if strings.HasPrefix(key, "_") {
-			continue
-		}
-		complete.Outputs[key] = value
-	}
-
-	return complete, nil
 }
 
 func getNotNilFields(v interface{}) []interface{} {
@@ -913,56 +687,4 @@ func getNotNilFields(v interface{}) []interface{} {
 	}
 
 	return result
-}
-
-func (p *Project) GetCompleted(ctx context.Context) (*CompleteEvent, error) {
-	passphrase, err := provider.Passphrase(p.home, p.app.Name, p.app.Stage)
-	if err != nil {
-		return nil, err
-	}
-	workdir, err := p.NewWorkdir()
-	if err != nil {
-		return nil, err
-	}
-	defer workdir.Cleanup()
-	_, err = workdir.Pull()
-	if err != nil {
-		return nil, err
-	}
-	defer workdir.Cleanup()
-	pulumi, err := auto.NewPulumiCommand(&auto.PulumiCommandOptions{
-		Root:             filepath.Join(global.BinPath(), ".."),
-		SkipVersionCheck: true,
-	})
-	if err != nil {
-		return nil, err
-	}
-	ws, err := auto.NewLocalWorkspace(ctx,
-		auto.Pulumi(pulumi),
-		auto.WorkDir(workdir.Backend()),
-		auto.PulumiHome(global.ConfigDir()),
-		auto.Project(workspace.Project{
-			Name:    tokens.PackageName(p.app.Name),
-			Runtime: workspace.NewProjectRuntimeInfo("nodejs", nil),
-			Backend: &workspace.ProjectBackend{
-				URL: fmt.Sprintf("file://%v", workdir.Backend()),
-			},
-		}),
-		auto.EnvVars(
-			map[string]string{
-				"PULUMI_CONFIG_PASSPHRASE": passphrase,
-			},
-		),
-	)
-	if err != nil {
-		return nil, err
-	}
-	stack, err := auto.SelectStack(ctx,
-		p.app.Stage,
-		ws,
-	)
-	if err != nil {
-		return nil, err
-	}
-	return getCompletedEvent(ctx, stack)
 }
