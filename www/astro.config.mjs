@@ -292,7 +292,7 @@ export default defineConfig({
           tag: "link",
           attrs: {
             rel: "icon",
-            href: "/favicon-dark.svg",
+            href: "/favicon.svg",
             media: "(prefers-color-scheme: dark)",
           },
         },
