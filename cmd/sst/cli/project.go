@@ -10,9 +10,9 @@ import (
 
 	"github.com/briandowns/spinner"
 	"github.com/joho/godotenv"
-	"github.com/sst/sst/internal/util"
-	"github.com/sst/sst/pkg/flag"
-	"github.com/sst/sst/pkg/project"
+	"github.com/sst/sst/v3/internal/util"
+	"github.com/sst/sst/v3/pkg/flag"
+	"github.com/sst/sst/v3/pkg/project"
 )
 
 var logFile = (func() *os.File {

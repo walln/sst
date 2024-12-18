@@ -7,9 +7,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/sst/sst/internal/fs"
-	"github.com/sst/sst/pkg/js"
-	"github.com/sst/sst/pkg/project/common"
+	"github.com/sst/sst/v3/internal/fs"
+	"github.com/sst/sst/v3/pkg/js"
+	"github.com/sst/sst/v3/pkg/project/common"
 )
 
 var mapping = map[string]string{

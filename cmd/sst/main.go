@@ -15,17 +15,17 @@ import (
 
 	"github.com/briandowns/spinner"
 	"github.com/fatih/color"
-	"github.com/sst/sst/cmd/sst/cli"
-	"github.com/sst/sst/cmd/sst/mosaic/errors"
-	"github.com/sst/sst/cmd/sst/mosaic/ui"
-	"github.com/sst/sst/internal/util"
-	"github.com/sst/sst/pkg/flag"
-	"github.com/sst/sst/pkg/global"
-	"github.com/sst/sst/pkg/id"
-	"github.com/sst/sst/pkg/process"
-	"github.com/sst/sst/pkg/project"
-	"github.com/sst/sst/pkg/project/provider"
-	"github.com/sst/sst/pkg/telemetry"
+	"github.com/sst/sst/v3/cmd/sst/cli"
+	"github.com/sst/sst/v3/cmd/sst/mosaic/errors"
+	"github.com/sst/sst/v3/cmd/sst/mosaic/ui"
+	"github.com/sst/sst/v3/internal/util"
+	"github.com/sst/sst/v3/pkg/flag"
+	"github.com/sst/sst/v3/pkg/global"
+	"github.com/sst/sst/v3/pkg/id"
+	"github.com/sst/sst/v3/pkg/process"
+	"github.com/sst/sst/v3/pkg/project"
+	"github.com/sst/sst/v3/pkg/project/provider"
+	"github.com/sst/sst/v3/pkg/telemetry"
 )
 
 var version = "dev"
@@ -166,7 +166,7 @@ var root = &cli.Command{
 			"",
 			"- **macOS**",
 			"",
-			"  The CLI is available via a Homebrew Tap, and as downloadable binary in the [releases](https://github.com/sst/sst/releases/latest).",
+			"  The CLI is available via a Homebrew Tap, and as downloadable binary in the [releases](https://github.com/sst/sst/v3/releases/latest).",
 			"",
 			"  ```bash",
 			"  brew install sst/tap/sst",
@@ -179,7 +179,7 @@ var root = &cli.Command{
 			"",
 			"- **Linux**",
 			"",
-			"  The CLI is available as downloadable binaries in the [releases](https://github.com/sst/sst/releases/latest). Download the `.deb` or `.rpm` and install with `sudo dpkg -i` and `sudo rpm -i`.",
+			"  The CLI is available as downloadable binaries in the [releases](https://github.com/sst/sst/v3/releases/latest). Download the `.deb` or `.rpm` and install with `sudo dpkg -i` and `sudo rpm -i`.",
 			"",
 			"  For Arch Linux, it's available in the [aur](https://aur.archlinux.org/packages/sst-bin).",
 			"---",

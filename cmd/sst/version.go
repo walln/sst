@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/pulumi/pulumi/sdk/v3"
-	"github.com/sst/sst/cmd/sst/cli"
-	"github.com/sst/sst/pkg/global"
+	"github.com/sst/sst/v3/cmd/sst/cli"
+	"github.com/sst/sst/v3/pkg/global"
 )
 
 var CmdVersion = &cli.Command{

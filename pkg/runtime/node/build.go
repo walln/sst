@@ -12,10 +12,10 @@ import (
 
 	"github.com/evanw/esbuild/pkg/api"
 	esbuild "github.com/evanw/esbuild/pkg/api"
-	"github.com/sst/sst/internal/fs"
-	"github.com/sst/sst/pkg/js"
-	"github.com/sst/sst/pkg/process"
-	"github.com/sst/sst/pkg/runtime"
+	"github.com/sst/sst/v3/internal/fs"
+	"github.com/sst/sst/v3/pkg/js"
+	"github.com/sst/sst/v3/pkg/process"
+	"github.com/sst/sst/v3/pkg/runtime"
 )
 
 var forceExternal = []string{

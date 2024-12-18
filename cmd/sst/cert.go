@@ -5,9 +5,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/sst/sst/cmd/sst/cli"
-	"github.com/sst/sst/pkg/global"
-	"github.com/sst/sst/pkg/process"
+	"github.com/sst/sst/v3/cmd/sst/cli"
+	"github.com/sst/sst/v3/pkg/global"
+	"github.com/sst/sst/v3/pkg/process"
 )
 
 var CmdCert = &cli.Command{

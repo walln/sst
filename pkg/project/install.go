@@ -11,12 +11,12 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/sst/sst/pkg/flag"
-	"github.com/sst/sst/pkg/global"
-	"github.com/sst/sst/pkg/npm"
-	"github.com/sst/sst/pkg/process"
-	"github.com/sst/sst/pkg/project/path"
-	"github.com/sst/sst/platform"
+	"github.com/sst/sst/v3/pkg/flag"
+	"github.com/sst/sst/v3/pkg/global"
+	"github.com/sst/sst/v3/pkg/npm"
+	"github.com/sst/sst/v3/pkg/process"
+	"github.com/sst/sst/v3/pkg/project/path"
+	"github.com/sst/sst/v3/platform"
 	"golang.org/x/sync/errgroup"
 )
 

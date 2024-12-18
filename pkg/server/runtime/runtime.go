@@ -4,9 +4,9 @@ import (
 	"context"
 	"net/rpc"
 
-	"github.com/sst/sst/pkg/bus"
-	"github.com/sst/sst/pkg/project"
-	"github.com/sst/sst/pkg/runtime"
+	"github.com/sst/sst/v3/pkg/bus"
+	"github.com/sst/sst/v3/pkg/project"
+	"github.com/sst/sst/v3/pkg/runtime"
 )
 
 type Runtime struct {

@@ -3,7 +3,7 @@ package provider
 import (
 	"bytes"
 	"fmt"
-	"github.com/sst/sst/pkg/global"
+	"github.com/sst/sst/v3/pkg/global"
 	"io"
 	"os"
 	"path/filepath"

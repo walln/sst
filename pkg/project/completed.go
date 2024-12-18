@@ -11,9 +11,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	"github.com/sst/sst/pkg/global"
-	"github.com/sst/sst/pkg/project/common"
-	"github.com/sst/sst/pkg/project/provider"
+	"github.com/sst/sst/v3/pkg/global"
+	"github.com/sst/sst/v3/pkg/project/common"
+	"github.com/sst/sst/v3/pkg/project/provider"
 )
 
 func (p *Project) GetCompleted(ctx context.Context) (*CompleteEvent, error) {

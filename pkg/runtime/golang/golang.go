@@ -11,9 +11,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/sst/sst/internal/fs"
-	"github.com/sst/sst/pkg/process"
-	"github.com/sst/sst/pkg/runtime"
+	"github.com/sst/sst/v3/internal/fs"
+	"github.com/sst/sst/v3/pkg/process"
+	"github.com/sst/sst/v3/pkg/runtime"
 )
 
 type Runtime struct {

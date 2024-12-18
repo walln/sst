@@ -9,11 +9,11 @@ import (
 	"sync"
 
 	"github.com/posthog/posthog-go"
-	"github.com/sst/sst/internal/fs"
-	"github.com/sst/sst/internal/util"
-	"github.com/sst/sst/pkg/flag"
-	"github.com/sst/sst/pkg/global"
-	"github.com/sst/sst/pkg/process"
+	"github.com/sst/sst/v3/internal/fs"
+	"github.com/sst/sst/v3/internal/util"
+	"github.com/sst/sst/v3/pkg/flag"
+	"github.com/sst/sst/v3/pkg/global"
+	"github.com/sst/sst/v3/pkg/process"
 )
 
 const (

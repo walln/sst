@@ -16,11 +16,11 @@ import (
 	"github.com/charmbracelet/x/ansi"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/sst/sst/cmd/sst/mosaic/aws"
-	"github.com/sst/sst/cmd/sst/mosaic/cloudflare"
-	"github.com/sst/sst/cmd/sst/mosaic/deployer"
-	"github.com/sst/sst/cmd/sst/mosaic/ui/common"
-	"github.com/sst/sst/pkg/project"
+	"github.com/sst/sst/v3/cmd/sst/mosaic/aws"
+	"github.com/sst/sst/v3/cmd/sst/mosaic/cloudflare"
+	"github.com/sst/sst/v3/cmd/sst/mosaic/deployer"
+	"github.com/sst/sst/v3/cmd/sst/mosaic/ui/common"
+	"github.com/sst/sst/v3/pkg/project"
 
 	"golang.org/x/crypto/ssh/terminal"
 )

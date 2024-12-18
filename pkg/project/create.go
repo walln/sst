@@ -12,9 +12,9 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/sst/sst/internal/util"
-	"github.com/sst/sst/pkg/npm"
-	"github.com/sst/sst/platform"
+	"github.com/sst/sst/v3/internal/util"
+	"github.com/sst/sst/v3/pkg/npm"
+	"github.com/sst/sst/v3/platform"
 	"github.com/tailscale/hujson"
 )
 

@@ -15,7 +15,7 @@ import (
 	"github.com/creack/pty"
 	"github.com/gdamore/tcell/v2"
 	"github.com/mattn/go-runewidth"
-	"github.com/sst/sst/pkg/process"
+	"github.com/sst/sst/v3/pkg/process"
 )
 
 type (
