@@ -297,6 +297,9 @@ func Start(
 						info.Worker.Stop()
 					}
 					builds = map[string]*runtime.BuildOutput{}
+					for workerID, info := range workers {
+						run(info.FunctionID, workerID)
+					}
 				case *runtime.BuildInput:
 					targets[evt.FunctionID] = evt
 				case *watcher.FileChangedEvent:
