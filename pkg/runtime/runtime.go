@@ -146,7 +146,9 @@ func (c *Collection) Build(ctx context.Context, input *BuildInput) (*BuildOutput
 			}
 			if input.Dev {
 				if err := os.Symlink(from, dest); err != nil {
-					return nil, err
+					if !os.IsExist(err) {
+						return nil, err
+					}
 				}
 			}
 			// copying fiels still happens in node
