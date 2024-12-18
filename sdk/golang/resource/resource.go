@@ -1,4 +1,4 @@
-package sst
+package resource
 
 import (
 	"crypto/aes"
@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-var resources map[string]map[string]interface{}
+var resources map[string]any
 
 func init() {
 	key, err := base64.StdEncoding.DecodeString(os.Getenv("SST_KEY"))
@@ -51,14 +51,16 @@ func init() {
 	}
 
 	for _, item := range os.Environ() {
-		if strings.HasPrefix(item, "SST_RESOURCE_") {
-			key := strings.TrimPrefix(item, "SST_RESOURCE_")
+		pair := strings.SplitN(item, "=", 2)
+		key := pair[0]
+		value := pair[1]
+		if strings.HasPrefix(key, "SST_RESOURCE_") {
 			var result map[string]interface{}
-			err := json.Unmarshal([]byte(os.Getenv(item)), &result)
+			err := json.Unmarshal([]byte(value), &result)
 			if err != nil {
 				panic(err)
 			}
-			resources[key] = result
+			resources[strings.TrimPrefix(key, "SST_RESOURCE_")] = result
 		}
 	}
 }
@@ -67,6 +69,10 @@ var ErrNotFound = errors.New("not found")
 
 func Get(path ...string) (any, error) {
 	return get(resources, path...)
+}
+
+func All() map[string]any {
+	return resources
 }
 
 func get(input any, path ...string) (any, error) {
