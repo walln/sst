@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"reflect"
 
-	"github.com/sst/ion/pkg/project"
+	"github.com/sst/sst/pkg/project"
 )
 
 type registry struct {

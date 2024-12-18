@@ -13,10 +13,10 @@ import (
 	"github.com/briandowns/spinner"
 	"github.com/fatih/color"
 	"github.com/manifoldco/promptui"
-	"github.com/sst/ion/cmd/sst/cli"
-	"github.com/sst/ion/internal/util"
-	"github.com/sst/ion/pkg/process"
-	"github.com/sst/ion/pkg/project"
+	"github.com/sst/sst/cmd/sst/cli"
+	"github.com/sst/sst/internal/util"
+	"github.com/sst/sst/pkg/process"
+	"github.com/sst/sst/pkg/project"
 )
 
 func CmdInit(cli *cli.Cli) error {

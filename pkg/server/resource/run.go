@@ -9,10 +9,10 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/sst/ion/cmd/sst/mosaic/ui/common"
-	"github.com/sst/ion/pkg/bus"
-	"github.com/sst/ion/pkg/flag"
-	"github.com/sst/ion/pkg/process"
+	"github.com/sst/sst/cmd/sst/mosaic/ui/common"
+	"github.com/sst/sst/pkg/bus"
+	"github.com/sst/sst/pkg/flag"
+	"github.com/sst/sst/pkg/process"
 	"golang.org/x/sync/semaphore"
 )
 

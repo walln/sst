@@ -5,12 +5,12 @@ import (
 	"log/slog"
 	"reflect"
 
-	"github.com/sst/ion/cmd/sst/mosaic/errors"
-	"github.com/sst/ion/cmd/sst/mosaic/watcher"
-	"github.com/sst/ion/internal/util"
-	"github.com/sst/ion/pkg/bus"
-	"github.com/sst/ion/pkg/project"
-	"github.com/sst/ion/pkg/server"
+	"github.com/sst/sst/cmd/sst/mosaic/errors"
+	"github.com/sst/sst/cmd/sst/mosaic/watcher"
+	"github.com/sst/sst/internal/util"
+	"github.com/sst/sst/pkg/bus"
+	"github.com/sst/sst/pkg/project"
+	"github.com/sst/sst/pkg/server"
 )
 
 type DeployRequestedEvent struct{}

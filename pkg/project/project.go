@@ -12,17 +12,17 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/sst/ion/internal/fs"
-	"github.com/sst/ion/internal/util"
-	"github.com/sst/ion/pkg/flag"
-	"github.com/sst/ion/pkg/js"
-	"github.com/sst/ion/pkg/process"
-	"github.com/sst/ion/pkg/project/provider"
-	"github.com/sst/ion/pkg/runtime"
-	"github.com/sst/ion/pkg/runtime/golang"
-	"github.com/sst/ion/pkg/runtime/node"
-	"github.com/sst/ion/pkg/runtime/python"
-	"github.com/sst/ion/pkg/runtime/worker"
+	"github.com/sst/sst/internal/fs"
+	"github.com/sst/sst/internal/util"
+	"github.com/sst/sst/pkg/flag"
+	"github.com/sst/sst/pkg/js"
+	"github.com/sst/sst/pkg/process"
+	"github.com/sst/sst/pkg/project/provider"
+	"github.com/sst/sst/pkg/runtime"
+	"github.com/sst/sst/pkg/runtime/golang"
+	"github.com/sst/sst/pkg/runtime/node"
+	"github.com/sst/sst/pkg/runtime/python"
+	"github.com/sst/sst/pkg/runtime/worker"
 )
 
 type App struct {

@@ -15,14 +15,14 @@ import (
 	"time"
 
 	MQTT "github.com/eclipse/paho.mqtt.golang"
-	"github.com/sst/ion/cmd/sst/mosaic/aws/appsync"
-	"github.com/sst/ion/cmd/sst/mosaic/aws/bridge"
-	"github.com/sst/ion/cmd/sst/mosaic/watcher"
-	"github.com/sst/ion/pkg/bus"
-	"github.com/sst/ion/pkg/project"
-	"github.com/sst/ion/pkg/project/provider"
-	"github.com/sst/ion/pkg/runtime"
-	"github.com/sst/ion/pkg/server"
+	"github.com/sst/sst/cmd/sst/mosaic/aws/appsync"
+	"github.com/sst/sst/cmd/sst/mosaic/aws/bridge"
+	"github.com/sst/sst/cmd/sst/mosaic/watcher"
+	"github.com/sst/sst/pkg/bus"
+	"github.com/sst/sst/pkg/project"
+	"github.com/sst/sst/pkg/project/provider"
+	"github.com/sst/sst/pkg/runtime"
+	"github.com/sst/sst/pkg/server"
 )
 
 type fragment struct {

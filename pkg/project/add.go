@@ -1,7 +1,7 @@
 package project
 
 import (
-	"github.com/sst/ion/pkg/process"
+	"github.com/sst/sst/pkg/process"
 	"os"
 	"path/filepath"
 )

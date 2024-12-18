@@ -11,8 +11,8 @@ import (
 
 	"github.com/xjasonlyu/tun2socks/v2/engine"
 
-	"github.com/sst/ion/internal/util"
-	"github.com/sst/ion/pkg/process"
+	"github.com/sst/sst/internal/util"
+	"github.com/sst/sst/pkg/process"
 )
 
 var BINARY_PATH = "/opt/sst/tunnel"

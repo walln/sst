@@ -13,9 +13,9 @@ import (
 
 	"github.com/evanw/esbuild/pkg/api"
 	esbuild "github.com/evanw/esbuild/pkg/api"
-	"github.com/sst/ion/pkg/project/path"
-	"github.com/sst/ion/pkg/runtime"
-	"github.com/sst/ion/pkg/runtime/node"
+	"github.com/sst/sst/pkg/project/path"
+	"github.com/sst/sst/pkg/runtime"
+	"github.com/sst/sst/pkg/runtime/node"
 )
 
 type Runtime struct {

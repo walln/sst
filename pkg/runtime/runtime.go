@@ -12,7 +12,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/sst/ion/pkg/project/path"
+	"github.com/sst/sst/pkg/project/path"
 )
 
 type Runtime interface {

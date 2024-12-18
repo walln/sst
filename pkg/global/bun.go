@@ -15,10 +15,10 @@ import (
 	"strings"
 
 	"github.com/klauspost/cpuid/v2"
-	"github.com/sst/ion/pkg/flag"
-	"github.com/sst/ion/pkg/id"
-	"github.com/sst/ion/pkg/process"
-	"github.com/sst/ion/pkg/task"
+	"github.com/sst/sst/pkg/flag"
+	"github.com/sst/sst/pkg/id"
+	"github.com/sst/sst/pkg/process"
+	"github.com/sst/sst/pkg/task"
 )
 
 func BunPath() string {

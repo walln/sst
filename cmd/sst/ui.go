@@ -5,15 +5,15 @@ import (
 	"log/slog"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/sst/ion/cmd/sst/cli"
-	"github.com/sst/ion/cmd/sst/mosaic/aws"
-	"github.com/sst/ion/cmd/sst/mosaic/cloudflare"
-	"github.com/sst/ion/cmd/sst/mosaic/deployer"
-	"github.com/sst/ion/cmd/sst/mosaic/dev"
-	"github.com/sst/ion/cmd/sst/mosaic/ui"
-	"github.com/sst/ion/cmd/sst/mosaic/ui/common"
-	"github.com/sst/ion/pkg/project"
-	"github.com/sst/ion/pkg/server"
+	"github.com/sst/sst/cmd/sst/cli"
+	"github.com/sst/sst/cmd/sst/mosaic/aws"
+	"github.com/sst/sst/cmd/sst/mosaic/cloudflare"
+	"github.com/sst/sst/cmd/sst/mosaic/deployer"
+	"github.com/sst/sst/cmd/sst/mosaic/dev"
+	"github.com/sst/sst/cmd/sst/mosaic/ui"
+	"github.com/sst/sst/cmd/sst/mosaic/ui/common"
+	"github.com/sst/sst/pkg/project"
+	"github.com/sst/sst/pkg/server"
 )
 
 func CmdUI(c *cli.Cli) error {

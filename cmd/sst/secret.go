@@ -9,12 +9,12 @@ import (
 	"strings"
 
 	"github.com/fatih/color"
-	"github.com/sst/ion/cmd/sst/cli"
-	"github.com/sst/ion/cmd/sst/mosaic/dev"
-	"github.com/sst/ion/cmd/sst/mosaic/ui"
-	"github.com/sst/ion/internal/util"
-	"github.com/sst/ion/pkg/project/provider"
-	"github.com/sst/ion/pkg/server"
+	"github.com/sst/sst/cmd/sst/cli"
+	"github.com/sst/sst/cmd/sst/mosaic/dev"
+	"github.com/sst/sst/cmd/sst/mosaic/ui"
+	"github.com/sst/sst/internal/util"
+	"github.com/sst/sst/pkg/project/provider"
+	"github.com/sst/sst/pkg/server"
 	"golang.org/x/sync/errgroup"
 )
 

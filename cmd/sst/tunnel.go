@@ -8,12 +8,12 @@ import (
 	"os/user"
 	"strings"
 
-	"github.com/sst/ion/cmd/sst/cli"
-	"github.com/sst/ion/cmd/sst/mosaic/ui"
-	"github.com/sst/ion/internal/util"
-	"github.com/sst/ion/pkg/process"
-	"github.com/sst/ion/pkg/project"
-	"github.com/sst/ion/pkg/tunnel"
+	"github.com/sst/sst/cmd/sst/cli"
+	"github.com/sst/sst/cmd/sst/mosaic/ui"
+	"github.com/sst/sst/internal/util"
+	"github.com/sst/sst/pkg/process"
+	"github.com/sst/sst/pkg/project"
+	"github.com/sst/sst/pkg/tunnel"
 )
 
 var CmdTunnel = &cli.Command{

@@ -11,12 +11,12 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/sst/ion/pkg/flag"
-	"github.com/sst/ion/pkg/global"
-	"github.com/sst/ion/pkg/npm"
-	"github.com/sst/ion/pkg/process"
-	"github.com/sst/ion/pkg/project/path"
-	"github.com/sst/ion/platform"
+	"github.com/sst/sst/pkg/flag"
+	"github.com/sst/sst/pkg/global"
+	"github.com/sst/sst/pkg/npm"
+	"github.com/sst/sst/pkg/process"
+	"github.com/sst/sst/pkg/project/path"
+	"github.com/sst/sst/platform"
 	"golang.org/x/sync/errgroup"
 )
 

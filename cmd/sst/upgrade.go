@@ -7,10 +7,10 @@ import (
 	"strings"
 
 	"github.com/fatih/color"
-	"github.com/sst/ion/cmd/sst/cli"
-	"github.com/sst/ion/cmd/sst/mosaic/ui"
-	"github.com/sst/ion/pkg/global"
-	"github.com/sst/ion/pkg/process"
+	"github.com/sst/sst/cmd/sst/cli"
+	"github.com/sst/sst/cmd/sst/mosaic/ui"
+	"github.com/sst/sst/pkg/global"
+	"github.com/sst/sst/pkg/process"
 )
 
 func CmdUpgrade(c *cli.Cli) error {

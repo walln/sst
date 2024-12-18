@@ -14,8 +14,8 @@ import (
 	"github.com/charmbracelet/huh"
 	"github.com/fatih/color"
 	"github.com/joho/godotenv"
-	"github.com/sst/ion/internal/util"
-	"github.com/sst/ion/pkg/project"
+	"github.com/sst/sst/internal/util"
+	"github.com/sst/sst/pkg/project"
 )
 
 type Cli struct {

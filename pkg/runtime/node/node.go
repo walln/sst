@@ -14,10 +14,10 @@ import (
 
 	"github.com/evanw/esbuild/pkg/api"
 	esbuild "github.com/evanw/esbuild/pkg/api"
-	"github.com/sst/ion/pkg/flag"
-	"github.com/sst/ion/pkg/process"
-	"github.com/sst/ion/pkg/project/path"
-	"github.com/sst/ion/pkg/runtime"
+	"github.com/sst/sst/pkg/flag"
+	"github.com/sst/sst/pkg/process"
+	"github.com/sst/sst/pkg/project/path"
+	"github.com/sst/sst/pkg/runtime"
 	"golang.org/x/sync/semaphore"
 )
 
