@@ -1,4 +1,4 @@
-module github.com/sst/ion
+module github.com/sst/sst
 
 go 1.23.1
 

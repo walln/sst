@@ -266,6 +266,7 @@ export interface FunctionArgs {
     | "nodejs18.x"
     | "nodejs20.x"
     | "nodejs22.x"
+    | "go"
     | "provided.al2023"
     | "python3.9"
     | "python3.10"
@@ -2079,7 +2080,9 @@ export class Function extends Component implements Link.Linkable {
                     s3Bucket: zipAsset!.bucket,
                     s3Key: zipAsset!.key,
                     handler: unsecret(handler),
-                    runtime,
+                    runtime: runtime.apply((v) =>
+                      v === "go" ? "provided.al2023" : v,
+                    ),
                   }),
             },
             { parent },

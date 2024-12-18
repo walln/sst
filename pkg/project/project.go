@@ -19,6 +19,7 @@ import (
 	"github.com/sst/ion/pkg/process"
 	"github.com/sst/ion/pkg/project/provider"
 	"github.com/sst/ion/pkg/runtime"
+	"github.com/sst/ion/pkg/runtime/golang"
 	"github.com/sst/ion/pkg/runtime/node"
 	"github.com/sst/ion/pkg/runtime/python"
 	"github.com/sst/ion/pkg/runtime/worker"
@@ -112,6 +113,7 @@ func New(input *ProjectConfig) (*Project, error) {
 			node.New(input.Version),
 			worker.New(),
 			python.New(),
+			golang.New(),
 		),
 	}
 	tmp := proj.PathWorkingDir()

@@ -353,7 +353,7 @@ func Start(
 		}
 	}()
 
-	s.Mux.HandleFunc(`/lambda/{workerID}/runtime/invocation/next`, func(w http.ResponseWriter, r *http.Request) {
+	s.Mux.HandleFunc(`/lambda/{workerID}/2018-06-01/runtime/invocation/next`, func(w http.ResponseWriter, r *http.Request) {
 		slog.Info("got next request", "workerID", r.PathValue("workerID"))
 		workerID := r.PathValue("workerID")
 		ch := nextChan[workerID]
@@ -390,7 +390,7 @@ func Start(
 		}
 	})
 
-	s.Mux.HandleFunc(`/lambda/{workerID}/runtime/init/error`, func(w http.ResponseWriter, r *http.Request) {
+	s.Mux.HandleFunc(`/lambda/{workerID}/2018-06-01/runtime/init/error`, func(w http.ResponseWriter, r *http.Request) {
 		workerID := r.PathValue("workerID")
 		slog.Info("got init error", "workerID", workerID, "requestID", r.PathValue("requestID"))
 		writer := client.NewWriter(bridge.MessageInitError, prefix+"/"+workerID+"/in")
@@ -410,7 +410,7 @@ func Start(
 		}
 	})
 
-	s.Mux.HandleFunc(`/lambda/{workerID}/runtime/invocation/{requestID}/response`, func(w http.ResponseWriter, r *http.Request) {
+	s.Mux.HandleFunc(`/lambda/{workerID}/2018-06-01/runtime/invocation/{requestID}/response`, func(w http.ResponseWriter, r *http.Request) {
 		workerID := r.PathValue("workerID")
 		requestID := r.PathValue("requestID")
 		slog.Info("got response", "workerID", workerID, "requestID", r.PathValue("requestID"))
@@ -420,7 +420,7 @@ func Start(
 		tee := io.TeeReader(r.Body, &buf)
 		io.Copy(writer, tee)
 		writer.Close()
-		w.WriteHeader(200)
+		w.WriteHeader(202)
 		info, ok := workers[workerID]
 		if ok {
 			bus.Publish(&FunctionResponseEvent{
@@ -432,7 +432,7 @@ func Start(
 		}
 	})
 
-	s.Mux.HandleFunc(`/lambda/{workerID}/runtime/invocation/{requestID}/error`, func(w http.ResponseWriter, r *http.Request) {
+	s.Mux.HandleFunc(`/lambda/{workerID}/2018-06-01/runtime/invocation/{requestID}/error`, func(w http.ResponseWriter, r *http.Request) {
 		workerID := r.PathValue("workerID")
 		requestID := r.PathValue("requestID")
 		slog.Info("got error", "workerID", workerID, "requestID", r.PathValue("requestID"))
@@ -442,7 +442,7 @@ func Start(
 		tee := io.TeeReader(r.Body, &buf)
 		io.Copy(writer, tee)
 		writer.Close()
-		w.WriteHeader(200)
+		w.WriteHeader(202)
 		info, ok := workers[workerID]
 		if ok {
 			fee := &FunctionErrorEvent{
