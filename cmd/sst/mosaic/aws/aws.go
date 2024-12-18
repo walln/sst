@@ -293,6 +293,9 @@ func Start(
 					}
 					info.CurrentRequestID = evt.RequestID
 				case *project.CompleteEvent:
+					if evt.Old {
+						continue
+					}
 					for _, info := range workers {
 						info.Worker.Stop()
 					}
