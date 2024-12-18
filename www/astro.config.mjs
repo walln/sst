@@ -140,6 +140,7 @@ const sidebar = [
         ],
       },
       "docs/component/aws/cdn",
+      "docs/component/aws/task",
       "docs/component/aws/service",
       {
         label: "Linkable",

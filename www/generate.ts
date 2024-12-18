@@ -923,6 +923,7 @@ function renderType(
       BucketNotification: "bucket-notification",
       Cdn: "cdn",
       CdnArgs: "cdn",
+      Cluster: "cluster",
       CognitoIdentityProvider: "cognito-identity-provider",
       CognitoUserPoolClient: "cognito-user-pool-client",
       Dynamo: "dynamo",
@@ -942,6 +943,7 @@ function renderType(
       SnsTopic: "sns-topic",
       SnsTopicLambdaSubscriber: "sns-topic-lambda-subscriber",
       SnsTopicQueueSubscriber: "sns-topic-queue-subscriber",
+      Task: "task",
       Vpc: "vpc",
     }[type.name];
     if (externalModule) {
@@ -1149,7 +1151,8 @@ function renderVariables(module: TypeDoc.DeclarationReflection) {
   const vars = (module.children ?? []).filter(
     (c) =>
       c.kind === TypeDoc.ReflectionKind.Variable &&
-      !c.comment?.modifierTags.has("@internal")
+      !c.comment?.modifierTags.has("@internal") &&
+      !c.comment?.blockTags.find((t) => t.tag === "@deprecated")
   );
 
   if (!vars.length) return lines;
@@ -1397,7 +1400,12 @@ function renderMethod(
 
 function renderProperties(module: TypeDoc.DeclarationReflection) {
   const lines: string[] = [];
-  const getters = useClassGetters(module);
+  const getters = useClassGetters(module).filter(
+    (c) =>
+      c.getSignature &&
+      !c.getSignature.comment?.modifierTags.has("@internal") &&
+      !c.getSignature.comment?.blockTags.find((t) => t.tag === "@deprecated")
+  );
   if (!getters.length) return lines;
 
   lines.push(``, `## Properties`);
@@ -1479,8 +1487,12 @@ function renderLinks(module: TypeDoc.DeclarationReflection) {
 
       let linkType: TypeDoc.SomeType | undefined;
 
+      // Convert T => T
+      if (link.type && link.type.type === "intrinsic") {
+        linkType = link.type;
+      }
       // Convert Output<T> => T
-      if (
+      else if (
         link.type &&
         link.type.type === "reference" &&
         (link.type.name === "Output" || link.type.name === "OutputInstance") &&
@@ -1488,7 +1500,24 @@ function renderLinks(module: TypeDoc.DeclarationReflection) {
           link.type.typeArguments![0].type === "union")
       ) {
         linkType = link.type.typeArguments![0];
-      } // Convert Output<T> | undefined => T | undefined
+      }
+      // Convert Output<Output<T>[]> => T[]
+      else if (
+        link.type &&
+        link.type.type === "reference" &&
+        (link.type.name === "Output" || link.type.name === "OutputInstance") &&
+        link.type.typeArguments![0].type === "array" &&
+        link.type.typeArguments![0].elementType.type === "reference" &&
+        (link.type.typeArguments![0].elementType.name === "Output" ||
+          link.type.typeArguments![0].elementType.name === "OutputInstance") &&
+        (link.type.typeArguments![0].elementType.typeArguments![0].type ===
+          "intrinsic" ||
+          link.type.typeArguments![0].elementType.typeArguments![0].type ===
+            "union")
+      ) {
+        linkType = link.type.typeArguments![0].elementType.typeArguments![0];
+      }
+      // Convert Output<T> | undefined => T | undefined
       else if (link.type && link.type.type === "union") {
         linkType = link.type;
         linkType.types = linkType.types.map((t) =>
@@ -1579,6 +1608,7 @@ function renderInterfacesAtH2Level(
   const lines: string[] = [];
   const interfaces = useModuleInterfaces(module)
     .filter((c) => !c.comment?.modifierTags.has("@internal"))
+    .filter((c) => !c.comment?.blockTags.find((t) => t.tag === "@deprecated"))
     .filter((c) => !opts.filter || opts.filter(c));
 
   for (const int of interfaces) {
@@ -1665,9 +1695,9 @@ function renderInterfacesAtH2Level(
 
 function renderInterfacesAtH3Level(module: TypeDoc.DeclarationReflection) {
   const lines: string[] = [];
-  const interfaces = useModuleInterfaces(module).filter(
-    (c) => !c.comment?.modifierTags.has("@internal")
-  );
+  const interfaces = useModuleInterfaces(module)
+    .filter((c) => !c.comment?.modifierTags.has("@internal"))
+    .filter((c) => !c.comment?.blockTags.find((t) => t.tag === "@deprecated"));
 
   // props
   //for (const prop of useInterfaceProps(int)) {
@@ -1981,19 +2011,26 @@ function useNestedTypes(
     );
   }
   if (type.type === "reflection" && type.declaration.children?.length) {
-    return type.declaration.children!.flatMap((subType) => [
-      { prefix, subType, depth },
-      ...(subType.kind === TypeDoc.ReflectionKind.Property
-        ? useNestedTypes(subType.type!, `${prefix}.${subType.name}`, depth + 1)
-        : []),
-      ...(subType.kind === TypeDoc.ReflectionKind.Accessor
-        ? useNestedTypes(
-            subType.getSignature?.type!,
-            `${prefix}.${subType.name}`,
-            depth + 1
-          )
-        : []),
-    ]);
+    return type.declaration
+      .children!.filter((c) => !c.comment?.modifierTags.has("@internal"))
+      .filter((c) => !c.comment?.blockTags.find((t) => t.tag === "@deprecated"))
+      .flatMap((subType) => [
+        { prefix, subType, depth },
+        ...(subType.kind === TypeDoc.ReflectionKind.Property
+          ? useNestedTypes(
+              subType.type!,
+              `${prefix}.${subType.name}`,
+              depth + 1
+            )
+          : []),
+        ...(subType.kind === TypeDoc.ReflectionKind.Accessor
+          ? useNestedTypes(
+              subType.getSignature?.type!,
+              `${prefix}.${subType.name}`,
+              depth + 1
+            )
+          : []),
+      ]);
   }
 
   return [];
@@ -2149,6 +2186,7 @@ async function buildComponents() {
       "../platform/src/components/aws/solid-start.ts",
       "../platform/src/components/aws/static-site.ts",
       "../platform/src/components/aws/svelte-kit.ts",
+      "../platform/src/components/aws/task.ts",
       "../platform/src/components/aws/vpc.ts",
       "../platform/src/components/aws/vpc-v1.ts",
       "../platform/src/components/cloudflare/worker.ts",
@@ -2187,6 +2225,7 @@ async function buildSdk() {
     },
     entryPoints: [
       "../sdk/js/src/aws/realtime.ts",
+      "../sdk/js/src/aws/task.ts",
       "../sdk/js/src/vector/index.ts",
     ],
     tsconfig: "../sdk/js/tsconfig.json",
