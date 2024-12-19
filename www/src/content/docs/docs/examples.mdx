@@ -6,6 +6,7 @@ description: A collection of example apps for reference.
 {/* DO NOT EDIT. AUTO-GENERATED FROM "examples/" */}
 
 import { Tabs, TabItem } from '@astrojs/starlight/components';
+import VideoAside from '../../../../src/components/VideoAside.astro';
 import Segment from '../../../../src/components/tsdoc/Segment.astro';
 import Section from '../../../../src/components/tsdoc/Section.astro';
 import NestedTitle from '../../../../src/components/tsdoc/NestedTitle.astro';
@@ -217,8 +218,14 @@ const queue = new sst.aws.Queue("MyQueue");
 queue.subscribe("subscriber.handler");
 
 const bucket = new sst.aws.Bucket("MyBucket");
-bucket.subscribeQueue(queue.arn, {
-  events: ["s3:ObjectCreated:*"],
+bucket.notify({
+  notifications: [
+    {
+      name: "MySubscriber",
+      queue,
+      events: ["s3:ObjectCreated:*"],
+    },
+  ],
 });
 
 return {
@@ -236,8 +243,14 @@ View the [full example](https://github.com/sst/sst/tree/dev/examples/aws-bucket-
 Create an S3 bucket and subscribe to its events with a function.
 ```ts title="sst.config.ts"
 const bucket = new sst.aws.Bucket("MyBucket");
-bucket.subscribe("subscriber.handler", {
-  events: ["s3:ObjectCreated:*"],
+bucket.notify({
+  notifications: [
+    {
+      name: "MySubscriber",
+      function: "subscriber.handler",
+      events: ["s3:ObjectCreated:*"],
+    },
+  ],
 });
 
 return {
@@ -257,8 +270,14 @@ const topic = new sst.aws.SnsTopic("MyTopic");
 topic.subscribe("MySubscriber", "subscriber.handler");
 
 const bucket = new sst.aws.Bucket("MyBucket");
-bucket.subscribeTopic(topic.arn, {
-  events: ["s3:ObjectCreated:*"],
+bucket.notify({
+  notifications: [
+    {
+      name: "MySubscriber",
+      topic,
+      events: ["s3:ObjectCreated:*"],
+    },
+  ],
 });
 
 return {
@@ -1225,6 +1244,58 @@ return {
 ```
 
 View the [full example](https://github.com/sst/sst/tree/dev/examples/aws-kinesis-stream).
+
+
+---
+## AWS Lambda Go
+
+This example shows how to use the [`go`](https://golang.org/) runtime in your Lambda
+functions.
+
+Our Go function is in the `src` directory and we point to it in our function.
+
+```ts title="sst.config.ts" {5}
+new sst.aws.Function("MyFunction", {
+  url: true,
+  runtime: "go",
+  link: [bucket],
+  handler: "./src",
+});
+```
+
+We are also linking it to an S3 bucket. We can reference the bucket in our function.
+
+```go title="src/main.go" {2}
+func handler() (string, error) {
+  bucket, err := resource.Get("MyBucket", "name")
+  if err != nil {
+    return "", err
+  }
+  return bucket.(string), nil
+}
+```
+
+The `resource.Get` function is from the SST Go SDK.
+
+```go title="src/main.go" {2}
+import (
+  "github.com/sst/sst/v3/sdk/golang/resource"
+)
+```
+
+The `sst dev` CLI also supports running your Go function [_Live_](/docs/live).
+```ts title="sst.config.ts"
+const bucket = new sst.aws.Bucket("MyBucket");
+
+new sst.aws.Function("MyFunction", {
+  url: true,
+  runtime: "go",
+  link: [bucket],
+  handler: "./src",
+});
+```
+
+View the [full example](https://github.com/sst/sst/tree/dev/examples/aws-lambda-golang).
 
 
 ---
