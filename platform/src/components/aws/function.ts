@@ -1883,6 +1883,7 @@ export class Function extends Component implements Link.Linkable {
         copyFiles,
         isContainer,
         logGroup.apply((l) => l?.arn),
+        dev,
       ]).apply(
         async ([
           bundle,
@@ -1891,6 +1892,7 @@ export class Function extends Component implements Link.Linkable {
           copyFiles,
           isContainer,
           logGroupArn,
+          dev,
         ]) => {
           if (isContainer) return;
 
@@ -1942,14 +1944,18 @@ export class Function extends Component implements Link.Linkable {
             }
 
             // Add copyFiles into the zip
-            copyFiles.forEach(async (entry) => {
-              entry.isDir
-                ? archive.directory(entry.from, entry.to, { date: new Date(0) })
-                : archive.file(entry.from, {
-                    name: entry.to,
-                    date: new Date(0),
-                  });
-            });
+            if (!$dev) {
+              for (const entry of copyFiles) {
+                entry.isDir
+                  ? archive.directory(entry.from, entry.to, {
+                      date: new Date(0),
+                    })
+                  : archive.file(entry.from, {
+                      name: entry.to,
+                      date: new Date(0),
+                    });
+              }
+            }
             await archive.finalize();
           });
 
