@@ -639,14 +639,16 @@ async function generateComponentDoc(
         const lines = [
           ...renderLinks(component),
           ...renderCloudflareBindings(component),
-          ...(sdk && sdk.name === "realtime"
+          ...(sdk?.name === "realtime" || sdk?.name === "task"
             ? renderAbout(useModuleComment(sdk))
             : []),
           ...(sdk
             ? renderFunctions(
                 sdk,
                 useModuleFunctions(sdk),
-                sdk.name === "realtime" ? { prefix: sdk.name } : undefined
+                sdk.name === "realtime" || sdk.name === "task"
+                  ? { prefix: sdk.name }
+                  : undefined
               )
             : []),
           ...(sdk ? renderInterfacesAtH3Level(sdk) : []),
@@ -714,9 +716,28 @@ function renderBodyEnd() {
 
 function renderType(
   module: TypeDoc.DeclarationReflection,
-  type: TypeDoc.SomeType
+  type:
+    | TypeDoc.DeclarationReflection
+    | TypeDoc.SignatureReflection
+    | TypeDoc.ParameterReflection,
+  opts: {
+    ignoreOutput?: boolean;
+  } = {}
 ) {
-  return renderSomeType(type);
+  // Check for type override
+  // ie. SST SDK uses @see [@aws-sdk/client-ecs.DescribeTasksResponse](https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/Package/-aws-sdk-client-ecs/Interface/DescribeTasksResponse/)
+  // to override the type of the `any` type.
+  const see = type.comment?.blockTags.find((t) => t.tag === "@see");
+  if (see?.content.length === 1) {
+    const match = see.content[0].text.match(
+      /^\[(@aws-sdk\/client-.+)\]\((.+)\)$/
+    );
+    if (match) {
+      return `[<code class="type">${match[1]}</code>](${match[2]})`;
+    }
+  }
+
+  return renderSomeType(type.type!);
 
   function renderSomeType(type: TypeDoc.SomeType): string {
     if (type.type === "intrinsic") return renderIntrisicType(type);
@@ -985,13 +1006,16 @@ function renderType(
       type.name === "OutputInstance" ||
       type.name === "Input"
     ) {
-      const typeName = type.name === "OutputInstance" ? "Output" : type.name;
-      return [
-        `<code class="primitive">${typeName}</code>`,
-        `<code class="symbol">&lt;</code>`,
-        renderSomeType(type.typeArguments?.[0]!),
-        `<code class="symbol">&gt;</code>`,
-      ].join("");
+      return opts.ignoreOutput
+        ? renderSomeType(type.typeArguments?.[0]!)
+        : [
+            `<code class="primitive">${
+              type.name === "OutputInstance" ? "Output" : type.name
+            }</code>`,
+            `<code class="symbol">&lt;</code>`,
+            renderSomeType(type.typeArguments?.[0]!),
+            `<code class="symbol">&gt;</code>`,
+          ].join("");
     }
     if (type.name === "UnwrappedObject" || type.name === "Unwrap") {
       return renderSomeType(type.typeArguments?.[0]!);
@@ -1181,7 +1205,7 @@ function renderVariables(module: TypeDoc.DeclarationReflection) {
       `<Segment>`,
       `<Section type="parameters">`,
       `<InlineSection>`,
-      `**Type** ${renderType(module, v.type!)}`,
+      `**Type** ${renderType(module, v)}`,
       `</InlineSection>`,
       ...renderNestedTypeList(module, v),
       `</Section>`,
@@ -1197,7 +1221,7 @@ function renderVariables(module: TypeDoc.DeclarationReflection) {
           `<Segment>`,
           `<Section type="parameters">`,
           `<InlineSection>`,
-          `**Type** ${renderType(module, subType.type!)}`,
+          `**Type** ${renderType(module, subType)}`,
           `</InlineSection>`,
           `</Section>`,
           ...renderDescription(subType),
@@ -1253,7 +1277,7 @@ function renderFunctions(
           } else if (f.name === "$transform" && param.name === "cb") {
             type = renderTransformCallbackType();
           } else {
-            type = renderType(module, param.type!);
+            type = renderType(module, param);
           }
 
           return [
@@ -1325,7 +1349,7 @@ function renderConstructor(module: TypeDoc.DeclarationReflection) {
       ...signature.parameters.flatMap((param) => [
         `- <p><code class="key">${renderSignatureArg(
           param
-        )}</code> ${renderType(module, param.type!)}</p>`,
+        )}</code> ${renderType(module, param)}</p>`,
         ...renderDescription(param),
       ]),
       `</Section>`
@@ -1381,7 +1405,7 @@ function renderMethod(
       ...method.signatures![0].parameters.flatMap((param) => [
         `- <p><code class="key">${renderSignatureArg(
           param
-        )}</code> ${renderType(module, param.type!)}</p>`,
+        )}</code> ${renderType(module, param)}</p>`,
         ...renderDescription(param),
       ]),
       `</Section>`
@@ -1418,7 +1442,7 @@ function renderProperties(module: TypeDoc.DeclarationReflection) {
       `<Segment>`,
       `<Section type="parameters">`,
       `<InlineSection>`,
-      `**Type** ${renderType(module, g.getSignature!.type!)}`,
+      `**Type** ${renderType(module, g.getSignature!)}`,
       `</InlineSection>`,
       ...renderNestedTypeList(module, g.getSignature!),
       `</Section>`,
@@ -1435,8 +1459,8 @@ function renderProperties(module: TypeDoc.DeclarationReflection) {
           `<InlineSection>`,
           `**Type** ${
             subType.kind === TypeDoc.ReflectionKind.Property
-              ? renderType(module, subType.type!)
-              : renderType(module, subType.getSignature!.type!)
+              ? renderType(module, subType)
+              : renderType(module, subType.getSignature!)
           }`,
           `</InlineSection>`,
           `</Section>`,
@@ -1485,58 +1509,6 @@ function renderLinks(module: TypeDoc.DeclarationReflection) {
     ...links.flatMap((link) => {
       console.debug(` - link ${link.name}`);
 
-      let linkType: TypeDoc.SomeType | undefined;
-
-      // Convert T => T
-      if (link.type && link.type.type === "intrinsic") {
-        linkType = link.type;
-      }
-      // Convert Output<T> => T
-      else if (
-        link.type &&
-        link.type.type === "reference" &&
-        (link.type.name === "Output" || link.type.name === "OutputInstance") &&
-        (link.type.typeArguments![0].type === "intrinsic" ||
-          link.type.typeArguments![0].type === "union")
-      ) {
-        linkType = link.type.typeArguments![0];
-      }
-      // Convert Output<Output<T>[]> => T[]
-      else if (
-        link.type &&
-        link.type.type === "reference" &&
-        (link.type.name === "Output" || link.type.name === "OutputInstance") &&
-        link.type.typeArguments![0].type === "array" &&
-        link.type.typeArguments![0].elementType.type === "reference" &&
-        (link.type.typeArguments![0].elementType.name === "Output" ||
-          link.type.typeArguments![0].elementType.name === "OutputInstance") &&
-        (link.type.typeArguments![0].elementType.typeArguments![0].type ===
-          "intrinsic" ||
-          link.type.typeArguments![0].elementType.typeArguments![0].type ===
-            "union")
-      ) {
-        linkType = link.type.typeArguments![0].elementType.typeArguments![0];
-      }
-      // Convert Output<T> | undefined => T | undefined
-      else if (link.type && link.type.type === "union") {
-        linkType = link.type;
-        linkType.types = linkType.types.map((t) =>
-          t.type === "reference" &&
-          (t.name === "Output" || t.name === "OutputInstance")
-            ? t.typeArguments![0]
-            : t
-        );
-      }
-
-      if (!linkType) {
-        // @ts-expect-error
-        delete link.type._project;
-        console.error(link.type);
-        throw new Error(
-          `Failed to render link ${link.name} b/c link value does not match type \`Output<intrinsic>\`, \`Output<intrinsic | undefined>\`, or \`Output<intrinsic> | undefined\``
-        );
-      }
-
       // Find the getter property that matches the link name
       const getter = useClassGetters(module).find((g) => g.name === link.name);
       if (!getter) {
@@ -1548,7 +1520,8 @@ function renderLinks(module: TypeDoc.DeclarationReflection) {
       return [
         `- <p><code class="key">${renderName(link)}</code> ${renderType(
           module,
-          linkType
+          link,
+          { ignoreOutput: true }
         )}</p>`,
         "", // Needed to indent the description
         ...renderDescription(getter.getSignature!, { indent: true }),
@@ -1630,7 +1603,7 @@ function renderInterfacesAtH2Level(
           `<Segment>`,
           `<Section type="parameters">`,
           `<InlineSection>`,
-          `**Type** ${renderType(module, prop.type!)}`,
+          `**Type** ${renderType(module, prop)}`,
           `</InlineSection>`,
           ...renderNestedTypeList(module, prop),
           `</Section>`,
@@ -1664,7 +1637,7 @@ function renderInterfacesAtH2Level(
                     `<Segment>`,
                     `<Section type="parameters">`,
                     `<InlineSection>`,
-                    `**Type** ${renderType(module, subType.type!)}`,
+                    `**Type** ${renderType(module, subType)}`,
                     `</InlineSection>`,
                     `</Section>`,
                     ...renderDefaultTag(module, subType),
@@ -1713,7 +1686,7 @@ function renderInterfacesAtH3Level(module: TypeDoc.DeclarationReflection) {
       `<Segment>`,
       `<Section type="parameters">`,
       `<InlineSection>`,
-      `**Type** ${renderType(module, int.type!)}`,
+      `**Type** ${renderType(module, int)}`,
       `</InlineSection>`,
       ...renderNestedTypeList(module, int),
       `</Section>`,
@@ -1727,7 +1700,7 @@ function renderInterfacesAtH3Level(module: TypeDoc.DeclarationReflection) {
           `<Segment>`,
           `<Section type="parameters">`,
           `<InlineSection>`,
-          `**Type** ${renderType(module, subType.type!)}`,
+          `**Type** ${renderType(module, subType)}`,
           `</InlineSection>`,
           `</Section>`,
           ...renderDefaultTag(module, subType),
@@ -1803,12 +1776,14 @@ function renderDefaultTag(
     // Otherwise render it as a comment ie. No domains configured
     defaultTag.content.length === 1 && defaultTag.content[0].kind === "code"
       ? `**Default** ${renderType(module, {
-          type: "intrinsic",
-          name: defaultTag.content[0].text
-            .replace(/`/g, "")
-            .replace(/{/g, "&lcub;")
-            .replace(/}/g, "&rcub;"),
-        } as TypeDoc.SomeType)}`
+          type: {
+            type: "intrinsic",
+            name: defaultTag.content[0].text
+              .replace(/`/g, "")
+              .replace(/{/g, "&lcub;")
+              .replace(/}/g, "&rcub;"),
+          },
+        } as unknown as TypeDoc.DeclarationReflection)}`
       : `**Default** ${renderTdComment(defaultTag.content)}`,
     `</InlineSection>`,
   ];
@@ -1821,7 +1796,7 @@ function renderReturnValue(
   return [
     ``,
     `<InlineSection>`,
-    `**Returns** ${renderType(module, prop.type!)}`,
+    `**Returns** ${renderType(module, prop)}`,
     `</InlineSection>`,
   ];
 }
@@ -1838,7 +1813,7 @@ function renderNestedTypeList(
           : subType.kind === TypeDoc.ReflectionKind.Method
             ? useNestedTypes(subType.signatures![0].type!).length
             : useNestedTypes(subType.getSignature?.type!).length;
-      const type = hasChildren ? ` ${renderType(module, subType.type!)}` : "";
+      const type = hasChildren ? ` ${renderType(module, subType)}` : "";
       const generateHash = (counter = 0): string => {
         const hash =
           `${prefix}.${subType.name}`

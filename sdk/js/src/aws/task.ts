@@ -1,9 +1,4 @@
 import { AwsOptions, client } from "./client.js";
-import {
-  DescribeTasksResponse,
-  RunTaskResponse,
-  StopTaskResponse,
-} from "./types/aws-sdk-client-ecs.js";
 
 /**
  * The `task` client SDK is available through the following.
@@ -71,9 +66,43 @@ export module task {
     aws?: AwsOptions;
   }
 
+  interface Task {
+    /**
+     * The ARN of the task.
+     */
+    arn: string;
+    /**
+     * The status of the task.
+     */
+    status: string;
+  }
+
+  export interface DescribeResponse extends Task {
+    /**
+     * The raw response from the AWS ECS DescribeTasks API.
+     * @see [@aws-sdk/client-ecs.DescribeTasksResponse](https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/Package/-aws-sdk-client-ecs/Interface/DescribeTasksResponse/)
+     */
+    response: any;
+  }
+
+  export interface RunResponse extends Task {
+    /**
+     * The raw response from the AWS ECS RunTask API.
+     * @see [@aws-sdk/client-ecs.RunTaskResponse](https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/Package/-aws-sdk-client-ecs/Interface/RunTaskResponse/)
+     */
+    response: any;
+  }
+
+  export interface StopResponse extends Task {
+    /**
+     * The raw response from the AWS ECS StopTask API.
+     * @see [@aws-sdk/client-ecs.StopTaskResponse](https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/Package/-aws-sdk-client-ecs/Interface/StopTaskResponse/)
+     */
+    response: any;
+  }
+
   /**
    * Gets the details of a task. Tasks stopped longer than 1 hour are not returned.
-   *
    * @example
    * For example, let's say you have started task.
    *
@@ -95,7 +124,7 @@ export module task {
     resource: Resource,
     task: string,
     options?: Options
-  ): Promise<any> {
+  ): Promise<DescribeResponse> {
     const c = await client();
     const u = url(c.region, options?.aws);
     const res = await c.fetch(u, {
@@ -111,7 +140,20 @@ export module task {
       }),
     });
     if (!res.ok) throw new DescribeError(res);
-    return res.json() as Promise<DescribeTasksResponse>;
+
+    const data = (await res.json()) as {
+      tasks?: {
+        taskArn: string;
+        lastStatus: string;
+      }[];
+    };
+    if (!data.tasks?.length) throw new DescribeError(res);
+
+    return {
+      arn: data.tasks[0].taskArn,
+      status: data.tasks[0].lastStatus,
+      response: data,
+    };
   }
 
   /**
@@ -152,7 +194,7 @@ export module task {
     options?: {
       aws?: AwsOptions;
     }
-  ): Promise<any> {
+  ): Promise<RunResponse> {
     const c = await client();
     const u = url(c.region, options?.aws);
     const res = await c.fetch(u, {
@@ -187,7 +229,20 @@ export module task {
       }),
     });
     if (!res.ok) throw new RunError(res);
-    return res.json() as Promise<RunTaskResponse>;
+
+    const data = (await res.json()) as {
+      tasks?: {
+        taskArn: string;
+        lastStatus: string;
+      }[];
+    };
+    if (!data.tasks?.length) throw new RunError(res);
+
+    return {
+      arn: data.tasks[0].taskArn,
+      status: data.tasks[0].lastStatus,
+      response: data,
+    };
   }
 
   /**
@@ -218,7 +273,7 @@ export module task {
     resource: Resource,
     task: string,
     options?: Options
-  ): Promise<any> {
+  ): Promise<StopResponse> {
     const c = await client();
     const u = url(c.region, options?.aws);
     const res = await c.fetch(u, {
@@ -234,7 +289,20 @@ export module task {
       }),
     });
     if (!res.ok) throw new StopError(res);
-    return res.json() as Promise<StopTaskResponse>;
+
+    const data = (await res.json()) as {
+      task: {
+        taskArn: string;
+        lastStatus: string;
+      };
+    };
+    if (!data.task) throw new StopError(res);
+
+    return {
+      arn: data.task.taskArn,
+      status: data.task.lastStatus,
+      response: data,
+    };
   }
 
   export class DescribeError extends Error {
