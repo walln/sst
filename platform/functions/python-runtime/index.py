@@ -47,9 +47,7 @@ sys.path.insert(0, module_dir)
 
 try:
     # Dynamically load the module from the file path
-    spec = importlib.util.spec_from_file_location(module_name, module_path + ".py")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    module = importlib.import_module(module_name)
 
     # Get the function from the module
     handler_function = getattr(module, function_name)
