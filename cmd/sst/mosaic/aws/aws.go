@@ -15,14 +15,14 @@ import (
 	"time"
 
 	MQTT "github.com/eclipse/paho.mqtt.golang"
-	"github.com/sst/ion/cmd/sst/mosaic/aws/appsync"
-	"github.com/sst/ion/cmd/sst/mosaic/aws/bridge"
-	"github.com/sst/ion/cmd/sst/mosaic/watcher"
-	"github.com/sst/ion/pkg/bus"
-	"github.com/sst/ion/pkg/project"
-	"github.com/sst/ion/pkg/project/provider"
-	"github.com/sst/ion/pkg/runtime"
-	"github.com/sst/ion/pkg/server"
+	"github.com/sst/sst/v3/cmd/sst/mosaic/aws/appsync"
+	"github.com/sst/sst/v3/cmd/sst/mosaic/aws/bridge"
+	"github.com/sst/sst/v3/cmd/sst/mosaic/watcher"
+	"github.com/sst/sst/v3/pkg/bus"
+	"github.com/sst/sst/v3/pkg/project"
+	"github.com/sst/sst/v3/pkg/project/provider"
+	"github.com/sst/sst/v3/pkg/runtime"
+	"github.com/sst/sst/v3/pkg/server"
 )
 
 type fragment struct {
@@ -68,6 +68,7 @@ type FunctionLogEvent struct {
 }
 
 var ErrIoTDelay = fmt.Errorf("iot not available")
+var ErrAppsyncNotReady = fmt.Errorf("appsync not ready")
 
 func Start(
 	ctx context.Context,
@@ -100,6 +101,21 @@ func Start(
 		return err
 	}
 	slog.Info("found appsync", "rest", rest, "realtime", realtime)
+
+	now := time.Now()
+	for {
+		slog.Info("checking if appsync is ready")
+		_, err := http.Get("https://" + rest)
+		if err != nil {
+			slog.Error("appsync not ready", "err", err)
+			if time.Since(now) > time.Second*10 {
+				return ErrAppsyncNotReady
+			}
+			time.Sleep(time.Second)
+			continue
+		}
+		break
+	}
 	conn, err := appsync.Dial(ctx, config, rest, realtime)
 	if err != nil {
 		return err
@@ -193,6 +209,11 @@ func Start(
 					continue
 				}
 				slog.Info("got bridge message", "type", msg.Type, "from", msg.Source)
+				ch, ok := nextChan[msg.Source]
+				if !ok {
+					ch = make(chan io.Reader, 100)
+					nextChan[msg.Source] = ch
+				}
 				switch msg.Type {
 				case bridge.MessageInit:
 					init := bridge.InitBody{}
@@ -237,11 +258,6 @@ func Start(
 						}
 					}
 				case bridge.MessageNext:
-					ch, ok := nextChan[msg.Source]
-					if !ok {
-						ch = make(chan io.Reader, 100)
-						nextChan[msg.Source] = ch
-					}
 					_, ok = workers[msg.Source]
 					if !ok {
 						slog.Info("asking for reboot", "workerID", msg.Source)
@@ -277,10 +293,16 @@ func Start(
 					}
 					info.CurrentRequestID = evt.RequestID
 				case *project.CompleteEvent:
+					if evt.Old {
+						continue
+					}
 					for _, info := range workers {
 						info.Worker.Stop()
 					}
 					builds = map[string]*runtime.BuildOutput{}
+					for workerID, info := range workers {
+						run(info.FunctionID, workerID)
+					}
 				case *runtime.BuildInput:
 					targets[evt.FunctionID] = evt
 				case *watcher.FileChangedEvent:
@@ -331,14 +353,16 @@ func Start(
 		}
 	}()
 
-	s.Mux.HandleFunc(`/lambda/{workerID}/runtime/invocation/next`, func(w http.ResponseWriter, r *http.Request) {
+	s.Mux.HandleFunc(`/lambda/{workerID}/2018-06-01/runtime/invocation/next`, func(w http.ResponseWriter, r *http.Request) {
 		slog.Info("got next request", "workerID", r.PathValue("workerID"))
 		workerID := r.PathValue("workerID")
 		ch := nextChan[workerID]
 		select {
 		case <-r.Context().Done():
+			slog.Info("worker disconnected", "workerID", workerID)
 			return
 		case reader := <-ch:
+			slog.Info("worker got next request", "workerID", workerID)
 			writer := client.NewWriter(bridge.MessagePing, prefix+"/"+r.PathValue("workerID")+"/in")
 			json.NewEncoder(writer).Encode(bridge.PingBody{})
 			writer.Close()
@@ -366,7 +390,7 @@ func Start(
 		}
 	})
 
-	s.Mux.HandleFunc(`/lambda/{workerID}/runtime/init/error`, func(w http.ResponseWriter, r *http.Request) {
+	s.Mux.HandleFunc(`/lambda/{workerID}/2018-06-01/runtime/init/error`, func(w http.ResponseWriter, r *http.Request) {
 		workerID := r.PathValue("workerID")
 		slog.Info("got init error", "workerID", workerID, "requestID", r.PathValue("requestID"))
 		writer := client.NewWriter(bridge.MessageInitError, prefix+"/"+workerID+"/in")
@@ -386,7 +410,7 @@ func Start(
 		}
 	})
 
-	s.Mux.HandleFunc(`/lambda/{workerID}/runtime/invocation/{requestID}/response`, func(w http.ResponseWriter, r *http.Request) {
+	s.Mux.HandleFunc(`/lambda/{workerID}/2018-06-01/runtime/invocation/{requestID}/response`, func(w http.ResponseWriter, r *http.Request) {
 		workerID := r.PathValue("workerID")
 		requestID := r.PathValue("requestID")
 		slog.Info("got response", "workerID", workerID, "requestID", r.PathValue("requestID"))
@@ -396,7 +420,7 @@ func Start(
 		tee := io.TeeReader(r.Body, &buf)
 		io.Copy(writer, tee)
 		writer.Close()
-		w.WriteHeader(200)
+		w.WriteHeader(202)
 		info, ok := workers[workerID]
 		if ok {
 			bus.Publish(&FunctionResponseEvent{
@@ -408,7 +432,7 @@ func Start(
 		}
 	})
 
-	s.Mux.HandleFunc(`/lambda/{workerID}/runtime/invocation/{requestID}/error`, func(w http.ResponseWriter, r *http.Request) {
+	s.Mux.HandleFunc(`/lambda/{workerID}/2018-06-01/runtime/invocation/{requestID}/error`, func(w http.ResponseWriter, r *http.Request) {
 		workerID := r.PathValue("workerID")
 		requestID := r.PathValue("requestID")
 		slog.Info("got error", "workerID", workerID, "requestID", r.PathValue("requestID"))
@@ -418,7 +442,7 @@ func Start(
 		tee := io.TeeReader(r.Body, &buf)
 		io.Copy(writer, tee)
 		writer.Close()
-		w.WriteHeader(200)
+		w.WriteHeader(202)
 		info, ok := workers[workerID]
 		if ok {
 			fee := &FunctionErrorEvent{

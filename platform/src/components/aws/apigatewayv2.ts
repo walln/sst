@@ -522,7 +522,8 @@ export interface ApiGatewayV2RouteArgs {
     | false
     | {
         /**
-         * Enable IAM authorization for a given API route. When IAM auth is enabled, clients need to use Signature Version 4 to sign their requests with their AWS credentials.
+         * Enable IAM authorization for a given API route. When IAM auth is enabled, clients
+         * need to use Signature Version 4 to sign their requests with their AWS credentials.
          */
         iam?: Input<boolean>;
         /**
@@ -1357,6 +1358,7 @@ export class ApiGatewayV2 extends Component implements Link.Linkable {
           name: selfName,
           executionArn: this.api.executionArn,
         },
+        type: "http",
         ...args,
       },
       { provider: this.constructorOpts.provider },

@@ -167,7 +167,7 @@ export function dns(args: DnsArgs = {}) {
         const proxy = output(args.proxy).apply(
           (proxy) => (proxy && record.isAlias) ?? false,
         );
-
+        const type = record.type.toUpperCase();
         return new cloudflare.Record(
           ...transform(
             args.transform?.record,
@@ -175,9 +175,20 @@ export function dns(args: DnsArgs = {}) {
             {
               zoneId,
               proxied: output(proxy),
+              type,
               name: record.name,
-              content: record.value,
-              type: record.type,
+              content: type === "CAA" ? undefined : record.value,
+              data:
+                type !== "CAA"
+                  ? undefined
+                  : (() => {
+                      const parts = record.value.split(" ");
+                      return {
+                        flags: parts[0],
+                        tag: parts[1],
+                        value: parts.slice(2).join(" "),
+                      };
+                    })(),
               ttl: output(proxy).apply((proxy) => (proxy ? 1 : 60)),
               allowOverwrite: args.override,
             },

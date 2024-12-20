@@ -140,6 +140,7 @@ const sidebar = [
         ],
       },
       "docs/component/aws/cdn",
+      "docs/component/aws/task",
       "docs/component/aws/service",
       {
         label: "Linkable",
@@ -150,6 +151,7 @@ const sidebar = [
       },
       "docs/component/aws/app-sync-resolver",
       "docs/component/aws/app-sync-function",
+      "docs/component/aws/bucket-notification",
       "docs/component/aws/app-sync-data-source",
       "docs/component/aws/cognito-user-pool-client",
       "docs/component/aws/apigatewayv2-url-route",
@@ -291,7 +293,7 @@ export default defineConfig({
           tag: "link",
           attrs: {
             rel: "icon",
-            href: "/favicon-dark.svg",
+            href: "/favicon.svg",
             media: "(prefers-color-scheme: dark)",
           },
         },

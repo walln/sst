@@ -13,9 +13,9 @@ import (
 	"sync"
 
 	"github.com/BurntSushi/toml"
-	"github.com/sst/ion/pkg/process"
-	"github.com/sst/ion/pkg/project/path"
-	"github.com/sst/ion/pkg/runtime"
+	"github.com/sst/sst/v3/pkg/process"
+	"github.com/sst/sst/v3/pkg/project/path"
+	"github.com/sst/sst/v3/pkg/runtime"
 )
 
 type Worker struct {

@@ -15,17 +15,17 @@ import (
 
 	"github.com/briandowns/spinner"
 	"github.com/fatih/color"
-	"github.com/sst/ion/cmd/sst/cli"
-	"github.com/sst/ion/cmd/sst/mosaic/errors"
-	"github.com/sst/ion/cmd/sst/mosaic/ui"
-	"github.com/sst/ion/internal/util"
-	"github.com/sst/ion/pkg/flag"
-	"github.com/sst/ion/pkg/global"
-	"github.com/sst/ion/pkg/id"
-	"github.com/sst/ion/pkg/process"
-	"github.com/sst/ion/pkg/project"
-	"github.com/sst/ion/pkg/project/provider"
-	"github.com/sst/ion/pkg/telemetry"
+	"github.com/sst/sst/v3/cmd/sst/cli"
+	"github.com/sst/sst/v3/cmd/sst/mosaic/errors"
+	"github.com/sst/sst/v3/cmd/sst/mosaic/ui"
+	"github.com/sst/sst/v3/internal/util"
+	"github.com/sst/sst/v3/pkg/flag"
+	"github.com/sst/sst/v3/pkg/global"
+	"github.com/sst/sst/v3/pkg/id"
+	"github.com/sst/sst/v3/pkg/process"
+	"github.com/sst/sst/v3/pkg/project"
+	"github.com/sst/sst/v3/pkg/project/provider"
+	"github.com/sst/sst/v3/pkg/telemetry"
 )
 
 var version = "dev"
@@ -109,19 +109,23 @@ func run() error {
 
 	if !flag.SST_SKIP_DEPENDENCY_CHECK {
 		spin := spinner.New(spinner.CharSets[14], 100*time.Millisecond)
-		spin.Suffix = "  Updating dependencies..."
+		spin.Suffix = "  Download dependencies..."
 		if global.NeedsPulumi() {
+			spin.Suffix = "  Installing pulumi..."
 			spin.Start()
-			err := global.InstallPulumi()
+			err := global.InstallPulumi(ctx)
 			if err != nil {
-				return err
+				spin.Stop()
+				return util.NewHintedError(err, "Could not install pulumi")
 			}
 		}
 		if global.NeedsBun() {
+			spin.Suffix = "  Installing bun..."
 			spin.Start()
-			err := global.InstallBun()
+			err := global.InstallBun(ctx)
 			if err != nil {
-				return err
+				spin.Stop()
+				return util.NewHintedError(err, "Could not install bun")
 			}
 		}
 		spin.Stop()
@@ -162,7 +166,7 @@ var root = &cli.Command{
 			"",
 			"- **macOS**",
 			"",
-			"  The CLI is available via a Homebrew Tap, and as downloadable binary in the [releases](https://github.com/sst/ion/releases/latest).",
+			"  The CLI is available via a Homebrew Tap, and as downloadable binary in the [releases](https://github.com/sst/sst/v3/releases/latest).",
 			"",
 			"  ```bash",
 			"  brew install sst/tap/sst",
@@ -175,7 +179,7 @@ var root = &cli.Command{
 			"",
 			"- **Linux**",
 			"",
-			"  The CLI is available as downloadable binaries in the [releases](https://github.com/sst/ion/releases/latest). Download the `.deb` or `.rpm` and install with `sudo dpkg -i` and `sudo rpm -i`.",
+			"  The CLI is available as downloadable binaries in the [releases](https://github.com/sst/sst/v3/releases/latest). Download the `.deb` or `.rpm` and install with `sudo dpkg -i` and `sudo rpm -i`.",
 			"",
 			"  For Arch Linux, it's available in the [aur](https://aur.archlinux.org/packages/sst-bin).",
 			"---",
@@ -450,77 +454,7 @@ var root = &cli.Command{
 			},
 			Run: CmdMosaic,
 		},
-		{
-			Name: "deploy",
-			Description: cli.Description{
-				Short: "Deploy your application",
-				Long: strings.Join([]string{
-					"Deploy your application. By default, it deploys to your personal stage.",
-					"You typically want to deploy it to a specific stage.",
-					"",
-					"```bash frame=\"none\"",
-					"sst deploy --stage production",
-					"```",
-					"",
-					"Optionally, deploy specific resources by passing in a list of their URNs.",
-					"You can get the URN of a resource from the [Console](/docs/console/#resources).",
-					"",
-					"```bash frame=\"none\"",
-					"sst deploy --target urn:pulumi:prod::www::sst:aws:Astro::Astro,urn:pulumi:prod::www::sst:aws:Bucket::Assets",
-					"```",
-					"",
-					"All the resources are deployed as concurrently as possible, based on their dependencies.",
-					"For resources like your container images, sites, and functions; it first builds them and then deploys the generated assets.",
-					"",
-					":::tip",
-					"Configure the concurrency if your CI builds are running out of memory.",
-					":::",
-					"",
-					"Since the build processes for some of these resources take a lot of memory, their concurrency is limited by default.",
-					"However, this can be configured.",
-					"",
-					"| Resource | Concurrency | Flag |",
-					"| -------- | ----------- | ---- |",
-					"| Sites | 1 | `SST_BUILD_CONCURRENCY_SITE` |",
-					"| Functions | 4 | `SST_BUILD_CONCURRENCY_FUNCTION` |",
-					"| Containers | 1 | `SST_BUILD_CONCURRENCY_CONTAINER` |",
-					"",
-					"So only one site is built at a time, 4 functions are built at a time, and only 1 container is built at a time.",
-					"",
-					"You can set the above environment variables to change this when you run `sst deploy`. This is useful for CI",
-					"environments where you want to control this based on how much memory your CI machine has.",
-					"",
-					"For example, to build a maximum of 2 sites concurrently.",
-					"",
-					"```bash frame=\"none\"",
-					"SST_BUILD_CONCURRENCY_SITE=2 sst deploy",
-					"```",
-					" Or to configure all these together.",
-					"",
-					"```bash frame=\"none\"",
-					"SST_BUILD_CONCURRENCY_SITE=2 SST_BUILD_CONCURRENCY_CONTAINER=2 SST_BUILD_CONCURRENCY_FUNCTION=8 sst deploy",
-					"```",
-				}, "\n"),
-			},
-			Flags: []cli.Flag{
-				{
-					Name: "target",
-					Description: cli.Description{
-						Short: "Comma separated list of target URNs",
-						Long:  "Comma separated list of target URNs.",
-					},
-				},
-			},
-			Examples: []cli.Example{
-				{
-					Content: "sst deploy --stage production",
-					Description: cli.Description{
-						Short: "Deploy to production",
-					},
-				},
-			},
-			Run: CmdDeploy,
-		},
+		CmdDeploy,
 		{
 			Name: "diff",
 			Description: cli.Description{
@@ -1099,10 +1033,15 @@ var root = &cli.Command{
 							update.TimeCompleted = time.Now().UTC().Format(time.RFC3339)
 							provider.PutUpdate(p.Backend(), p.App().Name, p.App().Stage, update)
 						}()
-						path, err := p.PullState()
+						workdir, err := p.NewWorkdir()
+						if err != nil {
+							return err
+						}
+						path, err := workdir.Pull()
 						if err != nil {
 							return util.NewReadableError(err, "Could not pull state")
 						}
+						defer workdir.Cleanup()
 						editor := os.Getenv("EDITOR")
 						if editor == "" {
 							editor = "vim"
@@ -1120,7 +1059,7 @@ var root = &cli.Command{
 							return util.NewReadableError(err, "Editor exited with error")
 						}
 
-						return p.PushState(update.ID)
+						return workdir.Push(update.ID)
 					},
 				},
 			},

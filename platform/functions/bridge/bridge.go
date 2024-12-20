@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -13,8 +14,8 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/sst/ion/cmd/sst/mosaic/aws/appsync"
-	"github.com/sst/ion/cmd/sst/mosaic/aws/bridge"
+	"github.com/sst/sst/v3/cmd/sst/mosaic/aws/appsync"
+	"github.com/sst/sst/v3/cmd/sst/mosaic/aws/bridge"
 )
 
 var version = "0.0.1"
@@ -110,6 +111,11 @@ func run() error {
 	json.NewEncoder(writer).Encode(init)
 	writer.Close()
 
+	notRunning, _ := json.Marshal(map[string]string{
+		"statusCode": "500",
+		"body":       "sst dev is not running (worker: " + workerID + ")",
+	})
+
 	for {
 		resp, err := http.Get("http://" + LAMBDA_RUNTIME_API + "/2018-06-01/runtime/invocation/next")
 		fmt.Println("status", resp.Status)
@@ -154,7 +160,7 @@ func run() error {
 				}
 			case <-time.After(timeout):
 				fmt.Println("timeout", requestID)
-				http.Post("http://"+LAMBDA_RUNTIME_API+"/2018-06-01/runtime/invocation/"+requestID+"/response", "application/json", strings.NewReader(`{"body":"sst dev is not running"}`))
+				http.Post("http://"+LAMBDA_RUNTIME_API+"/2018-06-01/runtime/invocation/"+requestID+"/response", "application/json", bytes.NewReader(notRunning))
 				break loop
 			}
 		}

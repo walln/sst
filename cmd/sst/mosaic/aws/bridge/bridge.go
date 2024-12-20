@@ -8,8 +8,8 @@ import (
 	"iter"
 	"log/slog"
 
-	"github.com/sst/ion/cmd/sst/mosaic/aws/appsync"
-	"github.com/sst/ion/pkg/id"
+	"github.com/sst/sst/v3/cmd/sst/mosaic/aws/appsync"
+	"github.com/sst/sst/v3/pkg/id"
 )
 
 type Packet struct {

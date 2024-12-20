@@ -15,18 +15,18 @@ import {
 import { Component, Prettify, Transform, transform } from "../component";
 import { Link } from "../link";
 import type { Input } from "../input";
-import { Function, FunctionArgs, FunctionArn } from "./function";
+import { FunctionArgs, FunctionArn } from "./function";
 import { Duration, toSeconds } from "../duration";
 import { VisibleError } from "../error";
 import { parseBucketArn } from "./helpers/arn";
 import { BucketLambdaSubscriber } from "./bucket-lambda-subscriber";
-import { iam, lambda, s3, sns } from "@pulumi/aws";
+import { iam, s3 } from "@pulumi/aws";
 import { permission } from "./permission";
 import { BucketQueueSubscriber } from "./bucket-queue-subscriber";
 import { BucketTopicSubscriber } from "./bucket-topic-subscriber";
 import { Queue } from "./queue";
 import { SnsTopic } from "./sns-topic";
-import { functionBuilder } from "./helpers/function-builder";
+import { BucketNotification } from "./bucket-notification";
 
 interface BucketCorsArgs {
   /**
@@ -258,7 +258,7 @@ export interface BucketNotificationsArgs {
        * For example, let's say you have a queue.
        *
        * ```js title="sst.config.ts"
-       * const myQueue = sst.aws.Queue("MyQueue");
+       * const myQueue = new sst.aws.Queue("MyQueue");
        * ```
        *
        * You can subscribe to this bucket with it.
@@ -287,7 +287,7 @@ export interface BucketNotificationsArgs {
        * For example, let's say you have a topic.
        *
        * ```js title="sst.config.ts"
-       * const myTopic = sst.aws.SnsTopic("MyTopic");
+       * const myTopic = new sst.aws.SnsTopic("MyTopic");
        * ```
        *
        * You can subscribe to this bucket with it.
@@ -383,22 +383,6 @@ export interface BucketNotificationsArgs {
      * Transform the S3 Bucket Notification resource.
      */
     notification?: Transform<s3.BucketNotificationArgs>;
-  };
-}
-
-export interface BucketNotificationsOutput {
-  /**
-   * The underlying [resources](/docs/components/#nodes) this function creates.
-   */
-  nodes: {
-    /**
-     * The functions that will be notified.
-     */
-    functions: Output<Function[]>;
-    /**
-     * The notification resource that's created.
-     */
-    notification: s3.BucketNotification;
   };
 }
 
@@ -856,7 +840,7 @@ export class Bucket extends Component implements Link.Linkable {
    * Notify a queue. For example, let's say you have a queue.
    *
    * ```js
-   * const myQueue = sst.aws.Queue("MyQueue");
+   * const myQueue = new sst.aws.Queue("MyQueue");
    * ```
    *
    * You can notify it by passing in the queue.
@@ -875,7 +859,7 @@ export class Bucket extends Component implements Link.Linkable {
    * Notify a SNS topic. For example, let's say you have a topic.
    *
    * ```js title="sst.config.ts"
-   * const myTopic = sst.aws.SnsTopic("MyTopic");
+   * const myTopic = new sst.aws.SnsTopic("MyTopic");
    * ```
    *
    * You can notify it by passing in the topic.
@@ -891,195 +875,24 @@ export class Bucket extends Component implements Link.Linkable {
    * });
    * ```
    */
-  public notify(args: BucketNotificationsArgs): BucketNotificationsOutput {
-    const parent = this;
-    const name = parent.constructorName;
-    ensureCalledOnce();
-    const notifications = normalizeNotifications();
-    const config = createNotificationsConfig();
-    const notification = createNotification();
+  public notify(args: BucketNotificationsArgs) {
+    if (this.isSubscribed) {
+      throw new VisibleError(
+        `Cannot call "notify" on the "${this.constructorName}" bucket multiple times. Calling it again will override previous notifications.`,
+      );
+    }
+    this.isSubscribed = true;
+    const name = this.constructorName;
+    const opts = this.constructorOpts;
 
-    return {
-      nodes: {
-        get functions() {
-          return all([config]).apply(([config]) =>
-            config
-              .filter((c) => c!.functionBuilder)
-              .map((c) => c!.functionBuilder!.getFunction()),
-          );
-        },
-        notification,
+    return new BucketNotification(
+      `${name}Notifications`,
+      {
+        bucket: { name: this.bucket.bucket, arn: this.bucket.arn },
+        ...args,
       },
-    };
-
-    function ensureCalledOnce() {
-      if (parent.isSubscribed) {
-        throw new VisibleError(
-          `Cannot call "notify" on the "${name}" bucket multiple times. Calling it again will override previous notifications.`,
-        );
-      }
-      parent.isSubscribed = true;
-    }
-
-    function normalizeNotifications() {
-      return output(args.notifications).apply((notifications) =>
-        notifications.map((n) => {
-          const count =
-            (n.function ? 1 : 0) + (n.queue ? 1 : 0) + (n.topic ? 1 : 0);
-          if (count === 0)
-            throw new VisibleError(
-              `At least one of function, queue, or topic is required for the "${n.name}" bucket notification.`,
-            );
-          if (count > 1)
-            throw new VisibleError(
-              `Only one of function, queue, or topic is allowed for the "${n.name}" bucket notification.`,
-            );
-
-          const events = n.events ?? [
-            "s3:ObjectCreated:*",
-            "s3:ObjectRemoved:*",
-            "s3:ObjectRestore:*",
-            "s3:ReducedRedundancyLostObject",
-            "s3:Replication:*",
-            "s3:LifecycleExpiration:*",
-            "s3:LifecycleTransition",
-            "s3:IntelligentTiering",
-            "s3:ObjectTagging:*",
-            "s3:ObjectAcl:Put",
-          ];
-          return { ...n, events };
-        }),
-      );
-    }
-
-    function createNotificationsConfig() {
-      return notifications.apply((notifications) =>
-        notifications.map((n) => {
-          if (n.function) {
-            const fn = functionBuilder(
-              `${name}Notification${n.name}`,
-              n.function,
-              {
-                description:
-                  n.events.length < 5
-                    ? `Subscribed to ${name} on ${n.events.join(", ")}`
-                    : `Subscribed to ${name} on ${n.events
-                        .slice(0, 3)
-                        .join(", ")}, and ${n.events.length - 3} more events`,
-              },
-              undefined,
-              { parent },
-            );
-
-            const permission = new lambda.Permission(
-              `${name}Notification${n.name}Permission`,
-              {
-                action: "lambda:InvokeFunction",
-                function: fn.arn,
-                principal: "s3.amazonaws.com",
-                sourceArn: parent.bucket.arn,
-              },
-              { parent },
-            );
-            return { args: n, functionBuilder: fn, dependsOn: permission };
-          }
-
-          if (n.topic) {
-            const arn =
-              n.topic instanceof SnsTopic ? n.topic.arn : output(n.topic);
-            const policy = new sns.TopicPolicy(
-              `${name}Notification${n.name}Policy`,
-              {
-                arn,
-                policy: iam.getPolicyDocumentOutput({
-                  statements: [
-                    {
-                      actions: ["sns:Publish"],
-                      resources: [arn],
-                      principals: [
-                        {
-                          type: "Service",
-                          identifiers: ["s3.amazonaws.com"],
-                        },
-                      ],
-                      conditions: [
-                        {
-                          test: "ArnEquals",
-                          variable: "aws:SourceArn",
-                          values: [parent.bucket.arn],
-                        },
-                      ],
-                    },
-                  ],
-                }).json,
-              },
-            );
-            return { args: n, topicArn: arn, dependsOn: policy };
-          }
-
-          if (n.queue) {
-            const arn =
-              n.queue instanceof Queue ? n.queue.arn : output(n.queue);
-            const policy = Queue.createPolicy(
-              `${name}Notification${n.name}Policy`,
-              arn,
-            );
-            return { args: n, queueArn: arn, dependsOn: policy };
-          }
-        }),
-      );
-    }
-
-    function createNotification() {
-      return new s3.BucketNotification(
-        ...transform(
-          args.transform?.notification,
-          `${name}Notification`,
-          {
-            bucket: parent.bucket.bucket,
-            lambdaFunctions: config.apply((config) =>
-              config
-                .filter((c) => c!.functionBuilder)
-                .map((c) => ({
-                  id: c!.args.name,
-                  lambdaFunctionArn: c!.functionBuilder!.arn,
-                  events: c!.args.events,
-                  filterPrefix: c!.args.filterPrefix,
-                  filterSuffix: c!.args.filterSuffix,
-                })),
-            ),
-            queues: config.apply((config) =>
-              config
-                .filter((c) => c!.queueArn)
-                .map((c) => ({
-                  id: c!.args.name,
-                  queueArn: c!.queueArn!,
-                  events: c!.args.events,
-                  filterPrefix: c!.args.filterPrefix,
-                  filterSuffix: c!.args.filterSuffix,
-                })),
-            ),
-            topics: config.apply((config) =>
-              config
-                .filter((c) => c!.topicArn)
-                .map((c) => ({
-                  id: c!.args.name,
-                  topicArn: c!.topicArn!,
-                  events: c!.args.events,
-                  filterPrefix: c!.args.filterPrefix,
-                  filterSuffix: c!.args.filterSuffix,
-                })),
-            ),
-          },
-          {
-            parent,
-            dependsOn: config.apply((config) =>
-              config.map((c) => c!.dependsOn),
-            ),
-          },
-        ),
-      );
-    }
+      opts,
+    );
   }
 
   /**
@@ -1263,7 +1076,7 @@ export class Bucket extends Component implements Link.Linkable {
    * For example, let's say you have a queue.
    *
    * ```js title="sst.config.ts"
-   * const queue = sst.aws.Queue("MyQueue");
+   * const queue = new sst.aws.Queue("MyQueue");
    * ```
    *
    * You can subscribe to this bucket with it.
@@ -1407,7 +1220,7 @@ export class Bucket extends Component implements Link.Linkable {
    * For example, let's say you have a topic.
    *
    * ```js title="sst.config.ts"
-   * const topic = sst.aws.SnsTopic("MyTopic");
+   * const topic = new sst.aws.SnsTopic("MyTopic");
    * ```
    *
    * You can subscribe to this bucket with it.

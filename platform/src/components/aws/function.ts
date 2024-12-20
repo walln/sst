@@ -251,9 +251,17 @@ export interface FunctionArgs {
 	 */
 	description?: Input<string>;
 	/**
-	 * The runtime environment for the function. Support for other runtimes is on our roadmap.
+	 * The language runtime for the function.
+	 *
+	 * :::tip
+	 * Currently supports Node.js and Golang functions.
+	 * :::
+	 *
+	 * Currently supports **Node.js** and **Golang** functions. Python is community supported
+	 * and is currently a work in progress. Other runtimes are on the roadmap.
 	 *
 	 * @default `"nodejs20.x"`
+	 *
 	 * @example
 	 * ```js
 	 * {
@@ -265,6 +273,7 @@ export interface FunctionArgs {
 		| "nodejs18.x"
 		| "nodejs20.x"
 		| "nodejs22.x"
+		| "go"
 		| "provided.al2023"
 		| "python3.9"
 		| "python3.10"
@@ -837,34 +846,20 @@ export interface FunctionArgs {
 	/**
 	 * Configure your python function.
 	 *
-	 * SST uses the [uv](https://docs.rs/uv/latest/uv/) package manager to build python functions.
-	 * To configure the python runtime, you will need to use uv workspaces. When SST builds your function,
-	 * it will require the function handler to be a member of a uv workspace. You should likely use a single
-	 * uv root with multiple packages. This allows you to share code between packages and follow similar conventions
-	 * to the way you would structure nodejs lambda functions. For full examples see the
-	 * [python examples](https://github.com/sst/sst/tree/dev/examples/aws-python). Python functions will work with
-	 * live lambda, support linking, and even have an SDK to access your linked resources.
-	 *
-	 * :::note
-	 * You will need to have uv installed to use python functions. SST no longer installs uv for you.
-	 * You can install uv [here](https://docs.astral.sh/uv/getting-started/installation/).
-	 * :::
-	 *
-	 * In this example we have a `functions` uv workspace package that contains our handler functions and a root
-	 * `pyproject.toml` file to configure our workspaces.
+	 * By default, SST will package all files in the same directory as the `handler` file.
+	 * This means that you need to your handler file be the root of all files that need to be
+	 * included in the function package. The only exception to this is a parent `pyproject.toml`
+	 * file. SST will look for this file by finding the closest parent directory that contains
+	 * a `pyproject.toml` file.
 	 *
 	 * @example
 	 * ```markdown
 	 * project-root/
 	 * ├── functions/
-	 * |   ├── src/
-	 * |   |   ├── functions
-	 * |   |   |   ├── __init__.py
-	 * |   |   |   ├── handler.py
-	 * |   |   |   └── utils.py
-	 * |   |   ├── pyproject.toml
+	 * │   ├── pyproject.toml
+	 * │   ├── handler.py
+	 * │   └── utils.py
 	 * └── sst.config.ts
-	 * └── pyproject.toml
 	 * ```
 	 */
 	python?: Input<{
@@ -872,12 +867,6 @@ export interface FunctionArgs {
 		 * Whether to deploy the function to the container runtime. You should use this
 		 * if you are deploying a function that needs native dependencies, is large,
 		 * or if you need to customize some runtime configuration.
-		 *
-		 * :::note
-		 * Container functions use a default dockerfile that can be overridden.
-		 * See this [example](https://github.com/sst/sst/tree/dev/examples/aws-python-container) for how to customize it.
-		 * :::
-		 *
 		 * @default `false`
 		 * @example
 		 * ```ts
@@ -1159,21 +1148,37 @@ export interface FunctionArgs {
  * The `Function` component lets you add serverless functions to your app.
  * It uses [AWS Lambda](https://aws.amazon.com/lambda/).
  *
- * :::note
- * Currently supports Node.js functions only. Support for other runtimes is on the roadmap.
- * :::
+ * #### Supported runtimes
+ *
+ * Currently supports **Node.js** and **Golang** functions. Python is community supported and is
+ * currently a work in progress. Other runtimes are on the roadmap.
  *
  * @example
  *
  * #### Minimal example
  *
- * Pass in the path to your handler function.
  *
- * ```ts title="sst.config.ts"
- * new sst.aws.Function("MyFunction", {
- *   handler: "src/lambda.handler"
- * });
- * ```
+ * <Tabs>
+ *   <TabItem label="Node">
+ *   Pass in the path to your handler function.
+ *
+ *   ```ts title="sst.config.ts"
+ *   new sst.aws.Function("MyFunction", {
+ *     handler: "src/lambda.handler"
+ *   });
+ *   ```
+ *   </TabItem>
+ *   <TabItem label="Go">
+ *   Pass in the directory to your Go app.
+ *
+ *   ```ts title="sst.config.ts"
+ *   new sst.aws.Function("MyFunction", {
+ *     runtime: "go",
+ *     handler: "./src"
+ *   });
+ *   ```
+ *   </TabItem>
+ * </Tabs>
  *
  * #### Set additional config
  *
@@ -1204,15 +1209,29 @@ export interface FunctionArgs {
  * You can use the [SDK](/docs/reference/sdk/) to access the linked resources
  * in your handler.
  *
- * ```ts title="src/lambda.ts"
- * import { Resource } from "sst";
+ * <Tabs>
+ *   <TabItem label="Node">
+ *   ```ts title="src/lambda.ts"
+ *   import { Resource } from "sst";
  *
- * console.log(Resource.MyBucket.name);
- * ```
+ *   console.log(Resource.MyBucket.name);
+ *   ```
+ *   </TabItem>
+ *   <TabItem label="Go">
+ *   ```go title="src/main.go"
+ *   import (
+ *     "github.com/sst/sst/v3/sdk/golang/resource"
+ *   )
+ *
+ *   resource.Get("MyBucket", "name")
+ *   ```
+ *   </TabItem>
+ * </Tabs>
  *
  * #### Set environment variables
  *
- * Set environment variables for the function. Available in your handler as `process.env`.
+ * Set environment variables that you can read in your function. For example, using
+ * `process.env` in your Node.js functions.
  *
  * ```ts {4} title="sst.config.ts"
  * new sst.aws.Function("MyFunction", {
@@ -1236,8 +1255,8 @@ export interface FunctionArgs {
  *
  * #### Bundling
  *
- * Customize how SST uses [esbuild](https://esbuild.github.io/) to bundle your function code
- * with the `nodejs` property.
+ * Customize how SST uses [esbuild](https://esbuild.github.io/) to bundle your Node.js
+ * functions with the `nodejs` property.
  *
  * ```ts title="sst.config.ts" {3-5}
  * new sst.aws.Function("MyFunction", {
@@ -1864,6 +1883,7 @@ export class Function extends Component implements Link.Linkable {
 				copyFiles,
 				isContainer,
 				logGroup.apply((l) => l?.arn),
+				dev,
 			]).apply(
 				async ([
 					bundle,
@@ -1872,6 +1892,7 @@ export class Function extends Component implements Link.Linkable {
 					copyFiles,
 					isContainer,
 					logGroupArn,
+					dev,
 				]) => {
 					if (isContainer) return;
 
@@ -1923,14 +1944,18 @@ export class Function extends Component implements Link.Linkable {
 						}
 
 						// Add copyFiles into the zip
-						copyFiles.forEach(async (entry) => {
-							entry.isDir
-								? archive.directory(entry.from, entry.to, { date: new Date(0) })
-								: archive.file(entry.from, {
-										name: entry.to,
-										date: new Date(0),
-									});
-						});
+						if (!$dev) {
+							for (const entry of copyFiles) {
+								entry.isDir
+									? archive.directory(entry.from, entry.to, {
+											date: new Date(0),
+										})
+									: archive.file(entry.from, {
+											name: entry.to,
+											date: new Date(0),
+										});
+							}
+						}
 						await archive.finalize();
 					});
 
@@ -2053,18 +2078,7 @@ export class Function extends Component implements Link.Linkable {
 											ref?.replace(":latest", ""),
 										),
 										imageConfig: {
-											commands: [
-												all([handler, runtime]).apply(([handler, runtime]) => {
-													// If a python container image we have to rewrite the handler path so lambdaric is happy (see python.go for more information)
-													// This means no leading . and replace all / with .
-													if (isContainer && runtime.includes("python")) {
-														return handler
-															.replace(/\.\//g, "")
-															.replace(/\//g, ".");
-													}
-													return handler;
-												}),
-											],
+											commands: [handler],
 										},
 									}
 								: {
@@ -2072,7 +2086,9 @@ export class Function extends Component implements Link.Linkable {
 										s3Bucket: zipAsset!.bucket,
 										s3Key: zipAsset!.key,
 										handler: unsecret(handler),
-										runtime,
+										runtime: runtime.apply((v) =>
+											v === "go" ? "provided.al2023" : v,
+										),
 									}),
 						},
 						{ parent },

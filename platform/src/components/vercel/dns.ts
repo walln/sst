@@ -67,7 +67,6 @@ export interface DnsArgs {
 }
 
 export function dns(args: DnsArgs) {
-  let caaRecord: DnsRecord;
   return {
     provider: "vercel",
     createAlias,
@@ -126,30 +125,10 @@ export function dns(args: DnsArgs) {
               teamId: DEFAULT_TEAM_ID,
               ttl: 60,
             },
-            { ...opts, dependsOn: [useCAARecord(namePrefix, opts)] },
+            opts,
           ),
         );
       }
     });
-  }
-
-  function useCAARecord(namePrefix: string, opts: ComponentResourceOptions) {
-    if (!caaRecord) {
-      caaRecord = new DnsRecord(
-        ...transform(
-          args.transform?.record,
-          `${namePrefix}CAARecord`,
-          {
-            domain: args.domain,
-            type: "CAA",
-            name: "",
-            value: `0 issue "amazonaws.com"`,
-            teamId: DEFAULT_TEAM_ID,
-          },
-          opts,
-        ),
-      );
-    }
-    return caaRecord;
   }
 }
