@@ -2078,7 +2078,18 @@ export class Function extends Component implements Link.Linkable {
 											ref?.replace(":latest", ""),
 										),
 										imageConfig: {
-											commands: [handler],
+											commands: [
+												all([handler, runtime]).apply(([handler, runtime]) => {
+													// If a python container image we have to rewrite the handler path so lambdaric is happy
+													// This means no leading . and replace all / with .
+													if (isContainer && runtime.includes("python")) {
+														return handler
+															.replace(/\.\//g, "")
+															.replace(/\//g, ".");
+													}
+													return handler;
+												}),
+											],
 										},
 									}
 								: {
