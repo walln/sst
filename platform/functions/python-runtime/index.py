@@ -35,7 +35,7 @@ def log(message):
 
 # Parse the handler from command-line arguments
 handler = sys.argv[1]  # Expecting the format 'module.function'
-AWS_LAMBDA_RUNTIME_API = f"http://{os.environ['AWS_LAMBDA_RUNTIME_API']}"
+AWS_LAMBDA_RUNTIME_API = f"http://{os.environ['AWS_LAMBDA_RUNTIME_API']}/2018-06-01"
 
 # If the handler is given as a file path, split it to get the directory and module
 module_path, function_name = handler.rsplit(".", 1)
