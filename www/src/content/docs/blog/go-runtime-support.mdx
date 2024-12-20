@@ -9,11 +9,11 @@ lastUpdated: 2024-12-20
 
 import { YouTube } from '@astro-community/astro-embed-youtube';
 
-SST v3 now supports the [`go`](/docs/component/aws/function#runtime) runtime for your Lambda functions. Golang is a great option for tasks that are more compute intensive and it also has faster cold starts.
+SST v3 now supports the [`go`](/docs/component/aws/function#runtime) runtime for your Lambda functions. Golang is a great option for tasks that are more compute intensive and it also has faster cold starts. We talk about it here:
 
 <YouTube id="WTAeW0wyTzA" posterQuality="high" />
 
-You can use it by setting the `runtime` prop and pointing the `handler` to the directory with your Go function.
+You can use Go in SST by setting the `runtime` prop and pointing the `handler` to the directory with your Go function.
 
 ```ts title="sst.config.ts"
 new sst.aws.Function("MyFunction", {
