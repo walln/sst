@@ -23,6 +23,12 @@ jobs:
         with:
           bun-version: latest
 
+      - uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - run: |
           npm config set //registry.npmjs.org/:_authToken $NODE_AUTH_TOKEN
           npm whoami
@@ -35,10 +41,7 @@ jobs:
         with:
           go-version: ">=1.23.2"
 
-      - name: Go Mod
-        run: go mod download
-
-      # TODO remove temporary workaround
+      - run: go mod download
       - run: bun i --frozen-lockfile
       - run: git reset --hard
       - run: cd platform && bun tsc --noEmit
@@ -53,7 +56,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.SST_GITHUB_TOKEN }}
           AUR_KEY: ${{ secrets.AUR_KEY }}
-          DOCKER_PUSH: true
 
       - run: |
           cd sdk/js
