@@ -4,7 +4,7 @@ go 1.23.4
 
 require (
 	github.com/aws/aws-sdk-go-v2/config v1.28.7
-	github.com/sst/sst/v3 v3.4.27
+	github.com/sst/sst/v3 v3.4.28-0.20241223173034-374ce7028701
 )
 
 require (

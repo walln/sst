@@ -16,3 +16,7 @@ cp ./functions/python-runtime/index.py ./dist/python-runtime/index.py
 
 mkdir -p ./dist/dockerfiles/
 cp ./functions/docker/python.Dockerfile ./dist/dockerfiles/python.Dockerfile
+
+cd ./support/bridge-task
+docker build -t ghcr.io/sst/sst/bridge-task:latest .
+docker push ghcr.io/sst/sst/bridge-task:latest
