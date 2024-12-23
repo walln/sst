@@ -1875,8 +1875,8 @@ export interface ClusterTaskArgs extends ClusterBaseArgs {
 }
 
 /**
- * The `Cluster` component lets you create a cluster of containers and add services and tasks
- * to them. It uses [Amazon ECS](https://aws.amazon.com/ecs/) on [AWS Fargate](https://aws.amazon.com/fargate/).
+ * The `Cluster` component lets you create a cluster of containers to your app. It uses
+ * [Amazon ECS](https://aws.amazon.com/ecs/) on [AWS Fargate](https://aws.amazon.com/fargate/).
  *
  * @example
  *
@@ -1887,7 +1887,18 @@ export interface ClusterTaskArgs extends ClusterBaseArgs {
  * const cluster = new sst.aws.Cluster("MyCluster", { vpc });
  * ```
  *
- * #### Add a service
+ * Once created, you can add the following to your cluster:
+ *
+ * - Services: These are containers that are always running, like web or application servers.
+ *   They automatically restart if they fail.
+ * - Tasks: These are containers that are used for long running asynchronous work, like data
+ *   processing.
+ *
+ * ---
+ *
+ * ### Services
+ *
+ * Add a service to your cluster.
  *
  * ```ts title="sst.config.ts"
  * cluster.addService("MyService");
@@ -1969,8 +1980,7 @@ export interface ClusterTaskArgs extends ClusterBaseArgs {
  * });
  * ```
  *
- * If your service is written in Node.js, you can use the [SDK](/docs/reference/sdk/)
- * to access the linked resources.
+ * You can use the [SDK](/docs/reference/sdk/) to access the linked resources in your service.
  *
  * ```ts title="app.ts"
  * import { Resource } from "sst";
@@ -1982,14 +1992,13 @@ export interface ClusterTaskArgs extends ClusterBaseArgs {
  *
  * ### Tasks
  *
- * A task runs a containerized workload on demand, without being a long-running service.
- * Once the task completes, it stops. It's commonly used for data processing.
- *
- * #### Add a task
+ * Add a task to your cluster.
  *
  * ```ts title="sst.config.ts"
  * cluster.addTask("MyTask");
  * ```
+ *
+ * #### Configure the container image
  *
  * By default, the task will look for a Dockerfile in the root directory. Optionally
  * configure the image context and dockerfile.
@@ -2016,8 +2025,7 @@ export interface ClusterTaskArgs extends ClusterBaseArgs {
  * });
  * ```
  *
- * If your task is written in Node.js, you can use the [SDK](/docs/reference/sdk/)
- * to access the linked resources.
+ * You can use the [SDK](/docs/reference/sdk/) to access the linked resources in your task.
  *
  * ```ts title="app.ts"
  * import { Resource } from "sst";
@@ -2025,20 +2033,23 @@ export interface ClusterTaskArgs extends ClusterBaseArgs {
  * console.log(Resource.MyBucket.name);
  * ```
  *
- * #### Run a task from your backend
+ * #### Task SDK
+ *
+ * With the [Task JS SDK](/docs/component/aws/task#sdk), you can run your tasks, stop your
+ * tasks, and describe your tasks.
+ *
+ * For example, to start the previously defined task.
  *
  * ```ts title="app.ts"
- * cluster.startTask("MyTask");
+ * import { Resource } from "sst";
+ * import { task } from "sst/aws/task";
+ * 
+ * const runRet = await task.run(Resource.MyTask);
+ * const taskArn = runRet.tasks[0].taskArn;
  * ```
  *
- * ---
- *
- * ### Services
- *
- * A service ensures that a specified number of task instances are always running,
- * automatically restarting tasks if they stop or fail. It's commonly used for long-running
- * applications such as an application server.
- *
+ * If you are not using Node.js, you can use the AWS SDK instead. For example, to
+ * [run a task](https://docs.aws.amazon.com/AmazonECS/latest/APIReference/API_RunTask.html).
  *
  * ---
  *
