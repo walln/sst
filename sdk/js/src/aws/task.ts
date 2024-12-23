@@ -191,9 +191,7 @@ export module task {
   export async function run(
     resource: Resource,
     environment?: Record<string, string>,
-    options?: {
-      aws?: AwsOptions;
-    }
+    options?: Options
   ): Promise<RunResponse> {
     const c = await client();
     const u = url(c.region, options?.aws);
