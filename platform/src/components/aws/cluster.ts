@@ -1764,6 +1764,31 @@ export interface ClusterServiceArgs {
 /** @internal */
 export interface ClusterTaskArgs {
   /**
+   * Configure how this component works in `sst dev`.
+   *
+   * :::note
+   * In `sst dev` your task is not deployed.
+   * :::
+   *
+   *  By default, your task in not deployed in `sst dev`. Instead, you can use the
+   * `dev.command` to run your task locally. Read more about [`sst dev`](/docs/reference/cli/#dev).
+   *
+   * To disable dev mode and deploy your task, pass in `false`.
+   */
+  dev?:
+    | false
+    | {
+        /**
+         * The command that `sst dev` runs in dev mode.
+         */
+        command?: Input<string>;
+        /**
+         * Change the directory from where the `command` is run.
+         * @default Uses the `image.dockerfile` path
+         */
+        directory?: Input<string>;
+      };
+  /**
    * The CPU architecture of the container in this task.
    * @default `"x86_64"`
    * @example

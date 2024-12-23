@@ -50,6 +50,7 @@ export class Task extends Component implements Link.Linkable {
   private readonly taskRole: iam.Role;
   private readonly _taskDefinition: Output<ecs.TaskDefinition>;
   private readonly containerNames: Output<Output<string>[]>;
+  private readonly dev: boolean;
 
   constructor(
     name: string,
@@ -59,6 +60,7 @@ export class Task extends Component implements Link.Linkable {
     super(__pulumiType, name, args, opts);
 
     const self = this;
+    const dev = normalizeDev();
     const architecture = normalizeArchitecture(args);
     const cpu = normalizeCpu(args);
     const memory = normalizeMemory(cpu, args);
@@ -67,6 +69,7 @@ export class Task extends Component implements Link.Linkable {
     const vpc = normalizeVpc();
 
     const taskRole = createTaskRole(name, args, opts, self);
+    this.dev = dev;
     this.taskRole = taskRole;
 
     const executionRole = createExecutionRole(name, args, opts, self);
@@ -89,6 +92,18 @@ export class Task extends Component implements Link.Linkable {
     this.executionRole = executionRole;
     this._taskDefinition = taskDefinition;
     this.containerNames = containers.apply((v) => v.map((v) => output(v.name)));
+    this.registerOutputs({
+      _task: {
+        command: output(args.dev).apply((v) => (v || {}).command),
+        directory: output(args.dev).apply((v) => (v || {}).directory),
+      },
+    });
+
+    function normalizeDev() {
+      if (!$dev) return false;
+      if (args.dev === false) return false;
+      return true;
+    }
 
     function normalizeVpc() {
       // "vpc" is a Vpc component
