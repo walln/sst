@@ -42,7 +42,9 @@ jobs:
       - run: bun i --frozen-lockfile
       - run: git reset --hard
       - run: cd platform && bun tsc --noEmit
-      - run: cd platform && bun run build
+      - run: ./platform/scripts/build
+        env:
+          DOCKER_PUSH: true
       - uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser
@@ -51,6 +53,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.SST_GITHUB_TOKEN }}
           AUR_KEY: ${{ secrets.AUR_KEY }}
+          DOCKER_PUSH: true
 
       - run: |
           cd sdk/js

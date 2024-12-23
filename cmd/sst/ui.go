@@ -48,7 +48,7 @@ func CmdUI(c *cli.Cli) error {
 	}
 	if filter == "task" || filter == "" {
 		if filter != "" {
-			fmt.Println(ui.TEXT_HIGHLIGHT_BOLD.Render("Tasks Logs"))
+			fmt.Println(ui.TEXT_HIGHLIGHT_BOLD.Render("Task Logs"))
 			fmt.Println()
 			fmt.Println(ui.TEXT_DIM.Render("Waiting for tasks..."))
 			fmt.Println()
