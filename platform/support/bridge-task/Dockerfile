@@ -1,10 +1,12 @@
-
-FROM golang as builder
+FROM golang:1.23.4 as builder
 WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
 COPY . .
-RUN go build -o main
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o main
 
-FROM scratch
+FROM alpine
 LABEL org.opencontainers.image.source https://github.com/sst/sst
-COPY --from=builder /app/main /main
-ENTRYPOINT ["/main"]
+WORKDIR /app
+COPY --from=builder /app/main /app/main
+CMD /app/main
