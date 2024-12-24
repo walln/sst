@@ -120,10 +120,15 @@ export class Task extends Component implements Link.Linkable {
     this._taskDefinition = taskDefinition;
     this.containerNames = containers.apply((v) => v.map((v) => output(v.name)));
     this.registerOutputs({
-      _task: {
-        command: output(args.dev).apply((v) => (v || {}).command),
-        directory: output(args.dev).apply((v) => (v || {}).directory),
-      },
+      _task: all([args.dev, containers]).apply(([v, containers]) => ({
+        directory: (() => {
+          if (!containers[0].image) return "";
+          if (typeof containers[0].image === "string") return "";
+          if (containers[0].image.context) return containers[0].image.context;
+          return "";
+        })(),
+        ...v,
+      })),
     });
 
     function normalizeDev() {
