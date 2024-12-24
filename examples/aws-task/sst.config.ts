@@ -21,6 +21,7 @@ export default $config({
       link: [bucket],
       dev: {
         command: "bun index.mjs",
+        directory: "image",
       },
     });
 

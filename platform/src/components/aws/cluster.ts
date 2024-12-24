@@ -278,21 +278,21 @@ interface TaskContainerArgs {
   image?: Input<
     | string
     | {
-      /**
-       * The path to the Docker build context. Same as the top-level
-       * [`image.context`](#image-context).
-       */
-      context?: Input<string>;
-      /**
-       * The path to the Dockerfile. Same as the top-level
-       * [`image.dockerfile`](#image-dockerfile).
-       */
-      dockerfile?: Input<string>;
-      /**
-       * Key-value pairs of build args. Same as the top-level [`image.args`](#image-args).
-       */
-      args?: Input<Record<string, Input<string>>>;
-    }
+        /**
+         * The path to the Docker build context. Same as the top-level
+         * [`image.context`](#image-context).
+         */
+        context?: Input<string>;
+        /**
+         * The path to the Dockerfile. Same as the top-level
+         * [`image.dockerfile`](#image-dockerfile).
+         */
+        dockerfile?: Input<string>;
+        /**
+         * Key-value pairs of build args. Same as the top-level [`image.args`](#image-args).
+         */
+        args?: Input<Record<string, Input<string>>>;
+      }
   >;
   /**
    * The command to override the default command in the container. Same as the top-level
@@ -522,56 +522,56 @@ interface ClusterBaseArgs {
   image?: Input<
     | string
     | {
-      /**
-       * The path to the [Docker build context](https://docs.docker.com/build/building/context/#local-context). The path is relative to your project's `sst.config.ts`.
-       * @default `"."`
-       * @example
-       *
-       * To change where the Docker build context is located.
-       *
-       * ```js
-       * {
-       *   context: "./app"
-       * }
-       * ```
-       */
-      context?: Input<string>;
-      /**
-       * The path to the [Dockerfile](https://docs.docker.com/reference/cli/docker/image/build/#file).
-       * The path is relative to the build `context`.
-       * @default `"Dockerfile"`
-       * @example
-       * To use a different Dockerfile.
-       * ```js
-       * {
-       *   dockerfile: "Dockerfile.prod"
-       * }
-       * ```
-       */
-      dockerfile?: Input<string>;
-      /**
-       * Key-value pairs of [build args](https://docs.docker.com/build/guide/build-args/) to pass to the Docker build command.
-       * @example
-       * ```js
-       * {
-       *   args: {
-       *     MY_VAR: "value"
-       *   }
-       * }
-       * ```
-       */
-      args?: Input<Record<string, Input<string>>>;
-      /**
-       * Tags to apply to the Docker image.
-       * @example
-       * ```js
-       * {
-       *   tags: ["v1.0.0", "commit-613c1b2"]
-       * }
-       * ```
-       */
-      tags?: Input<Input<string>[]>;
-    }
+        /**
+         * The path to the [Docker build context](https://docs.docker.com/build/building/context/#local-context). The path is relative to your project's `sst.config.ts`.
+         * @default `"."`
+         * @example
+         *
+         * To change where the Docker build context is located.
+         *
+         * ```js
+         * {
+         *   context: "./app"
+         * }
+         * ```
+         */
+        context?: Input<string>;
+        /**
+         * The path to the [Dockerfile](https://docs.docker.com/reference/cli/docker/image/build/#file).
+         * The path is relative to the build `context`.
+         * @default `"Dockerfile"`
+         * @example
+         * To use a different Dockerfile.
+         * ```js
+         * {
+         *   dockerfile: "Dockerfile.prod"
+         * }
+         * ```
+         */
+        dockerfile?: Input<string>;
+        /**
+         * Key-value pairs of [build args](https://docs.docker.com/build/guide/build-args/) to pass to the Docker build command.
+         * @example
+         * ```js
+         * {
+         *   args: {
+         *     MY_VAR: "value"
+         *   }
+         * }
+         * ```
+         */
+        args?: Input<Record<string, Input<string>>>;
+        /**
+         * Tags to apply to the Docker image.
+         * @example
+         * ```js
+         * {
+         *   tags: ["v1.0.0", "commit-613c1b2"]
+         * }
+         * ```
+         */
+        tags?: Input<Input<string>[]>;
+      }
   >;
   /**
    * The command to override the default command in the container.
@@ -692,15 +692,15 @@ interface ClusterBaseArgs {
     efs: Input<
       | Efs
       | {
-        /**
-         * The ID of the EFS file system.
-         */
-        fileSystem: Input<string>;
-        /**
-         * The ID of the EFS access point.
-         */
-        accessPoint: Input<string>;
-      }
+          /**
+           * The ID of the EFS file system.
+           */
+          fileSystem: Input<string>;
+          /**
+           * The ID of the EFS access point.
+           */
+          accessPoint: Input<string>;
+        }
     >;
     /**
      * The path to mount the volume.
@@ -762,34 +762,34 @@ export interface ClusterServiceArgs extends ClusterBaseArgs {
    * To disable dev mode and deploy your service, pass in `false`.
    */
   dev?:
-  | false
-  | {
-    /**
-     * The `url` when this is running in dev mode.
-     *
-     * Since this component is not deployed in `sst dev`, there is no real URL. But if you are
-     * using this component's `url` or linking to this component's `url`, it can be useful to
-     * have a placeholder URL. It avoids having to handle it being `undefined`.
-     * @default `"http://url-unavailable-in-dev.mode"`
-     */
-    url?: Input<string>;
-    /**
-     * The command that `sst dev` runs to start this in dev mode. This is the command you run
-     * when you want to run your service locally.
-     */
-    command?: Input<string>;
-    /**
-     * Configure if you want to automatically start this when `sst dev` starts. You can still
-     * start it manually later.
-     * @default `true`
-     */
-    autostart?: Input<boolean>;
-    /**
-     * Change the directory from where the `command` is run.
-     * @default Uses the `image.dockerfile` path
-     */
-    directory?: Input<string>;
-  };
+    | false
+    | {
+        /**
+         * The `url` when this is running in dev mode.
+         *
+         * Since this component is not deployed in `sst dev`, there is no real URL. But if you are
+         * using this component's `url` or linking to this component's `url`, it can be useful to
+         * have a placeholder URL. It avoids having to handle it being `undefined`.
+         * @default `"http://url-unavailable-in-dev.mode"`
+         */
+        url?: Input<string>;
+        /**
+         * The command that `sst dev` runs to start this in dev mode. This is the command you run
+         * when you want to run your service locally.
+         */
+        command?: Input<string>;
+        /**
+         * Configure if you want to automatically start this when `sst dev` starts. You can still
+         * start it manually later.
+         * @default `true`
+         */
+        autostart?: Input<boolean>;
+        /**
+         * Change the directory from where the `command` is run.
+         * @default Uses the `image.dockerfile` path
+         */
+        directory?: Input<string>;
+      };
   /**
    * Configure a public endpoint for the service. When configured, a load balancer
    * will be created to route traffic to the containers. By default, the endpoint is an
@@ -848,119 +848,119 @@ export interface ClusterServiceArgs extends ClusterBaseArgs {
     domain?: Input<
       | string
       | {
-        /**
-         * The custom domain you want to use.
-         *
-         * @example
-         * ```js
-         * {
-         *   domain: {
-         *     name: "example.com"
-         *   }
-         * }
-         * ```
-         *
-         * Can also include subdomains based on the current stage.
-         *
-         * ```js
-         * {
-         *   domain: {
-         *     name: `${$app.stage}.example.com`
-         *   }
-         * }
-         * ```
-         */
-        name: Input<string>;
-        /**
-         * Alias domains that should be used.
-         *
-         * @example
-         * ```js {4}
-         * {
-         *   domain: {
-         *     name: "app1.example.com",
-         *     aliases: ["app2.example.com"]
-         *   }
-         * }
-         * ```
-         */
-        aliases?: Input<string[]>;
-        /**
-         * The ARN of an ACM (AWS Certificate Manager) certificate that proves ownership of the
-         * domain. By default, a certificate is created and validated automatically.
-         *
-         * :::tip
-         * You need to pass in a `cert` for domains that are not hosted on supported `dns` providers.
-         * :::
-         *
-         * To manually set up a domain on an unsupported provider, you'll need to:
-         *
-         * 1. [Validate that you own the domain](https://docs.aws.amazon.com/acm/latest/userguide/domain-ownership-validation.html) by creating an ACM certificate. You can either validate it by setting a DNS record or by verifying an email sent to the domain owner.
-         * 2. Once validated, set the certificate ARN as the `cert` and set `dns` to `false`.
-         * 3. Add the DNS records in your provider to point to the load balancer endpoint.
-         *
-         * @example
-         * ```js
-         * {
-         *   domain: {
-         *     name: "example.com",
-         *     dns: false,
-         *     cert: "arn:aws:acm:us-east-1:112233445566:certificate/3a958790-8878-4cdc-a396-06d95064cf63"
-         *   }
-         * }
-         * ```
-         */
-        cert?: Input<string>;
-        /**
-         * The DNS provider to use for the domain. Defaults to the AWS.
-         *
-         * Takes an adapter that can create the DNS records on the provider. This can automate
-         * validating the domain and setting up the DNS routing.
-         *
-         * Supports Route 53, Cloudflare, and Vercel adapters. For other providers, you'll need
-         * to set `dns` to `false` and pass in a certificate validating ownership via `cert`.
-         *
-         * @default `sst.aws.dns`
-         *
-         * @example
-         *
-         * Specify the hosted zone ID for the Route 53 domain.
-         *
-         * ```js
-         * {
-         *   domain: {
-         *     name: "example.com",
-         *     dns: sst.aws.dns({
-         *       zone: "Z2FDTNDATAQYW2"
-         *     })
-         *   }
-         * }
-         * ```
-         *
-         * Use a domain hosted on Cloudflare, needs the Cloudflare provider.
-         *
-         * ```js
-         * {
-         *   domain: {
-         *     name: "example.com",
-         *     dns: sst.cloudflare.dns()
-         *   }
-         * }
-         * ```
-         *
-         * Use a domain hosted on Vercel, needs the Vercel provider.
-         *
-         * ```js
-         * {
-         *   domain: {
-         *     name: "example.com",
-         *     dns: sst.vercel.dns()
-         *   }
-         * }
-         * ```
-         */
-        dns?: Input<false | (Dns & {})>;
-      }
+          /**
+           * The custom domain you want to use.
+           *
+           * @example
+           * ```js
+           * {
+           *   domain: {
+           *     name: "example.com"
+           *   }
+           * }
+           * ```
+           *
+           * Can also include subdomains based on the current stage.
+           *
+           * ```js
+           * {
+           *   domain: {
+           *     name: `${$app.stage}.example.com`
+           *   }
+           * }
+           * ```
+           */
+          name: Input<string>;
+          /**
+           * Alias domains that should be used.
+           *
+           * @example
+           * ```js {4}
+           * {
+           *   domain: {
+           *     name: "app1.example.com",
+           *     aliases: ["app2.example.com"]
+           *   }
+           * }
+           * ```
+           */
+          aliases?: Input<string[]>;
+          /**
+           * The ARN of an ACM (AWS Certificate Manager) certificate that proves ownership of the
+           * domain. By default, a certificate is created and validated automatically.
+           *
+           * :::tip
+           * You need to pass in a `cert` for domains that are not hosted on supported `dns` providers.
+           * :::
+           *
+           * To manually set up a domain on an unsupported provider, you'll need to:
+           *
+           * 1. [Validate that you own the domain](https://docs.aws.amazon.com/acm/latest/userguide/domain-ownership-validation.html) by creating an ACM certificate. You can either validate it by setting a DNS record or by verifying an email sent to the domain owner.
+           * 2. Once validated, set the certificate ARN as the `cert` and set `dns` to `false`.
+           * 3. Add the DNS records in your provider to point to the load balancer endpoint.
+           *
+           * @example
+           * ```js
+           * {
+           *   domain: {
+           *     name: "example.com",
+           *     dns: false,
+           *     cert: "arn:aws:acm:us-east-1:112233445566:certificate/3a958790-8878-4cdc-a396-06d95064cf63"
+           *   }
+           * }
+           * ```
+           */
+          cert?: Input<string>;
+          /**
+           * The DNS provider to use for the domain. Defaults to the AWS.
+           *
+           * Takes an adapter that can create the DNS records on the provider. This can automate
+           * validating the domain and setting up the DNS routing.
+           *
+           * Supports Route 53, Cloudflare, and Vercel adapters. For other providers, you'll need
+           * to set `dns` to `false` and pass in a certificate validating ownership via `cert`.
+           *
+           * @default `sst.aws.dns`
+           *
+           * @example
+           *
+           * Specify the hosted zone ID for the Route 53 domain.
+           *
+           * ```js
+           * {
+           *   domain: {
+           *     name: "example.com",
+           *     dns: sst.aws.dns({
+           *       zone: "Z2FDTNDATAQYW2"
+           *     })
+           *   }
+           * }
+           * ```
+           *
+           * Use a domain hosted on Cloudflare, needs the Cloudflare provider.
+           *
+           * ```js
+           * {
+           *   domain: {
+           *     name: "example.com",
+           *     dns: sst.cloudflare.dns()
+           *   }
+           * }
+           * ```
+           *
+           * Use a domain hosted on Vercel, needs the Vercel provider.
+           *
+           * ```js
+           * {
+           *   domain: {
+           *     name: "example.com",
+           *     dns: sst.vercel.dns()
+           *   }
+           * }
+           * ```
+           */
+          dns?: Input<false | (Dns & {})>;
+        }
     >;
     /**
      * Configure the mapping for the ports the public endpoint listens to and forwards to
@@ -1127,129 +1127,129 @@ export interface ClusterServiceArgs extends ClusterBaseArgs {
     domain?: Input<
       | string
       | {
-        /**
-         * The custom domain you want to use.
-         *
-         * @example
-         * ```js
-         * {
-         *   domain: {
-         *     name: "example.com"
-         *   }
-         * }
-         * ```
-         *
-         * Can also include subdomains based on the current stage.
-         *
-         * ```js
-         * {
-         *   domain: {
-         *     name: `${$app.stage}.example.com`
-         *   }
-         * }
-         * ```
-         *
-         * Wildcard domains are supported.
-         *
-         * ```js
-         * {
-         *   domain: {
-         *     name: "*.example.com"
-         *   }
-         * }
-         * ```
-         */
-        name: Input<string>;
-        /**
-         * Alias domains that should be used.
-         *
-         * @example
-         * ```js {4}
-         * {
-         *   domain: {
-         *     name: "app1.example.com",
-         *     aliases: ["app2.example.com"]
-         *   }
-         * }
-         * ```
-         */
-        aliases?: Input<string[]>;
-        /**
-         * The ARN of an ACM (AWS Certificate Manager) certificate that proves ownership of the
-         * domain. By default, a certificate is created and validated automatically.
-         *
-         * :::tip
-         * You need to pass in a `cert` for domains that are not hosted on supported `dns` providers.
-         * :::
-         *
-         * To manually set up a domain on an unsupported provider, you'll need to:
-         *
-         * 1. [Validate that you own the domain](https://docs.aws.amazon.com/acm/latest/userguide/domain-ownership-validation.html) by creating an ACM certificate. You can either validate it by setting a DNS record or by verifying an email sent to the domain owner.
-         * 2. Once validated, set the certificate ARN as the `cert` and set `dns` to `false`.
-         * 3. Add the DNS records in your provider to point to the load balancer endpoint.
-         *
-         * @example
-         * ```js
-         * {
-         *   domain: {
-         *     name: "example.com",
-         *     dns: false,
-         *     cert: "arn:aws:acm:us-east-1:112233445566:certificate/3a958790-8878-4cdc-a396-06d95064cf63"
-         *   }
-         * }
-         * ```
-         */
-        cert?: Input<string>;
-        /**
-         * The DNS provider to use for the domain. Defaults to the AWS.
-         *
-         * Takes an adapter that can create the DNS records on the provider. This can automate
-         * validating the domain and setting up the DNS routing.
-         *
-         * Supports Route 53, Cloudflare, and Vercel adapters. For other providers, you'll need
-         * to set `dns` to `false` and pass in a certificate validating ownership via `cert`.
-         *
-         * @default `sst.aws.dns`
-         *
-         * @example
-         *
-         * Specify the hosted zone ID for the Route 53 domain.
-         *
-         * ```js
-         * {
-         *   domain: {
-         *     name: "example.com",
-         *     dns: sst.aws.dns({
-         *       zone: "Z2FDTNDATAQYW2"
-         *     })
-         *   }
-         * }
-         * ```
-         *
-         * Use a domain hosted on Cloudflare, needs the Cloudflare provider.
-         *
-         * ```js
-         * {
-         *   domain: {
-         *     name: "example.com",
-         *     dns: sst.cloudflare.dns()
-         *   }
-         * }
-         * ```
-         *
-         * Use a domain hosted on Vercel, needs the Vercel provider.
-         *
-         * ```js
-         * {
-         *   domain: {
-         *     name: "example.com",
-         *     dns: sst.vercel.dns()
-         *   }
-         * }
-         * ```
-         */
-        dns?: Input<false | (Dns & {})>;
-      }
+          /**
+           * The custom domain you want to use.
+           *
+           * @example
+           * ```js
+           * {
+           *   domain: {
+           *     name: "example.com"
+           *   }
+           * }
+           * ```
+           *
+           * Can also include subdomains based on the current stage.
+           *
+           * ```js
+           * {
+           *   domain: {
+           *     name: `${$app.stage}.example.com`
+           *   }
+           * }
+           * ```
+           *
+           * Wildcard domains are supported.
+           *
+           * ```js
+           * {
+           *   domain: {
+           *     name: "*.example.com"
+           *   }
+           * }
+           * ```
+           */
+          name: Input<string>;
+          /**
+           * Alias domains that should be used.
+           *
+           * @example
+           * ```js {4}
+           * {
+           *   domain: {
+           *     name: "app1.example.com",
+           *     aliases: ["app2.example.com"]
+           *   }
+           * }
+           * ```
+           */
+          aliases?: Input<string[]>;
+          /**
+           * The ARN of an ACM (AWS Certificate Manager) certificate that proves ownership of the
+           * domain. By default, a certificate is created and validated automatically.
+           *
+           * :::tip
+           * You need to pass in a `cert` for domains that are not hosted on supported `dns` providers.
+           * :::
+           *
+           * To manually set up a domain on an unsupported provider, you'll need to:
+           *
+           * 1. [Validate that you own the domain](https://docs.aws.amazon.com/acm/latest/userguide/domain-ownership-validation.html) by creating an ACM certificate. You can either validate it by setting a DNS record or by verifying an email sent to the domain owner.
+           * 2. Once validated, set the certificate ARN as the `cert` and set `dns` to `false`.
+           * 3. Add the DNS records in your provider to point to the load balancer endpoint.
+           *
+           * @example
+           * ```js
+           * {
+           *   domain: {
+           *     name: "example.com",
+           *     dns: false,
+           *     cert: "arn:aws:acm:us-east-1:112233445566:certificate/3a958790-8878-4cdc-a396-06d95064cf63"
+           *   }
+           * }
+           * ```
+           */
+          cert?: Input<string>;
+          /**
+           * The DNS provider to use for the domain. Defaults to the AWS.
+           *
+           * Takes an adapter that can create the DNS records on the provider. This can automate
+           * validating the domain and setting up the DNS routing.
+           *
+           * Supports Route 53, Cloudflare, and Vercel adapters. For other providers, you'll need
+           * to set `dns` to `false` and pass in a certificate validating ownership via `cert`.
+           *
+           * @default `sst.aws.dns`
+           *
+           * @example
+           *
+           * Specify the hosted zone ID for the Route 53 domain.
+           *
+           * ```js
+           * {
+           *   domain: {
+           *     name: "example.com",
+           *     dns: sst.aws.dns({
+           *       zone: "Z2FDTNDATAQYW2"
+           *     })
+           *   }
+           * }
+           * ```
+           *
+           * Use a domain hosted on Cloudflare, needs the Cloudflare provider.
+           *
+           * ```js
+           * {
+           *   domain: {
+           *     name: "example.com",
+           *     dns: sst.cloudflare.dns()
+           *   }
+           * }
+           * ```
+           *
+           * Use a domain hosted on Vercel, needs the Vercel provider.
+           *
+           * ```js
+           * {
+           *   domain: {
+           *     name: "example.com",
+           *     dns: sst.vercel.dns()
+           *   }
+           * }
+           * ```
+           */
+          dns?: Input<false | (Dns & {})>;
+        }
     >;
     /**
      * Configure the mapping for the ports the load balancer listens to, forwards, or redirects to
@@ -1835,18 +1835,18 @@ export interface ClusterTaskArgs extends ClusterBaseArgs {
    * To disable dev mode and deploy your task, pass in `false`.
    */
   dev?:
-  | false
-  | {
-    /**
-     * The command that `sst dev` runs in dev mode.
-     */
-    command?: Input<string>;
-    /**
-     * Change the directory from where the `command` is run.
-     * @default Uses the `image.dockerfile` path
-     */
-    directory?: Input<string>;
-  };
+    | false
+    | {
+        /**
+         * The command that `sst dev` runs in dev mode.
+         */
+        command?: Input<string>;
+        /**
+         * Change the directory from where the `command` is run.
+         * @default Uses the `image.dockerfile` path
+         */
+        directory?: Input<string>;
+      };
   /**
    * [Transform](/docs/components#transform) how this component creates its underlying
    * resources.
@@ -2044,7 +2044,7 @@ export interface ClusterTaskArgs extends ClusterBaseArgs {
  * ```ts title="app.ts"
  * import { Resource } from "sst";
  * import { task } from "sst/aws/task";
- * 
+ *
  * const runRet = await task.run(Resource.MyTask);
  * const taskArn = runRet.tasks[0].taskArn;
  * ```
@@ -2432,9 +2432,9 @@ export function normalizeContainers(
               efs:
                 volume.efs instanceof Efs
                   ? {
-                    fileSystem: volume.efs.id,
-                    accessPoint: volume.efs.accessPoint,
-                  }
+                      fileSystem: volume.efs.id,
+                      accessPoint: volume.efs.accessPoint,
+                    }
                   : volume.efs,
             })),
         );

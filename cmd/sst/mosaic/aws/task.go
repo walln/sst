@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/sst/sst/v3/cmd/sst/mosaic/aws/bridge"
@@ -49,12 +50,13 @@ func task(ctx context.Context, input input) {
 				log.Info("starting task", "task", task)
 				body := bridge.TaskStartBody{}
 				json.NewDecoder(msg.Body).Decode(&body)
-				// _, ok := complete.Devs[body.TaskID]
-				// if !ok {
-				// 	continue
-				// }
-				cmd := process.Command("env")
-				cmd.Dir = ""
+				task, ok := complete.Tasks[body.TaskID]
+				if !ok {
+					continue
+				}
+				fields := strings.Fields(task.Command)
+				cmd := process.Command(fields[0], fields[1:]...)
+				cmd.Dir = task.Directory
 				cmd.Env = body.Environment
 				stdout, _ := cmd.StdoutPipe()
 				stderr, _ := cmd.StderrPipe()
