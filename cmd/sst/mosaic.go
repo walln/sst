@@ -255,11 +255,7 @@ func CmdMosaic(c *cli.Cli) error {
 								"SST_LOG="+p.PathLog("tunnel_"+name),
 							)...)
 						}
-						hasTasks := true
-						for _, item := range evt.Resources {
-							slog.Info("checking if task", "outputs", item.Outputs)
-						}
-						if hasTasks {
+						if len(evt.Tasks) > 0 {
 							multi.AddProcess("task", []string{currentExecutable, "ui", "--filter=task"}, "λ", "Tasks", "", false, true, append(multiEnv, "SST_LOG="+p.PathLog("ui-task"))...)
 						}
 						break
