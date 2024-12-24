@@ -7,6 +7,10 @@ import { AwsOptions, client } from "./client.js";
  * ```js title="src/app.ts"
  * import { task } from "sst/aws/task";
  * ```
+ *
+ * If you are not using Node.js, you can use the AWS SDK instead. For example, you can call
+ * [`RunTask`](https://docs.aws.amazon.com/AmazonECS/latest/APIReference/API_RunTask.html) to
+ * run a task.
  */
 export module task {
   function url(region?: string, options?: AwsOptions) {
@@ -124,6 +128,9 @@ export module task {
    * const describeRet = await task.describe(Resource.MyTask, taskArn);
    * console.log(describeRet.status);
    * ```
+   *
+   * If you are not using Node.js, you can use the AWS SDK and call
+   * [`DescribeTasks`](https://docs.aws.amazon.com/AmazonECS/latest/APIReference/API_DescribeTasks.html).
    */
   export async function describe(
     resource: Resource,
@@ -195,6 +202,9 @@ export module task {
    *   MY_ENV_VAR: "my-value"
    * });
    * ```
+   *
+   * If you are not using Node.js, you can use the AWS SDK and call
+   * [`RunTask`](https://docs.aws.amazon.com/AmazonECS/latest/APIReference/API_RunTask.html).
    */
   export async function run(
     resource: Resource,
@@ -278,6 +288,9 @@ export module task {
    *
    * In most cases you probably don't need to check if it has been stopped. But if necessary,
    * you can use the `describe` function to get a task's status.
+   *
+   * If you are not using Node.js, you can use the AWS SDK and call
+   * [`StopTask`](https://docs.aws.amazon.com/AmazonECS/latest/APIReference/API_StopTask.html).
    */
   export async function stop(
     resource: Resource,
