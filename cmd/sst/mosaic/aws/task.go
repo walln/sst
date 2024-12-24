@@ -86,16 +86,16 @@ func task(ctx context.Context, input input) {
 				}()
 				go func() {
 					done := make(chan struct{})
-					go func() {
-						cmd.Wait()
-						done <- struct{}{}
-					}()
 					cmd.Start()
 					bus.Publish(&TaskStartEvent{
 						TaskID:   body.TaskID,
 						WorkerID: msg.Source,
 						Command:  cmd.String(),
 					})
+					go func() {
+						cmd.Wait()
+						done <- struct{}{}
+					}()
 					for {
 						writer := input.client.NewWriter(bridge.MessagePing, input.prefix+"/"+msg.Source+"/in")
 						json.NewEncoder(writer).Encode(bridge.PingBody{})
