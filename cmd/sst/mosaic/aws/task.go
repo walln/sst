@@ -53,7 +53,9 @@ func task(ctx context.Context, input input) {
 				// if !ok {
 				// 	continue
 				// }
-				cmd := process.Command("curl", "https://google.com")
+				cmd := process.Command("env")
+				cmd.Dir = ""
+				cmd.Env = body.Environment
 				stdout, _ := cmd.StdoutPipe()
 				stderr, _ := cmd.StderrPipe()
 				go func() {
