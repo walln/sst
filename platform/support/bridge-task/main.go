@@ -90,7 +90,7 @@ func run() error {
 				slog.Info("task complete")
 				return nil
 			}
-		case <-time.After(time.Second * 5):
+		case <-time.After(time.Second * 10):
 			slog.Info("timeout")
 			return nil
 		}
