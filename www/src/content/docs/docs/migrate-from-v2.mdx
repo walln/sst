@@ -33,7 +33,6 @@ While the goal with v3 is to support most of what's in v2, there are a few thing
 |----------|-------|
 | `Job` | [In beta](https://github.com/sst/sst/issues/4834) |
 | `Auth` | [In beta](https://github.com/sst/sst/issues/4893) |
-| `Function` Go runtime | [In beta](https://github.com/sst/sst/issues/4138) |
 | `Script` | [#811](https://github.com/sst/sst/issues/4323) |
 | `EventBus` | [#67](https://github.com/sst/sst/issues/4699) |
 | `RDS` MySQL | [#812](https://github.com/sst/sst/issues/4322) |
@@ -69,7 +68,7 @@ No CloudFormation, means a couple of things:
 
 And moving away from CDK means:
 
-1. You cannot fall back to CDK constructs if something isn't supported by SST. Instead there is the [AWS Classic](https://www.pulumi.com/registry/packages/aws/) provider from Pulumi that's built on Terraform. There are also 150+ other providers that allow you to build on any cloud. Check out the [Directory](/docs/providers/#directory).
+1. You cannot fall back to CDK constructs if something isn't supported by SST. Instead there is the [AWS](https://www.pulumi.com/registry/packages/aws/) provider from Pulumi that's built on Terraform. There are also 150+ other providers that allow you to build on any cloud. Check out the [Directory](/docs/all-providers#directory).
 
    If you are using a lot of higher level CDK constructs in your v2 app, it's going to be really hard to migrate to v3. The Pulumi/Terraform ecosystem is fairly complete but it's mainly made up of low level resources. You might not have ready replacements for your CDK constructs.
 
