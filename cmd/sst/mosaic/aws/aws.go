@@ -58,21 +58,19 @@ func Start(
 	functionsChan := make(chan bridge.Message, 1000)
 	tasksChan := make(chan bridge.Message, 1000)
 
-	go function(ctx, input{
+	in := input{
+		config:  config,
 		server:  s,
 		client:  client,
-		msg:     functionsChan,
 		project: p,
 		prefix:  prefix,
-	})
+	}
 
-	go task(ctx, input{
-		server:  s,
-		client:  client,
-		msg:     tasksChan,
-		project: p,
-		prefix:  prefix,
-	})
+	in.msg = functionsChan
+	go function(ctx, in)
+
+	in.msg = tasksChan
+	go task(ctx, in)
 
 	for {
 		select {

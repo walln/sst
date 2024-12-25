@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/sst/sst/v3/cmd/sst/mosaic/aws/bridge"
 	"github.com/sst/sst/v3/cmd/sst/mosaic/watcher"
 	"github.com/sst/sst/v3/pkg/bus"
@@ -58,6 +59,7 @@ type FunctionLogEvent struct {
 }
 
 type input struct {
+	config  aws.Config
 	project *project.Project
 	server  *server.Server
 	client  *bridge.Client
@@ -272,7 +274,6 @@ func function(ctx context.Context, input input) {
 				}
 				init := bridge.InitBody{}
 				json.NewDecoder(msg.Body).Decode(&init)
-				slog.Info("worker init", "workerID", msg.Source, "functionID", init.FunctionID)
 				if _, ok := targets[init.FunctionID]; !ok {
 					continue
 				}
@@ -280,6 +281,7 @@ func function(ctx context.Context, input input) {
 				if _, ok := workers[workerID]; ok {
 					continue
 				}
+				slog.Info("worker init", "workerID", msg.Source, "functionID", init.FunctionID)
 				workerEnv[workerID] = init.Environment
 				if ok := run(init.FunctionID, workerID); !ok {
 					result, err := http.Post("http://"+server+workerID+"/runtime/init/error", "application/json", strings.NewReader(`{"errorMessage":"Function failed to build"}`))
