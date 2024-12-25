@@ -153,9 +153,12 @@ func (u *UI) Event(unknown interface{}) {
 	case *common.StdoutEvent:
 		u.println(evt.Line)
 
+	case *aws.TaskProvisionEvent:
+		u.printEvent(u.getColor(""), TEXT_NORMAL_BOLD.Render(fmt.Sprintf("%-11s", "Provision")), evt.Name)
+
 	case *aws.TaskStartEvent:
 		u.workerTime[evt.WorkerID] = time.Now()
-		u.printEvent(u.getColor(evt.WorkerID), TEXT_NORMAL_BOLD.Render(fmt.Sprintf("%-11s", "Start")), evt.Command)
+		u.printEvent(u.getColor(evt.WorkerID), fmt.Sprintf("%-11s", "Start"), evt.Command)
 
 	case *aws.TaskLogEvent:
 		duration := time.Since(u.workerTime[evt.WorkerID]).Round(time.Millisecond)

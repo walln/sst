@@ -54,6 +54,7 @@ func CmdUI(c *cli.Cli) error {
 			fmt.Println()
 		}
 		types = append(types,
+			aws.TaskProvisionEvent{},
 			aws.TaskStartEvent{},
 			aws.TaskLogEvent{},
 			aws.TaskCompleteEvent{},
