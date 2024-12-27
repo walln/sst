@@ -1837,7 +1837,8 @@ export interface ClusterTaskArgs extends ClusterBaseArgs {
    *
    * 1. A _stub_ version of your task is deployed. This is a minimal image that starts up
    *    faster.
-   * 2. When your task is started through the SDK, the stub version runs.
+   * 2. When your task is started through the SDK, the stub version is provisioned. This can
+   *    take roughly **10 - 20 seconds**.
    * 3. The stub version proxies the payload to your local machine using the same events
    *    system used by [Live](/docs/live/).
    * 4. The `dev.command` is called to run your task locally. Once complete, the stub version
@@ -2018,7 +2019,7 @@ export interface ClusterTaskArgs extends ClusterBaseArgs {
  * Add a task to your cluster.
  *
  * ```ts title="sst.config.ts"
- * cluster.addTask("MyTask");
+ * const task = cluster.addTask("MyTask");
  * ```
  *
  * #### Configure the container image
@@ -2044,7 +2045,7 @@ export interface ClusterTaskArgs extends ClusterBaseArgs {
  * const bucket = new sst.aws.Bucket("MyBucket");
  *
  * cluster.addTask("MyTask", {
- *   link: [bucket],
+ *   link: [bucket]
  * });
  * ```
  *
@@ -2059,11 +2060,20 @@ export interface ClusterTaskArgs extends ClusterBaseArgs {
  * #### Task SDK
  *
  * With the [Task JS SDK](/docs/component/aws/task#sdk), you can run your tasks, stop your
- * tasks, and describe your tasks.
+ * tasks, and get the status of your tasks.
  *
- * For example, to start the previously defined task.
+ * For example, you can link the task to a function in your app.
  *
- * ```ts title="app.ts"
+ * ```ts title="sst.config.ts" {3}
+ * new sst.aws.Function("MyFunction", {
+ *   handler: "src/lambda.handler",
+ *   link: [task]
+ * });
+ * ```
+ *
+ * Then from your function start the task.
+ *
+ * ```ts title="src/lambda.ts"
  * import { Resource } from "sst";
  * import { task } from "sst/aws/task";
  *
@@ -2071,8 +2081,8 @@ export interface ClusterTaskArgs extends ClusterBaseArgs {
  * const taskArn = runRet.tasks[0].taskArn;
  * ```
  *
- * If you are not using Node.js, you can use the AWS SDK instead. For example, to
- * [run a task](https://docs.aws.amazon.com/AmazonECS/latest/APIReference/API_RunTask.html).
+ * If you are not using Node.js, you can use the AWS SDK instead. Here's
+ * [how to run a task](https://docs.aws.amazon.com/AmazonECS/latest/APIReference/API_RunTask.html).
  *
  * ---
  *
