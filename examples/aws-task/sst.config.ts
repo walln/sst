@@ -14,7 +14,7 @@
  * ```ts title="index.ts" {5}
  * import { Resource } from "sst";
  * import { task } from "sst/aws/task";
- * 
+ *
  * export const handler = async () => {
  *   const ret = await task.run(Resource.MyTask);
  *   return {
