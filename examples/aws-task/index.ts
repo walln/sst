@@ -5,14 +5,6 @@ export const handler = async () => {
   const ret = await task.run(Resource.MyTask);
   return {
     statusCode: 200,
-    body: JSON.stringify(ret),
-    headers: {
-      "Content-Type": "application/json",
-    },
+    body: JSON.stringify(ret, null, 2),
   };
-
-  //const ret = await task.describe(Resource.MyTask, t);
-
-  //const ret = await task.stop(Resource.MyTask, t);
-  //console.log(ret.task?.lastStatus);
 };
