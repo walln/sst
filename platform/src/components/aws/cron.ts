@@ -166,7 +166,7 @@ export interface CronArgs {
  *
  * new sst.aws.Cron("MyCronJob", {
  *   task: myTask,
- *   schedule: "rate(1 minute)"
+ *   schedule: "rate(1 day)"
  * });
  * ```
  *
