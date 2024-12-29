@@ -755,11 +755,12 @@ export interface ClusterServiceArgs extends ClusterBaseArgs {
    * In `sst dev` your service is not deployed.
    * :::
    *
-   * By default, your service in not deployed in `sst dev`. Instead, you can use the
-   * `dev.command` to start your app locally. It'll be run as a separate process in the
+   * By default, your service in not deployed in `sst dev`. Instead, you can set the
+   * `dev.command` and it'll be started locally in a separate tab in the
    * `sst dev` multiplexer. Read more about [`sst dev`](/docs/reference/cli/#dev).
    *
-   * To disable dev mode and deploy your service, pass in `false`.
+   * This makes it so that the container doesn't have to be redeployed on every change. To
+   * disable this and deploy your service in `sst dev`, pass in `false`.
    */
   dev?:
     | false
@@ -1826,13 +1827,35 @@ export interface ClusterTaskArgs extends ClusterBaseArgs {
    * Configure how this component works in `sst dev`.
    *
    * :::note
-   * In `sst dev` your task is not deployed.
+   * In `sst dev` a _stub_ version of your task is deployed.
    * :::
    *
-   * By default, your task in not deployed in `sst dev`. Instead, you can use the
-   * `dev.command` to run your task locally. Read more about [`sst dev`](/docs/reference/cli/#dev).
+   * By default, your task in not deployed in `sst dev`. Instead, you can set the `dev.command`
+   * and it'll run locally in a **Tasks** tab in the `sst dev` multiplexer.
    *
-   * To disable dev mode and deploy your task, pass in `false`.
+   * Here's what happens when you run `sst dev`:
+   *
+   * 1. A _stub_ version of your task is deployed. This is a minimal image that starts up
+   *    faster.
+   * 2. When your task is started through the SDK, the stub version is provisioned. This can
+   *    take roughly **10 - 20 seconds**.
+   * 3. The stub version proxies the payload to your local machine using the same events
+   *    system used by [Live](/docs/live/).
+   * 4. The `dev.command` is called to run your task locally. Once complete, the stub version
+   *    of your task is stopped as well.
+   *
+   * The advantage with this approach is that you can test your task locally even it's invoked
+   * remotely, or through a cron job.
+   *
+   * :::note
+   * You are charged for the time it takes to run the stub version of your task.
+   * :::
+   *
+   * Since the stub version runs while your task is running, you are charged for the time it
+   * takes to run. This is roughly **$0.02 per hour**.
+   *
+   * To disable this and deploy your task in `sst dev`, pass in `false`. Read more about
+   * [Live](/docs/live/) and [`sst dev`](/docs/reference/cli/#dev).
    */
   dev?:
     | false
@@ -1996,7 +2019,7 @@ export interface ClusterTaskArgs extends ClusterBaseArgs {
  * Add a task to your cluster.
  *
  * ```ts title="sst.config.ts"
- * cluster.addTask("MyTask");
+ * const task = cluster.addTask("MyTask");
  * ```
  *
  * #### Configure the container image
@@ -2022,7 +2045,7 @@ export interface ClusterTaskArgs extends ClusterBaseArgs {
  * const bucket = new sst.aws.Bucket("MyBucket");
  *
  * cluster.addTask("MyTask", {
- *   link: [bucket],
+ *   link: [bucket]
  * });
  * ```
  *
@@ -2037,11 +2060,20 @@ export interface ClusterTaskArgs extends ClusterBaseArgs {
  * #### Task SDK
  *
  * With the [Task JS SDK](/docs/component/aws/task#sdk), you can run your tasks, stop your
- * tasks, and describe your tasks.
+ * tasks, and get the status of your tasks.
  *
- * For example, to start the previously defined task.
+ * For example, you can link the task to a function in your app.
  *
- * ```ts title="app.ts"
+ * ```ts title="sst.config.ts" {3}
+ * new sst.aws.Function("MyFunction", {
+ *   handler: "src/lambda.handler",
+ *   link: [task]
+ * });
+ * ```
+ *
+ * Then from your function start the task.
+ *
+ * ```ts title="src/lambda.ts"
  * import { Resource } from "sst";
  * import { task } from "sst/aws/task";
  *
@@ -2049,8 +2081,8 @@ export interface ClusterTaskArgs extends ClusterBaseArgs {
  * const taskArn = runRet.tasks[0].taskArn;
  * ```
  *
- * If you are not using Node.js, you can use the AWS SDK instead. For example, to
- * [run a task](https://docs.aws.amazon.com/AmazonECS/latest/APIReference/API_RunTask.html).
+ * If you are not using Node.js, you can use the AWS SDK instead. Here's
+ * [how to run a task](https://docs.aws.amazon.com/AmazonECS/latest/APIReference/API_RunTask.html).
  *
  * ---
  *
@@ -2470,6 +2502,7 @@ export function createTaskRole(
   args: ClusterTaskArgs,
   opts: ComponentResourceOptions,
   parent: Component,
+  additionalPermissions?: FunctionArgs["permissions"],
 ) {
   if (args.taskRole)
     return iam.Role.get(`${name}TaskRole`, args.taskRole, {}, { parent });
@@ -2477,7 +2510,8 @@ export function createTaskRole(
   const policy = all([
     args.permissions || [],
     Link.getInclude<Permission>("aws.permission", args.link),
-  ]).apply(([argsPermissions, linkPermissions]) =>
+    additionalPermissions,
+  ]).apply(([argsPermissions, linkPermissions, additionalPermissions]) =>
     iam.getPolicyDocumentOutput({
       statements: [
         ...argsPermissions,
@@ -2485,6 +2519,7 @@ export function createTaskRole(
           actions: item.actions,
           resources: item.resources,
         })),
+        ...(additionalPermissions ?? []),
         {
           actions: [
             "ssmmessages:CreateControlChannel",

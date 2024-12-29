@@ -8,6 +8,10 @@
   cursor: none;
   color: var(--color-text);
 
+  & code {
+    color: var(--color-text);
+  }
+
   &:hover {
     cursor: pointer;
     text-decoration: none;

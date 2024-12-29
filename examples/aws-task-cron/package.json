@@ -1,5 +1,5 @@
 {
-  "name": "aws-task",
+  "name": "aws-task-cron",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -10,6 +10,6 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "sst": "3.4.32"
+    "sst": "latest"
   }
 }

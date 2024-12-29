@@ -62,32 +62,6 @@ export class Task extends Component implements Link.Linkable {
 
     const self = this;
     const dev = normalizeDev();
-    if (dev) {
-      args.image = "ghcr.io/sst/sst/bridge-task:20241224005724";
-      args.environment = $resolve({
-        environment: args.environment,
-      }).apply(async (input) => {
-        const appsync = await Function.appsync();
-        const env = input.environment ?? {};
-        env.SST_TASK_ID = name;
-        env.SST_REGION = process.env.SST_AWS_REGION!;
-        env.SST_APPSYNC_HTTP = appsync.http;
-        env.SST_APPSYNC_REALTIME = appsync.realtime;
-        env.SST_APP = $app.name;
-        env.SST_STAGE = $app.stage;
-        return env;
-      });
-      args.permissions = $resolve({ permissions: args.permissions }).apply(
-        (input) => {
-          const permissions = input.permissions ?? [];
-          permissions.push({
-            actions: ["appsync:*"],
-            resources: ["*"],
-          });
-          return permissions;
-        },
-      );
-    }
     const architecture = normalizeArchitecture(args);
     const cpu = normalizeCpu(args);
     const memory = normalizeMemory(cpu, args);
@@ -95,7 +69,20 @@ export class Task extends Component implements Link.Linkable {
     const containers = normalizeContainers("task", args, name, architecture);
     const vpc = normalizeVpc();
 
-    const taskRole = createTaskRole(name, args, opts, self);
+    const taskRole = createTaskRole(
+      name,
+      args,
+      opts,
+      self,
+      dev
+        ? [
+            {
+              actions: ["appsync:*"],
+              resources: ["*"],
+            },
+          ]
+        : [],
+    );
     this.dev = dev;
     this.taskRole = taskRole;
 
@@ -105,7 +92,26 @@ export class Task extends Component implements Link.Linkable {
       args,
       opts,
       self,
-      containers,
+      dev
+        ? containers.apply(async (v) => {
+            const appsync = await Function.appsync();
+            return [
+              {
+                ...v[0],
+                image: output("ghcr.io/sst/sst/bridge-task:20241224005724"),
+                environment: {
+                  ...v[0].environment,
+                  SST_TASK_ID: name,
+                  SST_REGION: process.env.SST_AWS_REGION!,
+                  SST_APPSYNC_HTTP: appsync.http,
+                  SST_APPSYNC_REALTIME: appsync.realtime,
+                  SST_APP: $app.name,
+                  SST_STAGE: $app.stage,
+                },
+              },
+            ];
+          })
+        : containers,
       architecture,
       cpu,
       memory,
