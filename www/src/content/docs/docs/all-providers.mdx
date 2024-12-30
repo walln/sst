@@ -58,14 +58,10 @@ For example, use a Stripe resource in your config's `run` function.
 export default $config({
   // ...
   async run() {
-   new stripe.WebhookEndpoint("MyStripeWebhook", {
-     url: "https://example.com/webhook",
-     enabledEvents: [
-       "payment_method.attached",
-       "payment_method.detached",
-       "payment_method.updated"
-     ]
-   });
+    new stripe.Product("MyStripeProduct", {
+      name: "SST Paid Plan",
+      description: "This is how SST makes money",
+    });
   },
 });
 ```
