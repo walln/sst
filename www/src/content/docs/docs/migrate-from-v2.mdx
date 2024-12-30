@@ -31,7 +31,6 @@ While the goal with v3 is to support most of what's in v2, there are a few thing
 
 | Construct | GitHub Issue |
 |----------|-------|
-| `Job` | [In beta](https://github.com/sst/sst/issues/4834) |
 | `Auth` | [In beta](https://github.com/sst/sst/issues/4893) |
 | `Script` | [#811](https://github.com/sst/sst/issues/4323) |
 | `EventBus` | [#67](https://github.com/sst/sst/issues/4699) |
@@ -756,6 +755,43 @@ Below shows the v3 component version of a v2 construct.
 
 ---
 
+### Job
+
+The `Task` component that replaces `Job` is based on AWS Fargate. It runs a container task in the background.
+
+<Tabs>
+  <TabItem label="v3">
+  ```ts title="sst.config.ts"
+  const cluster = new sst.aws.Cluster("MyCluster", { vpc });
+
+  cluster.addTask("MyTask", {
+    image: {
+      context: "./src",
+      dockerfile: "Dockerfile"
+    }
+  });
+  ```
+  </TabItem>
+  <TabItem label="v2">
+  ```ts title="sst.config.ts"
+  new Job(stack, "MyJob", {
+    handler: "src/job.main"
+  });
+  ```
+  </TabItem>
+</Tabs>
+
+There are some key differences between `Job` and `Task`.
+
+1. `Task` is based on AWS Fargate. `Job` used a combination of AWS CodeBuild and Lambda.
+2. Since `Task` is natively based on Fargate, you can use the AWS SDK to interact with it, even in runtimes the SST SDK doesn't support.
+3. In dev mode, `Task` uses Fargate only, whereas `Job` used Lambda.
+4. While CodeBuild is billed per minute, Fargate is a lot cheaper than CodeBuild. Roughly **$0.02 per hour** vs **$0.3 per hour** on X86 machines.
+
+Learn more about [`Task`](/blog/tasks-in-v3).
+
+---
+
 ### RDS
 
 <Tabs>
@@ -789,7 +825,7 @@ For migrations, we recommend using [Drizzle Kit](https://orm.drizzle.team/kit-do
   ```ts title="sst.config.ts"
   new sst.aws.Cron("MyCronJob", {
     schedule: "rate(1 minute)",
-    job: "src/cron.handler"
+    function: "src/cron.handler"
   });
   ```
   </TabItem>
