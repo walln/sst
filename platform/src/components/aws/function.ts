@@ -1759,7 +1759,7 @@ export class Function extends Component implements Link.Linkable {
 					args.transform?.role,
 					`${name}Role`,
 					{
-						assumeRolePolicy: !$dev
+						assumeRolePolicy: !dev
 							? iam.assumeRolePolicyForPrincipal({
 									Service: "lambda.amazonaws.com",
 								})
@@ -1944,7 +1944,7 @@ export class Function extends Component implements Link.Linkable {
 						}
 
 						// Add copyFiles into the zip
-						if (!$dev) {
+						if (!dev) {
 							for (const entry of copyFiles) {
 								entry.isDir
 									? archive.directory(entry.from, entry.to, {

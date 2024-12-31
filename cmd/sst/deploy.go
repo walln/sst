@@ -79,6 +79,14 @@ var CmdDeploy = &cli.Command{
 				Long:  "Continue on error.",
 			},
 		},
+		{
+			Name: "dev",
+			Type: "bool",
+			Description: cli.Description{
+				Short: "Deploy in dev mode",
+				Long:  "Deploy in dev mode.",
+			},
+		},
 	},
 	Examples: []cli.Example{
 		{
@@ -126,6 +134,7 @@ var CmdDeploy = &cli.Command{
 		err = p.Run(c.Context, &project.StackInput{
 			Command:    "deploy",
 			Target:     target,
+			Dev:        c.Bool("dev"),
 			ServerPort: s.Port,
 			Verbose:    c.Bool("verbose"),
 			Continue:   c.Bool("continue"),
