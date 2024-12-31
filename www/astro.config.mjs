@@ -28,6 +28,7 @@ const sidebar = [
       { label: "Prisma", slug: "docs/start/aws/prisma" },
       { label: "Next.js", slug: "docs/start/aws/nextjs" },
       { label: "Analog", slug: "docs/start/aws/analog" },
+      { label: "NestJS", slug: "docs/start/aws/nestjs" },
       { label: "Angular", slug: "docs/start/aws/angular" },
       { label: "Express", slug: "docs/start/aws/express" },
       { label: "Realtime", slug: "docs/start/aws/realtime" },
