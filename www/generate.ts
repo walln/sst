@@ -2125,6 +2125,7 @@ async function buildComponents() {
       "../platform/src/components/aws/app-sync-function.ts",
       "../platform/src/components/aws/app-sync-resolver.ts",
       "../platform/src/components/aws/auth.ts",
+      "../platform/src/components/aws/aurora.ts",
       "../platform/src/components/aws/bucket.ts",
       "../platform/src/components/aws/bucket-notification.ts",
       "../platform/src/components/aws/cluster.ts",
