@@ -482,15 +482,26 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 						}
 					}
 
-					errors = append(errors, Error{
-						Message: event.DiagnosticEvent.Message,
-						URN:     event.DiagnosticEvent.URN,
-						Help:    help,
-					})
-					telemetry.Track("cli.resource.error", map[string]interface{}{
-						"error": event.DiagnosticEvent.Message,
-						"urn":   event.DiagnosticEvent.URN,
-					})
+					exists := false
+					if event.DiagnosticEvent.URN != "" {
+						for _, item := range errors {
+							if item.URN == event.DiagnosticEvent.URN {
+								exists = true
+								break
+							}
+						}
+					}
+					if !exists {
+						errors = append(errors, Error{
+							Message: event.DiagnosticEvent.Message,
+							URN:     event.DiagnosticEvent.URN,
+							Help:    help,
+						})
+						telemetry.Track("cli.resource.error", map[string]interface{}{
+							"error": event.DiagnosticEvent.Message,
+							"urn":   event.DiagnosticEvent.URN,
+						})
+					}
 				}
 
 				if event.ResOpFailedEvent != nil {
