@@ -661,7 +661,7 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 
 	slog.Info("done running stack command")
 	if runError != nil {
-		slog.Error("stack run failed", "error", err)
+		slog.Error("stack run failed", "error", runError)
 		return ErrStackRunFailed
 	}
 	return nil

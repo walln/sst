@@ -10,7 +10,13 @@ export default $config({
     };
   },
   async run() {
-    const bucket = new sst.aws.Bucket("MyBucket");
+    const bucket = new sst.aws.Bucket("MyBucket", {
+      transform: {
+        bucket: {
+          bucket: "foo",
+        },
+      },
+    });
     new sst.aws.Function("Hono", {
       url: true,
       link: [bucket],
