@@ -440,6 +440,7 @@ func (u *UI) Event(unknown interface{}) {
 					}
 					u.println(TEXT_NORMAL.Render("   " + line))
 				}
+
 				importDiffs, ok := evt.ImportDiffs[status.URN]
 				if ok {
 					isSSTComponent := strings.Contains(status.URN, "::sst")
@@ -461,10 +462,10 @@ func (u *UI) Event(unknown interface{}) {
 						if !isSSTComponent {
 							u.print(TEXT_INFO.Render("`" + string(diff.Input) + ": " + string(value) + ",`"))
 						}
-						u.println()
+						u.blank()
 					}
 				} else {
-					u.println()
+					u.blank()
 				}
 			}
 		}

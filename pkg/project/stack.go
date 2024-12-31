@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/sst/sst/v3/internal/util"
 	"github.com/sst/sst/v3/pkg/bus"
 	"github.com/sst/sst/v3/pkg/flag"
 	"github.com/sst/sst/v3/pkg/global"
@@ -493,7 +494,7 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 					}
 					if !exists {
 						errors = append(errors, Error{
-							Message: event.DiagnosticEvent.Message,
+							Message: strings.TrimSpace(event.DiagnosticEvent.Message),
 							URN:     event.DiagnosticEvent.URN,
 							Help:    help,
 						})
@@ -660,11 +661,11 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 	}
 
 	slog.Info("done running stack command")
-	if err != nil {
+	if runError != nil {
 		slog.Error("stack run failed", "error", err)
 		return ErrStackRunFailed
 	}
-	return runError
+	return nil
 }
 
 func (p *Project) Lock(updateID string, command string) error {
