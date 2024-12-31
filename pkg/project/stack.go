@@ -47,12 +47,17 @@ type StackInput struct {
 	Dev        bool
 	Verbose    bool
 	Continue   bool
+	SkipHash   string
 }
 
 type ConcurrentUpdateEvent struct{}
 
 type BuildSuccessEvent struct {
 	Files []string
+	Hash  string
+}
+
+type SkipEvent struct {
 }
 
 type Dev struct {
@@ -373,6 +378,12 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 		defer js.Cleanup(buildResult)
 	}
 
+	// disable for now until we hash env too
+	if input.SkipHash != "" && buildResult.OutputFiles[0].Hash == input.SkipHash && false {
+		bus.Publish(&SkipEvent{})
+		return nil
+	}
+
 	var meta = map[string]interface{}{}
 	err = json.Unmarshal([]byte(buildResult.Metafile), &meta)
 	if err != nil {
@@ -386,7 +397,10 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 		}
 		files = append(files, absPath)
 	}
-	bus.Publish(&BuildSuccessEvent{files})
+	bus.Publish(&BuildSuccessEvent{
+		Files: files,
+		Hash:  buildResult.OutputFiles[0].Hash,
+	})
 	slog.Info("tracked files")
 
 	config := auto.ConfigMap{}

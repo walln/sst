@@ -182,6 +182,9 @@ func (m *footer) Update(msg any) {
 	case *deployer.DeployFailedEvent:
 		m.Reset()
 		break
+	case *project.SkipEvent:
+		m.Reset()
+		break
 	case *apitype.ResourcePreEvent:
 		if slices.Contains(IGNORED_RESOURCES, msg.Metadata.Type) {
 			break

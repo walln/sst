@@ -249,6 +249,15 @@ func (u *UI) Event(unknown interface{}) {
 	case *project.BuildFailedEvent:
 		u.reset()
 		u.printEvent(TEXT_DANGER, "Error", evt.Error)
+		break
+
+	case *project.SkipEvent:
+		u.println(
+			TEXT_INFO_BOLD.Render("~"),
+			TEXT_NORMAL_BOLD.Render("  No changes"),
+		)
+		u.reset()
+		break
 
 	case *apitype.ResourcePreEvent:
 		u.timing[evt.Metadata.URN] = time.Now()
