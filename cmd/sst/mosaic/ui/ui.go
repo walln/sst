@@ -210,7 +210,9 @@ func (u *UI) Event(unknown interface{}) {
 
 	case *deployer.DeployFailedEvent:
 		u.reset()
-		u.printEvent(TEXT_DANGER, "Error", evt.Error)
+		if evt.Error != "" {
+			u.printEvent(TEXT_DANGER, "Error", evt.Error)
+		}
 
 	case *project.StackCommandEvent:
 		u.reset()
