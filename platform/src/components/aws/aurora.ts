@@ -653,7 +653,7 @@ export class Aurora extends Component implements Link.Linkable {
               secondsUntilAutoPause: toSeconds(scaling.pauseAfter),
             })),
             skipFinalSnapshot: true,
-            enableHttpEndpoint: true,
+            storageEncrypted: true,
             dbSubnetGroupName: subnetGroup?.name,
             vpcSecurityGroupIds: vpc.securityGroups,
             tags: proxy.apply((proxy) => ({
@@ -854,18 +854,6 @@ export class Aurora extends Component implements Link.Linkable {
         port: this.port,
         host: this.host,
       },
-      include: [
-        permission({
-          actions: [
-            "rds-data:BatchExecuteStatement",
-            "rds-data:BeginTransaction",
-            "rds-data:CommitTransaction",
-            "rds-data:ExecuteStatement",
-            "rds-data:RollbackTransaction",
-          ],
-          resources: [this.cluster.arn],
-        }),
-      ],
     };
   }
 
