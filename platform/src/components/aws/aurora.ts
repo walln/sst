@@ -367,16 +367,15 @@ interface AuroraRef {
  *
  * ```ts title="app/page.tsx" {1,5-9}
  * import { Resource } from "sst";
- * import { Pool } from "pg";
+ * import postgres from "postgres";
  *
- * const client = new Pool({
- *   user: Resource.MyDatabase.username,
+ * const sql = postgres({
+ *   username: Resource.MyDatabase.username,
  *   password: Resource.MyDatabase.password,
  *   database: Resource.MyDatabase.database,
  *   host: Resource.MyDatabase.host,
  *   port: Resource.MyDatabase.port,
  * });
- * await client.connect();
  * ```
  *
  * ---
@@ -597,16 +596,7 @@ export class Aurora extends Component implements Link.Linkable {
                 ? `aurora-mysql5.7`
                 : `aurora-mysql8.0`;
             }),
-            parameters: engine.apply((engine) =>
-              engine === "postgres"
-                ? [
-                    {
-                      name: "rds.force_ssl",
-                      value: "0",
-                    },
-                  ]
-                : [],
-            ),
+            parameters: [],
           },
           { parent: self },
         ),
@@ -626,16 +616,7 @@ export class Aurora extends Component implements Link.Linkable {
                 ? `aurora-mysql5.7`
                 : `aurora-mysql8.0`;
             }),
-            parameters: engine.apply((engine) =>
-              engine === "postgres"
-                ? [
-                    {
-                      name: "rds.force_ssl",
-                      value: "0",
-                    },
-                  ]
-                : [],
-            ),
+            parameters: [],
           },
           { parent: self },
         ),
