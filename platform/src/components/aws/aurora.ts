@@ -40,18 +40,22 @@ export interface AuroraArgs {
   /**
    * The version of the Aurora engine.
    *
-   * The default is `"16.4"` for `"postgres"` and `"3.08.0"` for `"mysql"`.
+   * The default is `"16.4"` for Postgres and `"3.08.0"` for MySQL.
    *
-   * Check out the [available `"postgres"` versions](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/Concepts.Aurora_Fea_Regions_DB-eng.Feature.ServerlessV2.html#Concepts.Aurora_Fea_Regions_DB-eng.Feature.ServerlessV2.apg) and [available `"mysql"` versions](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/Concepts.Aurora_Fea_Regions_DB-eng.Feature.ServerlessV2.html#Concepts.Aurora_Fea_Regions_DB-eng.Feature.ServerlessV2.amy) in your region.
+   * Check out the [available Postgres versions](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/Concepts.Aurora_Fea_Regions_DB-eng.Feature.ServerlessV2.html#Concepts.Aurora_Fea_Regions_DB-eng.Feature.ServerlessV2.apg) and [available MySQL versions](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/Concepts.Aurora_Fea_Regions_DB-eng.Feature.ServerlessV2.html#Concepts.Aurora_Fea_Regions_DB-eng.Feature.ServerlessV2.amy) in your region.
    *
-   * Note that not all versions support scaling to 0 with auto-pause and resume. The supported versions are:
+   * :::tip
+   * Not all versions support scaling to 0 with auto-pause and resume.
+   * :::
+   *
+   * Auto-pause and resume is only supported in the following versions:
    * - Aurora PostgresSQL 16.3 and higher
    * - Aurora PostgresSQL 15.7 and higher
    * - Aurora PostgresSQL 14.12 and higher
    * - Aurora PostgresSQL 13.15 and higher
    * - Aurora MySQL 3.08.0 and higher
    *
-   * @default `"16.4"` for `"postgres"`, `"3.08.0"` for `"mysql"`
+   * @default `"16.4"` for Postgres, `"3.08.0"` for MySQL
    * @example
    * ```js
    * {
@@ -63,11 +67,11 @@ export interface AuroraArgs {
   /**
    * The username of the master user.
    *
-   * :::caution
+   * :::danger
    * Changing the username will cause the database to be destroyed and recreated.
    * :::
    *
-   * @default `"postgres"` for `"postgres"`, `"root"` for `"mysql"`
+   * @default `"postgres"` for Postgres, `"root"` for MySQL
    * @example
    * ```js
    * {
@@ -86,10 +90,11 @@ export interface AuroraArgs {
    * }
    * ```
    *
-   * Use [Secrets](/docs/component/secret) to manage the password.
+   * You can use a [`Secret`](/docs/component/secret) to manage the password.
+   *
    * ```js
    * {
-   *   password: new sst.Secret("MyDBPassword").value
+   *   password: (new sst.Secret("MyDBPassword")).value
    * }
    * ```
    */
@@ -97,7 +102,10 @@ export interface AuroraArgs {
   /**
    * Name of a database that is automatically created inside the cluster.
    *
-   * The name must begin with a letter and contain only lowercase letters, numbers, or underscores. By default, it takes the name of the app, and replaces the hyphens with underscores.
+   * The name must begin with a letter and contain only lowercase letters, numbers, or
+   * underscores.
+   *
+   * By default, it takes the name of the app, and replaces the hyphens with underscores.
    *
    * @default Based on the name of the current app
    * @example
@@ -109,33 +117,57 @@ export interface AuroraArgs {
    */
   database?: Input<string>;
   /**
-   * The Aurora Serverless v2 scaling config. By default, the cluster has one DB instance that
-   * is used for both writes and reads. The instance can scale from the minimum number of ACUs
-   * to the maximum number of ACUs.
+   * The Aurora Serverless v2 scaling config.
    *
-   * Each ACU is roughly equivalent to 2 GB of memory. So pick the minimum and maximum
-   * based on the baseline and peak memory usage of your app.
+   * By default, the cluster has one DB instance that is used for both writes and reads. The
+   * instance can scale from a minimum number of ACUs to the maximum number of ACUs.
    *
-   * If you set a minimum of 0 ACU, the database will be paused when there are no active
-   * connections within a specified time period. When the database is paused, you are not
-   * charged for the ACUs. On the next database connection, the database will resume. It takes
-   * about 15 seconds for the database to resume.
+   * :::tip
+   * Pick the `min` and `max` ACUs based on the baseline and peak memory usage of your app.
+   * :::
    *
-   * Auto-pause is useful for minimizing costs in the development environments where the
-   * database is not used frequently. It is not recommended for production environments.
+   * An ACU or _Aurora Capacity Unit_ is roughly equivalent to 2 GB of memory and a corresponding
+   * amount of CPU and network resources. So pick the minimum and maximum based on the baseline
+   * and peak memory usage of your app.
+   *
+   * If you set a `min` of 0 ACUs, the database will be paused when there are no active
+   * connections in the `pauseAfter` specified time period.
+   *
+   * This is useful for dev environments since you are not charged when the database is paused.
+   * But it's not recommended for production environments because it takes around 15 seconds for
+   * the database to resume.
    *
    * @default `{min: "0 ACU", max: "4 ACU"}`
    */
   scaling?: Input<{
     /**
-     * The minimum number of ACUs, ranges from 0 to 256, in increments of 0.5.
+     * The minimum number of ACUs or _Aurora Capacity Units_. Ranges from 0 to 256, in
+     * increments of 0.5. Where each ACU is roughly equivalent to 2 GB of memory.
      *
-     * For your production workloads, setting a minimum of 0.5 ACUs might not be a great idea due
-     * to the following reasons, you can also [read more here](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless-v2.setting-capacity.html#aurora-serverless-v2.setting-capacity.incompatible_parameters).
-     * - It takes longer to scale from a low number of ACUs to a much higher number.
-     * - Query performance depends on the buffer cache. So if frequently accessed data cannot
+     * If you set this to 0 ACUs, the database will be paused when there are no active
+     * connections in the `pauseAfter` specified time period.
+     *
+     * :::note
+     * If you set a `min` ACU to 0, the database will be paused after the `pauseAfter` time
+     * period.
+     * :::
+     *
+     * On the next database connection, the database will resume. It takes about 15 seconds for
+     * the database to resume.
+     *
+     * :::tip
+     * Avoid setting a low number of `min` ACUs for production workloads.
+     * :::
+     *
+     * For your production workloads, setting a minimum of 0.5 ACUs might not be a great idea
+     * because:
+     *
+     * 1. It takes longer to scale from a low number of ACUs to a much higher number.
+     * 2. Query performance depends on the buffer cache. So if frequently accessed data cannot
      *   fit into the buffer cache, you might see uneven performance.
-     * - The max connections for a 0.5 ACU instance is capped at 2000.
+     * 3. The max connections for a 0.5 ACU instance is capped at 2000.
+     *
+     * You can [read more here](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless-v2.setting-capacity.html#aurora-serverless-v2.setting-capacity.incompatible_parameters).
      *
      * @default `0.5 ACU`
      * @example
@@ -149,7 +181,8 @@ export interface AuroraArgs {
      */
     min?: Input<ACU>;
     /**
-     * The maximum number of ACUs, ranges from 1 to 128, in increments of 0.5.
+     * The maximum number of ACUs or _Aurora Capacity Units_. Ranges from 1 to 128, in
+     * increments of 0.5. Where each ACU is roughly equivalent to 2 GB of memory.
      *
      * @default `4 ACU`
      * @example
@@ -164,8 +197,24 @@ export interface AuroraArgs {
     max?: Input<ACU>;
     /**
      * The amount of time before the database is paused when there are no active connections.
+     * Only applies when the `min` is set to 0 ACUs.
      *
-     * Must be between "5 minutes" and "3600 minutes" ("1 hour")
+     * :::note
+     * This only applies when the `min` is set to 0 ACUs.
+     * :::
+     *
+     * Must be between `"5 minutes"` and `"60 minutes"` or `"1 hour"`. So if the `min` is set
+     * to 0 ACUs, by default, the database will be auto-paused after `"5 minutes"`.
+     *
+     * When the database is paused, you are not charged for the ACUs. On the next database
+     * connection, the database will resume. It takes about 15 seconds for the database to resume.
+     *
+     * :::tip
+     * Auto-pause is not recommended for production environments.
+     * :::
+     *
+     * Auto-pause is useful for minimizing costs in the development environments where the
+     * database is not used frequently. It's not recommended for production environments.
      *
      * @default `"5 minutes"`
      * @example
@@ -193,6 +242,14 @@ export interface AuroraArgs {
   dataApi?: Input<boolean>;
   /**
    * Enable [RDS Proxy](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/rds-proxy.html) for the database.
+   *
+   * Amazon RDS Proxy sits between your application and the database and manages connections to
+   * it. It's useful for serverless applications, or Lambda functions where each invocation
+   * might create a new connection.
+   *
+   * There's an [extra cost](#cost) attached to enabling this. Check out the [RDS Proxy
+   * pricing](https://aws.amazon.com/rds/proxy/pricing/) for more details.
+   *
    * @default `false`
    * @example
    * ```js
@@ -204,52 +261,60 @@ export interface AuroraArgs {
   proxy?: Input<
     | boolean
     | {
-        /**
-         * Additional credentials the proxy can use to connect to the database. You don't
-         * need to specify the master user credentials as they are always added by default.
-         *
-         * :::note
-         * This component will not create the database users listed here. You need to
-         * create them manually in the database.
-         * :::
-         *
-         * @example
-         * ```js
-         * {
-         *   credentials: [
-         *     {
-         *       username: "metabase",
-         *       password: "Passw0rd!",
-         *     }
-         *   ]
-         * }
-         * ```
-         *
-         * Use [Secrets](/docs/component/secret) to manage the password.
-         * ```js
-         * {
-         *   credentials: [
-         *     {
-         *       username: "metabase",
-         *       password: new sst.Secret("MyDBPassword").value,
-         *     }
-         *   ]
-         * }
-         * ```
-         */
-        credentials?: Input<
-          Input<{
-            /**
-             * The username of the user.
-             */
-            username: Input<string>;
-            /**
-             * The password of the user.
-             */
-            password: Input<string>;
-          }>[]
-        >;
-      }
+      /**
+       * Add extra credentials the proxy can use to connect to the database.
+       *
+       * Your app will use the master `username` and `password`. So you don't need to specify
+       * them here.
+       *
+       * These credentials are for any other services that need to connect to your database
+       * directly.
+       *
+       * :::tip
+       * You need to create these credentials manually in the database.
+       * :::
+       *
+       * These credentials are not automatically created. You'll need to create these
+       * credentials manually in the database.
+       *
+       * @example
+       * ```js
+       * {
+       *   credentials: [
+       *     {
+       *       username: "metabase",
+       *       password: "Passw0rd!"
+       *     }
+       *   ]
+       * }
+       * ```
+       *
+       * You can use a [`Secret`](/docs/component/secret) to manage the password.
+       *
+       * ```js
+       * {
+       *   credentials: [
+       *     {
+       *       username: "metabase",
+       *       password: (new sst.Secret("MyDBPassword")).value
+       *     }
+       *   ]
+       * }
+       * ```
+       */
+      credentials?: Input<
+        Input<{
+          /**
+           * The username of the user.
+           */
+          username: Input<string>;
+          /**
+           * The password of the user.
+           */
+          password: Input<string>;
+        }>[]
+      >;
+    }
   >;
   /**
    * The VPC to use for the database cluster.
@@ -381,28 +446,28 @@ interface AuroraRef {
 }
 
 /**
- * The `Aurora` component lets you add a Aurora Postgres and Aurora MySQL cluster to your app
+ * The `Aurora` component lets you add a Aurora Postgres or MySQL cluster to your app
  * using [Amazon Aurora Serverless v2](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless-v2.html).
  *
  * @example
  *
- * #### Create a Aurora Postgres cluster
+ * #### Create an Aurora Postgres cluster
  *
  * ```js title="sst.config.ts"
  * const vpc = new sst.aws.Vpc("MyVpc");
  * const database = new sst.aws.Aurora("MyDatabase", {
  *   engine: "postgres",
- *   vpc,
+ *   vpc
  * });
  * ```
  *
- * #### Create a Aurora MySQL cluster
+ * #### Create an Aurora MySQL cluster
  *
  * ```js title="sst.config.ts"
  * const vpc = new sst.aws.Vpc("MyVpc");
  * const database = new sst.aws.Aurora("MyDatabase", {
  *   engine: "mysql",
- *   vpc,
+ *   vpc
  * });
  * ```
  *
@@ -656,8 +721,8 @@ export class Aurora extends Component implements Link.Linkable {
         .apply((proxyTag) =>
           proxyTag
             ? rds.Proxy.get(`${name}Proxy`, proxyTag, undefined, {
-                parent: self,
-              })
+              parent: self,
+            })
             : undefined,
         );
 
@@ -746,13 +811,13 @@ Listening on "${dev.host}:${dev.port}"...`,
       return args.password
         ? output(args.password)
         : new RandomPassword(
-            `${name}Password`,
-            {
-              length: 32,
-              special: false,
-            },
-            { parent: self },
-          ).result;
+          `${name}Password`,
+          {
+            length: 32,
+            special: false,
+          },
+          { parent: self },
+        ).result;
     }
 
     function createSecret() {
@@ -1107,7 +1172,7 @@ Listening on "${dev.host}:${dev.port}"...`,
   }
 
   /**
-   * Reference an existing Aurora cluster with the given cluster name. This is useful when you
+   * Reference an existing Aurora cluster with its RDS cluster ID. This is useful when you
    * create a Aurora cluster in one stage and want to share it in another. It avoids having to
    * create a new Aurora cluster in the other stage.
    *
@@ -1116,7 +1181,7 @@ Listening on "${dev.host}:${dev.port}"...`,
    * :::
    *
    * @param name The name of the component.
-   * @param id The id of the existing Aurora cluster.
+   * @param id The ID of the existing Aurora cluster.
    *
    * @example
    * Imagine you create a cluster in the `dev` stage. And in your personal stage `frank`,
