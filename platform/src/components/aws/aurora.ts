@@ -231,6 +231,10 @@ export interface AuroraArgs {
   /**
    * Enable [RDS Data API](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/data-api.html)
    * for the database.
+   *
+   * The RDS Data API provides a secure HTTP endpoint and does not need a persistent connection.
+   * You also doesn't need the `sst tunnel` or a VPN to connect to it from your local machine.
+   *
    * @default `false`
    * @example
    * ```js
@@ -241,7 +245,8 @@ export interface AuroraArgs {
    */
   dataApi?: Input<boolean>;
   /**
-   * Enable [RDS Proxy](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/rds-proxy.html) for the database.
+   * Enable [RDS Proxy](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/rds-proxy.html)
+   * for the database.
    *
    * Amazon RDS Proxy sits between your application and the database and manages connections to
    * it. It's useful for serverless applications, or Lambda functions where each invocation
@@ -506,11 +511,11 @@ interface AuroraRef {
  *   password: Resource.MyDatabase.password,
  *   database: Resource.MyDatabase.database,
  *   host: Resource.MyDatabase.host,
- *   port: Resource.MyDatabase.port,
+ *   port: Resource.MyDatabase.port
  * });
  * ```
  *
- * #### Use the RDS Data API
+ * #### Enable the RDS Data API
  *
  * ```ts title="sst.config.ts"
  * new sst.aws.Aurora("MyDatabase", {
@@ -521,7 +526,8 @@ interface AuroraRef {
  * ```
  *
  * When using the Data API, connecting to the database does not require a persistent
- * connection, and works over HTTP. You also don't need a VPN to connect to it locally.
+ * connection, and works over HTTP. You also don't need the `sst tunnel` or a VPN to connect
+ * to it from your local machine.
  *
  * ```ts title="app/page.tsx" {1,6,7,8}
  * import { Resource } from "sst";
@@ -537,7 +543,7 @@ interface AuroraRef {
  *
  * #### Running locally
  *
- * By default, your RDS Aurora database is deployed in `sst dev`. But let's say you are running
+ * By default, your Aurora database is deployed in `sst dev`. But let's say you are running
  * Postgres locally.
  *
  * ```bash
@@ -553,7 +559,7 @@ interface AuroraRef {
  *
  * You can connect to it in `sst dev` by configuring the `dev` prop.
  *
- * ```ts title="sst.config.ts" {3-8}
+ * ```ts title="sst.config.ts" {4-9}
  * new sst.aws.Aurora("MyDatabase", {
  *   engine: "postgres",
  *   vpc,
@@ -566,7 +572,7 @@ interface AuroraRef {
  * });
  * ```
  *
- * This will skip deploying an RDS database and link to the locally running Postgres database
+ * This will skip deploying the database and link to the locally running Postgres database
  * instead. [Check out the full example](/docs/examples/#aws-aurora-local).
  *
  * ---
