@@ -235,6 +235,9 @@ export interface AuroraArgs {
    * The RDS Data API provides a secure HTTP endpoint and does not need a persistent connection.
    * You also doesn't need the `sst tunnel` or a VPN to connect to it from your local machine.
    *
+   * RDS Data API is [billed per request](#cost). Check out the [RDS Data API
+   * pricing](https://aws.amazon.com/rds/aurora/pricing/#Data_API_costs) for more details.
+   *
    * @default `false`
    * @example
    * ```js
@@ -579,25 +582,38 @@ interface AuroraRef {
  *
  * ### Cost
  *
- * By default this component has one DB instance that is used for both writes and reads. The
- * instance can scale from the minimum number of ACUs to the maximum number of ACUs.
+ * This component has one DB instance that is used for both writes and reads. The
+ * instance can scale from the minimum number of ACUs to the maximum number of ACUs. By default,* this uses a `min` of 0 ACUs and a `max` of 4 ACUs.
+ *
+ * When the database is paused, you are not charged for the ACUs.
  *
  * Each ACU costs $0.12 per hour for both `postgres` and `mysql` engine. The storage costs
  * $0.01 per GB per month for standard storage.
  *
- * When the database is paused, you are not charged for the ACUs.
+ * So if your database is constantly using 1GB of memory or 0.5 ACUs, then you are charged
+ * $0.12 x 0.5 x 24 x 30 or **$43 per month**. And add the storage costs to this as well.
  *
  * The above are rough estimates for _us-east-1_, check out the
  * [Amazon Aurora pricing](https://aws.amazon.com/rds/aurora/pricing) for more details.
  *
  * #### RDS Proxy
  *
- * If you enable the `proxy`, it uses _Aurora Capacity Units_ with 8 ACUs at $0.015 per hour.
+ * If you enable the `proxy`, it uses _Aurora Capacity Units_ with a minumum of 8 ACUs at
+ * $0.015 per ACU hour.
  *
- * That works out to an **additional** $0.015 x 8 x 24 x 30 or **$86.40 per month**.
+ * That works out to an **additional** $0.015 x 8 x 24 x 30 or **$86 per month**. Adjust
+ * this if you end up using more than 8 ACUs.
  *
  * The above are rough estimates for _us-east-1_, check out the
  * [RDS Proxy pricing](https://aws.amazon.com/rds/proxy/pricing/) for more details.
+ *
+ * #### RDS Data API
+ *
+ * If you enable `dataApi`, you get charged an **additional** $0.35 per million requests for
+ * the first billion requests. After that, it's $0.20 per million requests.
+ *
+ * Check out the [RDS Data API pricing](https://aws.amazon.com/rds/aurora/pricing/#Data_API_costs)
+ * for more details.
  */
 export class Aurora extends Component implements Link.Linkable {
   private cluster?: rds.Cluster;
