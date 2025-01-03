@@ -1,6 +1,7 @@
 import {
   all,
   ComponentResourceOptions,
+  interpolate,
   jsonStringify,
   output,
   Output,
@@ -9,12 +10,13 @@ import { Component, Transform, transform } from "../component.js";
 import { Link } from "../link.js";
 import { Input } from "../input.js";
 import { iam, rds, secretsmanager } from "@pulumi/aws";
-import { permission } from "./permission.js";
 import { VisibleError } from "../error.js";
 import { Vpc } from "./vpc.js";
 import { RandomPassword } from "@pulumi/random";
+import { DevCommand } from "../experimental/dev-command.js";
 import { RdsRoleLookup } from "./providers/rds-role-lookup.js";
 import { DurationHours, toSeconds } from "../duration.js";
+import { permission } from "./permission.js";
 
 type ACU = `${number} ACU`;
 
@@ -289,6 +291,59 @@ export interface AuroraArgs {
     securityGroups: Input<Input<string>[]>;
   }>;
   /**
+   * Configure how this component works in `sst dev`.
+   *
+   * By default, your Aurora database is deployed in `sst dev`. But if you want to instead
+   * connect to a locally running database, you can configure the `dev` prop.
+   *
+   * This will skip deploying an Aurora database and link to the locally running database
+   * instead.
+   *
+   * @example
+   *
+   * Setting the `dev` prop also means that any linked resources will connect to the right
+   * database both in `sst dev` and `sst deploy`.
+   *
+   * ```ts
+   * {
+   *   dev: {
+   *     username: "postgres",
+   *     password: "password",
+   *     database: "postgres",
+   *     host: "localhost",
+   *     port: 5432
+   *   }
+   * }
+   * ```
+   */
+  dev?: {
+    /**
+     * The host of the local database to connect to when running in dev.
+     * @default `"localhost"`
+     */
+    host?: Input<string>;
+    /**
+     * The port of the local database to connect to when running in dev.
+     * @default `5432`
+     */
+    port?: Input<number>;
+    /**
+     * The database of the local database to connect to when running in dev.
+     * @default Inherit from the top-level [`database`](#database).
+     */
+    database?: Input<string>;
+    /**
+     * The username of the local database to connect to when running in dev.
+     * @default Inherit from the top-level [`username`](#username).
+     */
+    username?: Input<string>;
+    /**
+     * The password of the local database to connect to when running in dev.
+     * @default Inherit from the top-level [`password`](#password).
+     */
+    password?: Input<string>;
+  };
+  /**
    * [Transform](/docs/components#transform) how this component creates its underlying
    * resources.
    */
@@ -415,6 +470,40 @@ interface AuroraRef {
  * });
  * ```
  *
+ * #### Running locally
+ *
+ * By default, your RDS Aurora database is deployed in `sst dev`. But let's say you are running
+ * Postgres locally.
+ *
+ * ```bash
+ * docker run \
+ *   --rm \
+ *   -p 5432:5432 \
+ *   -v $(pwd)/.sst/storage/postgres:/var/lib/postgresql/data \
+ *   -e POSTGRES_USER=postgres \
+ *   -e POSTGRES_PASSWORD=password \
+ *   -e POSTGRES_DB=local \
+ *   postgres:16.4
+ * ```
+ *
+ * You can connect to it in `sst dev` by configuring the `dev` prop.
+ *
+ * ```ts title="sst.config.ts" {3-8}
+ * new sst.aws.Aurora("MyDatabase", {
+ *   engine: "postgres",
+ *   vpc,
+ *   dev: {
+ *     username: "postgres",
+ *     password: "password",
+ *     database: "local",
+ *     port: 5432
+ *   }
+ * });
+ * ```
+ *
+ * This will skip deploying an RDS database and link to the locally running Postgres database
+ * instead. [Check out the full example](/docs/examples/#aws-aurora-local).
+ *
  * ---
  *
  * ### Cost
@@ -440,11 +529,19 @@ interface AuroraRef {
  * [RDS Proxy pricing](https://aws.amazon.com/rds/proxy/pricing/) for more details.
  */
 export class Aurora extends Component implements Link.Linkable {
-  private cluster: rds.Cluster;
-  private instance: rds.ClusterInstance;
-  private _password: Output<string>;
-  private proxy: Output<rds.Proxy | undefined>;
-  private secret: secretsmanager.Secret;
+  private cluster?: rds.Cluster;
+  private instance?: rds.ClusterInstance;
+  private secret?: secretsmanager.Secret;
+  private _password?: Output<string>;
+  private proxy?: Output<rds.Proxy | undefined>;
+  private dev?: {
+    enabled: boolean;
+    host: Output<string>;
+    port: Output<number>;
+    username: Output<string>;
+    password: Output<string>;
+    database: Output<string>;
+  };
 
   constructor(name: string, args: AuroraArgs, opts?: ComponentResourceOptions) {
     super(__pulumiType, name, args, opts);
@@ -475,6 +572,12 @@ export class Aurora extends Component implements Link.Linkable {
     const dataApi = output(args.dataApi).apply((v) => v ?? false);
     const scaling = normalizeScaling();
     const vpc = normalizeVpc();
+
+    const dev = registerDev();
+    if (dev?.enabled) {
+      this.dev = dev;
+      return;
+    }
 
     const password = createPassword();
     const secret = createSecret();
@@ -593,6 +696,50 @@ export class Aurora extends Component implements Link.Linkable {
 
       // "vpc" is object
       return output(args.vpc);
+    }
+
+    function registerDev() {
+      if (!args.dev) return undefined;
+
+      if (
+        $dev &&
+        args.dev.password === undefined &&
+        args.password === undefined
+      ) {
+        throw new VisibleError(
+          `You must provide the password to connect to your locally running database either by setting the "dev.password" or by setting the top-level "password" property.`,
+        );
+      }
+
+      const dev = {
+        enabled: $dev,
+        host: output(args.dev.host ?? "localhost"),
+        port: all([args.dev.port, engine]).apply(
+          ([port, engine]) => port ?? { postgres: 5432, mysql: 3306 }[engine],
+        ),
+        username: args.dev.username ? output(args.dev.username) : username,
+        password: output(args.dev.password ?? args.password ?? ""),
+        database: args.dev.database ? output(args.dev.database) : dbName,
+      };
+
+      new DevCommand(`${name}Dev`, {
+        dev: {
+          title: name,
+          autostart: true,
+          command: `sst print-and-not-quit`,
+        },
+        environment: {
+          SST_DEV_COMMAND_MESSAGE: interpolate`Make sure your local database is using:
+
+  username: "${dev.username}"
+  password: "${dev.password}"
+  database: "${dev.database}"
+
+Listening on "${dev.host}:${dev.port}"...`,
+        },
+      });
+
+      return dev;
     }
 
     function createPassword() {
@@ -863,52 +1010,60 @@ export class Aurora extends Component implements Link.Linkable {
    * The ID of the RDS Cluster.
    */
   public get id() {
-    return this.cluster.id;
+    if (this.dev?.enabled) return output("placeholder");
+    return this.cluster!.id;
   }
 
   /**
    * The ARN of the RDS Cluster.
    */
   public get clusterArn() {
-    return this.cluster.arn;
+    if (this.dev?.enabled) return output("placeholder");
+    return this.cluster!.arn;
   }
 
   /**
    * The ARN of the master user secret.
    */
   public get secretArn() {
-    return this.secret.arn;
+    if (this.dev?.enabled) return output("placeholder");
+    return this.secret!.arn;
   }
 
   /** The username of the master user. */
   public get username() {
-    return this.cluster.masterUsername;
+    if (this.dev?.enabled) return this.dev.username;
+    return this.cluster!.masterUsername;
   }
 
   /** The password of the master user. */
   public get password() {
-    return this._password;
+    if (this.dev?.enabled) return this.dev.password;
+    return this._password!;
   }
 
   /**
    * The name of the database.
    */
   public get database() {
-    return this.cluster.databaseName;
+    if (this.dev?.enabled) return this.dev.database;
+    return this.cluster!.databaseName;
   }
 
   /**
    * The port of the database.
    */
   public get port() {
-    return this.instance.port;
+    if (this.dev?.enabled) return this.dev.port;
+    return this.instance!.port;
   }
 
   /**
    * The host of the database.
    */
   public get host() {
-    return all([this.cluster.endpoint, this.proxy]).apply(
+    if (this.dev?.enabled) return this.dev.host;
+    return all([this.cluster!.endpoint, this.proxy!]).apply(
       ([endpoint, proxy]) => proxy?.endpoint ?? output(endpoint.split(":")[0]),
     );
   }
