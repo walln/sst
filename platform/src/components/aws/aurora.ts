@@ -207,7 +207,8 @@ export interface AuroraArgs {
      * to 0 ACUs, by default, the database will be auto-paused after `"5 minutes"`.
      *
      * When the database is paused, you are not charged for the ACUs. On the next database
-     * connection, the database will resume. It takes about 15 seconds for the database to resume.
+     * connection, the database will resume. It takes about 15 seconds for the database to
+     * resume.
      *
      * :::tip
      * Auto-pause is not recommended for production environments.
@@ -354,17 +355,17 @@ export interface AuroraArgs {
    * ```
    */
   vpc:
-    | Vpc
-    | Input<{
-        /**
-         * A list of subnet IDs in the VPC to deploy the Aurora cluster in.
-         */
-        subnets: Input<Input<string>[]>;
-        /**
-         * A list of VPC security group IDs.
-         */
-        securityGroups: Input<Input<string>[]>;
-      }>;
+  | Vpc
+  | Input<{
+    /**
+     * A list of subnet IDs in the VPC to deploy the Aurora cluster in.
+     */
+    subnets: Input<Input<string>[]>;
+    /**
+     * A list of VPC security group IDs.
+     */
+    securityGroups: Input<Input<string>[]>;
+  }>;
   /**
    * Configure how this component works in `sst dev`.
    *
@@ -585,7 +586,8 @@ interface AuroraRef {
  * ### Cost
  *
  * This component has one DB instance that is used for both writes and reads. The
- * instance can scale from the minimum number of ACUs to the maximum number of ACUs. By default,* this uses a `min` of 0 ACUs and a `max` of 4 ACUs.
+ * instance can scale from the minimum number of ACUs to the maximum number of ACUs. By default,
+ * this uses a `min` of 0 ACUs and a `max` of 4 ACUs.
  *
  * When the database is paused, you are not charged for the ACUs.
  *
