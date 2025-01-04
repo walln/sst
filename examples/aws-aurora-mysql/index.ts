@@ -1,5 +1,6 @@
 import { Resource } from "sst";
 import mysql from "mysql2/promise";
+
 const connection = await mysql.createConnection({
   database: Resource.MyDatabase.database,
   host: Resource.MyDatabase.host,

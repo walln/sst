@@ -1,5 +1,6 @@
 import postgres from "postgres";
 import { Resource } from "sst";
+
 const sql = postgres({
   username: Resource.MyDatabase.username,
   password: Resource.MyDatabase.password,
