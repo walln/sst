@@ -230,6 +230,22 @@ export interface AuroraArgs {
     pauseAfter?: Input<DurationHours>;
   }>;
   /**
+   * The number of read-only Aurora replicas to create.
+   *
+   * By default, the cluster has one primary DB instance that is used for both writes and
+   * reads. You can add up to 15 read-only replicas to offload the read traffic from the
+   * primary instance.
+   *
+   * @default `0`
+   * @example
+   * ```js
+   * {
+   *   replicas: 2
+   * }
+   * ```
+   */
+  replicas?: Input<number>;
+  /**
    * Enable [RDS Data API](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/data-api.html)
    * for the database.
    *
@@ -270,60 +286,60 @@ export interface AuroraArgs {
   proxy?: Input<
     | boolean
     | {
-      /**
-       * Add extra credentials the proxy can use to connect to the database.
-       *
-       * Your app will use the master `username` and `password`. So you don't need to specify
-       * them here.
-       *
-       * These credentials are for any other services that need to connect to your database
-       * directly.
-       *
-       * :::tip
-       * You need to create these credentials manually in the database.
-       * :::
-       *
-       * These credentials are not automatically created. You'll need to create these
-       * credentials manually in the database.
-       *
-       * @example
-       * ```js
-       * {
-       *   credentials: [
-       *     {
-       *       username: "metabase",
-       *       password: "Passw0rd!"
-       *     }
-       *   ]
-       * }
-       * ```
-       *
-       * You can use a [`Secret`](/docs/component/secret) to manage the password.
-       *
-       * ```js
-       * {
-       *   credentials: [
-       *     {
-       *       username: "metabase",
-       *       password: (new sst.Secret("MyDBPassword")).value
-       *     }
-       *   ]
-       * }
-       * ```
-       */
-      credentials?: Input<
-        Input<{
-          /**
-           * The username of the user.
-           */
-          username: Input<string>;
-          /**
-           * The password of the user.
-           */
-          password: Input<string>;
-        }>[]
-      >;
-    }
+        /**
+         * Add extra credentials the proxy can use to connect to the database.
+         *
+         * Your app will use the master `username` and `password`. So you don't need to specify
+         * them here.
+         *
+         * These credentials are for any other services that need to connect to your database
+         * directly.
+         *
+         * :::tip
+         * You need to create these credentials manually in the database.
+         * :::
+         *
+         * These credentials are not automatically created. You'll need to create these
+         * credentials manually in the database.
+         *
+         * @example
+         * ```js
+         * {
+         *   credentials: [
+         *     {
+         *       username: "metabase",
+         *       password: "Passw0rd!"
+         *     }
+         *   ]
+         * }
+         * ```
+         *
+         * You can use a [`Secret`](/docs/component/secret) to manage the password.
+         *
+         * ```js
+         * {
+         *   credentials: [
+         *     {
+         *       username: "metabase",
+         *       password: (new sst.Secret("MyDBPassword")).value
+         *     }
+         *   ]
+         * }
+         * ```
+         */
+        credentials?: Input<
+          Input<{
+            /**
+             * The username of the user.
+             */
+            username: Input<string>;
+            /**
+             * The password of the user.
+             */
+            password: Input<string>;
+          }>[]
+        >;
+      }
   >;
   /**
    * The VPC to use for the database cluster.
@@ -355,17 +371,17 @@ export interface AuroraArgs {
    * ```
    */
   vpc:
-  | Vpc
-  | Input<{
-    /**
-     * A list of subnet IDs in the VPC to deploy the Aurora cluster in.
-     */
-    subnets: Input<Input<string>[]>;
-    /**
-     * A list of VPC security group IDs.
-     */
-    securityGroups: Input<Input<string>[]>;
-  }>;
+    | Vpc
+    | Input<{
+        /**
+         * A list of subnet IDs in the VPC to deploy the Aurora cluster in.
+         */
+        subnets: Input<Input<string>[]>;
+        /**
+         * A list of VPC security group IDs.
+         */
+        securityGroups: Input<Input<string>[]>;
+      }>;
   /**
    * Configure how this component works in `sst dev`.
    *
@@ -662,6 +678,7 @@ export class Aurora extends Component implements Link.Linkable {
     );
     const dataApi = output(args.dataApi).apply((v) => v ?? false);
     const scaling = normalizeScaling();
+    const replicas = normalizeReplicas();
     const vpc = normalizeVpc();
 
     const dev = registerDev();
@@ -677,7 +694,7 @@ export class Aurora extends Component implements Link.Linkable {
     const clusterParameterGroup = createClusterParameterGroup();
     const proxy = createProxy();
     const cluster = createCluster();
-    const instance = createInstance();
+    const instance = createInstances();
     createProxyTarget();
 
     this.cluster = cluster;
@@ -747,8 +764,8 @@ export class Aurora extends Component implements Link.Linkable {
         .apply((proxyTag) =>
           proxyTag
             ? rds.Proxy.get(`${name}Proxy`, proxyTag, undefined, {
-              parent: self,
-            })
+                parent: self,
+              })
             : undefined,
         );
 
@@ -773,6 +790,17 @@ export class Aurora extends Component implements Link.Linkable {
             ? scaling?.pauseAfter ?? "5 minutes"
             : undefined,
         };
+      });
+    }
+
+    function normalizeReplicas() {
+      return output(args.replicas ?? 0).apply((replicas) => {
+        if (replicas > 15) {
+          throw new VisibleError(
+            `Cannot create more than 15 read-only replicas for the "${name}" Aurora database.`,
+          );
+        }
+        return replicas;
       });
     }
 
@@ -837,13 +865,13 @@ Listening on "${dev.host}:${dev.port}"...`,
       return args.password
         ? output(args.password)
         : new RandomPassword(
-          `${name}Password`,
-          {
-            length: 32,
-            special: false,
-          },
-          { parent: self },
-        ).result;
+            `${name}Password`,
+            {
+              length: 32,
+              special: false,
+            },
+            { parent: self },
+          ).result;
     }
 
     function createSecret() {
@@ -966,22 +994,41 @@ Listening on "${dev.host}:${dev.port}"...`,
       );
     }
 
-    function createInstance() {
-      return new rds.ClusterInstance(
-        ...transform(
-          args.transform?.instance,
-          `${name}Instance`,
-          {
-            clusterIdentifier: cluster.id,
-            instanceClass: "db.serverless",
-            engine: cluster.engine.apply((v) => v as rds.EngineType),
-            engineVersion: cluster.engineVersion,
-            dbSubnetGroupName: cluster.dbSubnetGroupName,
-            dbParameterGroupName: instanceParameterGroup.name,
-          },
-          { parent: self },
-        ),
+    function createInstances() {
+      const props = {
+        clusterIdentifier: cluster.id,
+        instanceClass: "db.serverless",
+        engine: cluster.engine.apply((v) => v as rds.EngineType),
+        engineVersion: cluster.engineVersion,
+        dbSubnetGroupName: cluster.dbSubnetGroupName,
+        dbParameterGroupName: instanceParameterGroup.name,
+      };
+
+      // Create primary instance
+      const instance = new rds.ClusterInstance(
+        ...transform(args.transform?.instance, `${name}Instance`, props, {
+          parent: self,
+        }),
       );
+
+      // Create replicas
+      replicas.apply((replicas) => {
+        for (let i = 0; i < replicas; i++) {
+          new rds.ClusterInstance(
+            ...transform(
+              args.transform?.instance,
+              `${name}Replica${i}`,
+              {
+                ...props,
+                promotionTier: 15,
+              },
+              { parent: self },
+            ),
+          );
+        }
+      });
+
+      return instance;
     }
 
     function createProxy() {
