@@ -91,6 +91,7 @@ export class Service extends Component implements Link.Linkable {
     const containers = normalizeContainers("service", args, name, architecture);
     const lbArgs = normalizeLoadBalancer();
     const scaling = normalizeScaling();
+    const capacity = normalizeCapacity();
     const vpc = normalizeVpc();
 
     const taskRole = createTaskRole(name, args, opts, self);
@@ -191,6 +192,16 @@ export class Service extends Component implements Link.Linkable {
           memoryUtilization: v?.memoryUtilization ?? 70,
           requestCount: v?.requestCount ?? false,
         };
+      });
+    }
+
+    function normalizeCapacity() {
+      if (!args.capacity) return;
+
+      return output(args.capacity).apply((v) => {
+        if (v === "spot")
+          return { spot: { weight: 1 }, fargate: { weight: 0 } };
+        return v;
       });
     }
 
@@ -599,7 +610,37 @@ export class Service extends Component implements Link.Linkable {
             cluster: clusterArn,
             taskDefinition: taskDefinition.arn,
             desiredCount: scaling.min,
-            launchType: "FARGATE",
+            ...(capacity
+              ? {
+                  // setting `forceNewDeployment` ensures that the service is not recreated
+                  // when the capacity provider config changes.
+                  forceNewDeployment: true,
+                  capacityProviderStrategies: capacity.apply((v) => [
+                    ...(v.fargate
+                      ? [
+                          {
+                            capacityProvider: "FARGATE",
+                            base: v.fargate?.base,
+                            weight: v.fargate?.weight,
+                          },
+                        ]
+                      : []),
+                    ...(v.spot
+                      ? [
+                          {
+                            capacityProvider: "FARGATE_SPOT",
+                            base: v.spot?.base,
+                            weight: v.spot?.weight,
+                          },
+                        ]
+                      : []),
+                  ]),
+                }
+              : // @deprecated do not use `launchType`, set `capacityProviderStrategies`
+                // to `[{ capacityProvider: "FARGATE", weight: 1 }]` instead
+                {
+                  launchType: "FARGATE",
+                }),
             networkConfiguration: {
               // If the vpc is an SST vpc, services are automatically deployed to the public
               // subnets. So we need to assign a public IP for the service to be accessible.

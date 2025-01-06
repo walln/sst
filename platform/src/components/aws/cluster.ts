@@ -1670,6 +1670,51 @@ export interface ClusterServiceArgs extends ClusterBaseArgs {
     requestCount?: Input<false | number>;
   }>;
   /**
+   * Configure the service to use Fargate Spot capacity provider.
+   *
+   * Fargate Spot allows you to run containers on spare AWS compute capacity at a discounted
+   * rate compared to regular Fargate pricing. AWS may reclaim this capacity with a two-minute
+   * warning when needed.
+   *
+   * :::caution
+   * Setting or unsetting the `capacity` property requires recreating the ECS service,
+   * which can cause temporary downtime.
+   * :::
+   *
+   * @default Regular Fargate (no spot instances)
+   * @example
+   *
+   * Use only Fargate Spot.
+   * ```js
+   * {
+   *   capacity: "spot"
+   * }
+   * ```
+   *
+   * Use 50% Fargate and 50% Fargate Spot. And ensure that the first 2 tasks use Fargate.
+   * ```js
+   * {
+   *   capacity: {
+   *     fargate: { weight: 1, base: 2 },
+   *     spot: { weight: 1 }
+   *   }
+   * }
+   * ```
+   */
+  capacity?: Input<
+    | "spot"
+    | {
+        fargate?: Input<{
+          base?: Input<number>;
+          weight: Input<number>;
+        }>;
+        spot?: Input<{
+          base?: Input<number>;
+          weight: Input<number>;
+        }>;
+      }
+  >;
+  /**
    * Configure the health check that ECS runs on your containers.
    *
    * :::tip
