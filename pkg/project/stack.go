@@ -446,7 +446,6 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 		for {
 			select {
 			case cmd := <-partial:
-				slog.Info("partial loop", "cmd", cmd)
 				data, err := os.ReadFile(statePath)
 				if err == nil {
 					next := xxh3.Hash(data)
