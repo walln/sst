@@ -126,6 +126,17 @@ export interface CronArgs {
    */
   schedule: Input<`rate(${string})` | `cron(${string})`>;
   /**
+   * Configures whether the cron job is enabled. When disabled, the cron job won't run.
+   * @default true
+   * @example
+   * ```ts
+   * {
+   *   enabled: false
+   * }
+   * ```
+   */
+  enabled?: Input<boolean>;
+  /**
    * [Transform](/docs/components#transform) how this component creates its underlying resources.
    */
   transform?: {
@@ -195,6 +206,7 @@ export class Cron extends Component {
 
     const fnArgs = normalizeFunction();
     normalizeTargets();
+    const enabled = output(args.enabled ?? true);
     const rule = createRule();
     const fn = createFunction();
     const role = createRole();
@@ -229,6 +241,7 @@ export class Cron extends Component {
           `${name}Rule`,
           {
             scheduleExpression: args.schedule,
+            state: enabled.apply((v) => (v ? "ENABLED" : "DISABLED")),
           },
           { parent },
         ),
@@ -300,19 +313,19 @@ export class Cron extends Component {
           fn
             ? { arn: fn.arn, rule: rule.name }
             : {
-              arn: args.task!.cluster,
-              rule: rule.name,
-              ecsTarget: {
-                launchType: "FARGATE",
-                taskDefinitionArn: args.task!.nodes.taskDefinition.arn,
-                networkConfiguration: {
-                  subnets: args.task!.subnets,
-                  securityGroups: args.task!.securityGroups,
-                  assignPublicIp: args.task!.assignPublicIp,
+                arn: args.task!.cluster,
+                rule: rule.name,
+                ecsTarget: {
+                  launchType: "FARGATE",
+                  taskDefinitionArn: args.task!.nodes.taskDefinition.arn,
+                  networkConfiguration: {
+                    subnets: args.task!.subnets,
+                    securityGroups: args.task!.securityGroups,
+                    assignPublicIp: args.task!.assignPublicIp,
+                  },
                 },
+                roleArn: role!.arn,
               },
-              roleArn: role!.arn,
-            },
           { parent },
         ),
       );
