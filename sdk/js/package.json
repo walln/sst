@@ -36,18 +36,6 @@
   "bin": {
     "sst": "./bin/sst.mjs"
   },
-  "peerDependencies": {
-    "hono": "4.x",
-    "valibot": "0.30.x"
-  },
-  "peerDependenciesMeta": {
-    "hono": {
-      "optional": true
-    },
-    "valibot": {
-      "optional": true
-    }
-  },
   "optionalDependencies": {},
   "dependencies": {
     "aws4fetch": "^1.0.18",
@@ -55,3 +43,4 @@
     "openid-client": "5.6.4"
   }
 }
+
