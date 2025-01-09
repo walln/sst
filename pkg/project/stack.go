@@ -642,6 +642,7 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 	complete.Finished = finished
 	complete.Errors = errors
 	complete.ImportDiffs = importDiffs
+	types.Generate(p.PathConfig(), complete.Links)
 	defer bus.Publish(complete)
 	if input.Command == "diff" {
 		return err
@@ -651,7 +652,6 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 	outputsFile, _ := os.Create(outputsFilePath)
 	defer outputsFile.Close()
 	json.NewEncoder(outputsFile).Encode(complete.Outputs)
-	types.Generate(p.PathConfig(), complete.Links)
 
 	if input.Command != "diff " {
 		var update provider.Update
