@@ -35,7 +35,8 @@ export interface AuthArgs {
    */
   authorizer?: Input<string | FunctionArgs>;
   /**
-   * The issuer function.
+   * The function that's running your OpenAuth server.
+   *
    * @example
    * ```js
    * {
@@ -53,6 +54,29 @@ export interface AuthArgs {
    *   }
    * }
    * ```
+   *
+   * Since the `issuer` function is a Hono app, you want to export it with the Lambda adapter.
+   *
+   * ```ts title="src/auth.ts"
+   * import { handle } from "hono/aws-lambda";
+   * import { issuer } from "@openauthjs/openauth";
+   * 
+   * const app = issuer({
+   *   // ...
+   * });
+   * 
+   * export const handler = handle(app);
+   * ```
+   *
+   * This `Auth` component will always use the
+   * [`DynamoStorage`](https://openauth.js.org/docs/storage/dynamo/) storage provider.
+   *
+   * :::note
+   * This will always use the `DynamoStorage` storage provider.
+   * :::
+   *
+   * Learn more on the [OpenAuth docs](https://openauth.js.org/docs/issuer/) on how to configure
+   * the `issuer` function.
    */
   issuer?: Input<string | FunctionArgs>;
   /**
@@ -110,6 +134,8 @@ export interface AuthArgs {
    *
    * This upgrades your component and the resources it created. You can now optionally
    * remove the prop.
+   *
+   * @internal
    */
   forceUpgrade?: "v2";
 }
@@ -133,14 +159,63 @@ export interface AuthArgs {
  * });
  * ```
  *
+ * Where the `issuer` function might look like this.
+ *
+ * ```ts title="src/auth.ts"
+ * import { handle } from "hono/aws-lambda";
+ * import { issuer } from "@openauthjs/openauth";
+ * import { CodeProvider } from "@openauthjs/openauth/provider/code";
+ * import { subjects } from "./subjects";
+ * 
+ * const app = issuer({
+ *   subjects,
+ *   providers: {
+ *     code: CodeProvider()
+ *   },
+ *   success: async (ctx, value) => {}
+ * });
+ * 
+ * export const handler = handle(app);
+ * ```
+ *
+ * This `Auth` component will always use the
+ * [`DynamoStorage`](https://openauth.js.org/docs/storage/dynamo/) storage provider.
+ *
+ * Learn more on the [OpenAuth docs](https://openauth.js.org/docs/issuer/) on how to configure
+ * the `issuer` function.
+ *
  * #### Add a custom domain
  *
- * Set a custom domain for your Auth server.
+ * Set a custom domain for your auth server.
  *
- * ```js {2} title="sst.config.ts"
+ * ```js {3} title="sst.config.ts"
  * new sst.aws.Auth("MyAuth", {
  *   issuer: "src/auth.handler",
  *   domain: "auth.example.com"
+ * });
+ * ```
+ *
+ * #### Link to a resource
+ *
+ * You can link the auth server to other resources, like a function or your Next.js app,
+ * that needs authentication.
+ *
+ * ```ts title="sst.config.ts" {2}
+ * new sst.aws.Nextjs("MyWeb", {
+ *   link: [auth]
+ * });
+ * ```
+ *
+ * Once linked, you can now use it to create an [OpenAuth
+ * client](https://openauth.js.org/docs/client/).
+ *
+ * ```ts title="app/page.tsx" {1,6}
+ * import { Resource } from "sst"
+ * import { createClient } from "@openauthjs/openauth/client"
+ * 
+ * export const client = createClient({
+ *   clientID: "nextjs",
+ *   issuer: Resource.MyAuth.url
  * });
  * ```
  */
