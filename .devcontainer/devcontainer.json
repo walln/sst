@@ -1,7 +1,8 @@
 {
   "image": "mcr.microsoft.com/devcontainers/universal:2",
   "features": {
-    "ghcr.io/audacioustux/devcontainers/bun:1": {}
+    "ghcr.io/audacioustux/devcontainers/bun:1": {},
+    "ghcr.io/devcontainers/features/aws-cli:1": {}
   },
   "postCreateCommand": "bun install && cd platform && bun run build",
   "customizations": {
