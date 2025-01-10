@@ -2,6 +2,8 @@
   "image": "mcr.microsoft.com/devcontainers/universal:2",
   "postCreateCommand": [
     "curl -fsSL https://bun.sh/install | bash",
-    "bun install"
+    "source /home/vscode/.bashrc",
+    "bun install",
+    "cd platform && bun run build && bun dev"
   ]
 }
