@@ -51,9 +51,19 @@ export type FunctionArn = `arn:${string}` & {};
 
 export type FunctionPermissionArgs = {
   /**
+   * Configures whether the permission is allowed or denied.
+   * @default `"allow"`
+   * @example
+   * ```ts
+   * {
+   *   effect: "deny"
+   * }
+   * ```
+   */
+  effect?: "allow" | "deny";
+  /**
    * The [IAM actions](https://docs.aws.amazon.com/service-authorization/latest/reference/reference_policies_actions-resources-contextkeys.html#actions_table) that can be performed.
    * @example
-   *
    * ```js
    * {
    *   actions: ["s3:*"]
@@ -64,7 +74,6 @@ export type FunctionPermissionArgs = {
   /**
    * The resourcess specified using the [IAM ARN format](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_identifiers.html).
    * @example
-   *
    * ```js
    * {
    *   resources: ["arn:aws:s3:::my-bucket/*"]
@@ -1776,21 +1785,21 @@ export class Function extends Component implements Link.Linkable {
           iam.getPolicyDocumentOutput({
             statements: [
               ...argsPermissions,
-              ...linkPermissions.map((item) => ({
-                actions: item.actions,
-                resources: item.resources,
-              })),
+              ...linkPermissions,
               ...(dev
                 ? [
                     {
+                      effect: "allow",
                       actions: ["appsync:*"],
                       resources: ["*"],
                     },
                     {
+                      effect: "allow",
                       actions: ["iot:*"],
                       resources: ["*"],
                     },
                     {
+                      effect: "allow",
                       actions: ["s3:*"],
                       resources: [
                         interpolate`arn:${partition}:s3:::${bootstrapData.asset}`,
@@ -1799,7 +1808,14 @@ export class Function extends Component implements Link.Linkable {
                     },
                   ]
                 : []),
-            ],
+            ].map((item) => ({
+              effect: (() => {
+                const effect = item.effect ?? "allow";
+                return effect.charAt(0).toUpperCase() + effect.slice(1);
+              })(),
+              actions: item.actions,
+              resources: item.resources,
+            })),
           }),
       );
 

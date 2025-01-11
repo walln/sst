@@ -2629,10 +2629,7 @@ export function createTaskRole(
     iam.getPolicyDocumentOutput({
       statements: [
         ...argsPermissions,
-        ...linkPermissions.map((item) => ({
-          actions: item.actions,
-          resources: item.resources,
-        })),
+        ...linkPermissions,
         ...(additionalPermissions ?? []),
         {
           actions: [
@@ -2643,7 +2640,14 @@ export function createTaskRole(
           ],
           resources: ["*"],
         },
-      ],
+      ].map((item) => ({
+        effect: (() => {
+          const effect = item.effect ?? "allow";
+          return effect.charAt(0).toUpperCase() + effect.slice(1);
+        })(),
+        actions: item.actions,
+        resources: item.resources,
+      })),
     }),
   );
 
