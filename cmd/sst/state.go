@@ -132,7 +132,7 @@ var CmdState = &cli.Command{
 				},
 			},
 			Description: cli.Description{
-				Short: "Remove the resource from the state. Doesn't remove the resource itself.",
+				Short: "Remove a resource from only the state",
 				Long: strings.Join([]string{
 					"Removes the reference for the given resource from the state.",
 					"",
