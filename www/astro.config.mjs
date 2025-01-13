@@ -76,6 +76,7 @@ const sidebar = [
         collapsed: true,
         items: [
           "docs/component/aws/efs",
+          "docs/component/aws/bus",
           "docs/component/aws/vpc",
           "docs/component/aws/cron",
           "docs/component/aws/auth",
@@ -118,7 +119,9 @@ const sidebar = [
               "docs/component/aws/app-sync-function",
               "docs/component/aws/bucket-notification",
               "docs/component/aws/app-sync-data-source",
+              "docs/component/aws/bus-queue-subscriber",
               "docs/component/aws/cognito-user-pool-client",
+              "docs/component/aws/bus-lambda-subscriber",
               "docs/component/aws/apigatewayv2-url-route",
               "docs/component/aws/apigatewayv1-authorizer",
               "docs/component/aws/apigatewayv2-authorizer",
