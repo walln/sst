@@ -229,7 +229,7 @@ var CmdState = &cli.Command{
 				Long: strings.Join([]string{
 					"Repairs the state of your app if it's corrupted.",
 					"",
-					"Sometimes, if something goes wrong with your app, or if the state was direclty",
+					"Sometimes, if something goes wrong with your app, or if the state was directly",
 					"edited, the state can become corrupted. This will cause your `sst deploy` command",
 					"to fail.",
 					"",
