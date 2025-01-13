@@ -16,16 +16,16 @@ import (
 )
 
 var CmdState = &cli.Command{
-	Name:   "state",
-	Hidden: true,
+	Name: "state",
 	Description: cli.Description{
-		Short: "Manage state of your deployment",
+		Short: "Manage state of your app",
 	},
 	Children: []*cli.Command{
 		{
-			Name: "edit",
+			Name:   "edit",
+			Hidden: true,
 			Description: cli.Description{
-				Short: "Edit the state of your deployment",
+				Short: "Edit the state of your app",
 			},
 			Run: func(c *cli.Cli) error {
 				p, err := c.InitProject()
@@ -79,7 +79,21 @@ var CmdState = &cli.Command{
 		{
 			Name: "export",
 			Description: cli.Description{
-				Short: "Export the state of your deployment",
+				Short: "Prints the state of your app",
+				Long: strings.Join([]string{
+					"Prints the state of your app.",
+					"",
+					"This pull the state of your app from the cloud provider and then prints it out.",
+					"You can write this to a file or view it directly in your terminal.",
+					"",
+					"This can be run for specific stages as well.",
+					"",
+					"```bash frame=\"none\"",
+					"sst state export --stage production",
+					"```",
+					"",
+					"By default, it runs on your personal stage.",
+				}, "\n"),
 			},
 			Run: func(c *cli.Cli) error {
 				p, err := c.InitProject()
@@ -118,8 +132,40 @@ var CmdState = &cli.Command{
 				},
 			},
 			Description: cli.Description{
-				Short: "Remove references to a resource from the state. Does not remove the resource itself.",
-				Long:  `Remove references to a resource from the state. Does not remove the resource itself.`,
+				Short: "Remove the resource from the state. Doesn't remove the resource itself.",
+				Long: strings.Join([]string{
+					"Removes the reference for the given resource from the state.",
+					"",
+					":::note",
+					"This does not remove the resource itself.",
+					":::",
+					"",
+					"This does not remove the resource itself, it only edits the state of your app.",
+					"",
+					"```bash frame=\"none\"",
+					"sst state remove MyBucket",
+					"```",
+					"",
+					"Here, `MyBucket` is the name of the resource as defined in your `sst.config.ts`.",
+					"",
+					"```ts title=\"sst.config.ts\"",
+					"new sst.aws.Bucket(\"MyBucket\");",
+					"```",
+					"",
+					"This command will:",
+					"",
+					"1. Find the resource with the given name in the state.",
+					"2. Remove that from the state. It does not remove the children of this resource.",
+					"3. Runs a `repair` to remove any dependencies to this resource.",
+					"",
+					"You can run this for specific stages as well.",
+					"",
+					"```bash frame=\"none\"",
+					"sst state remove MyBucket --stage production",
+					"```",
+					"",
+					"By default, it runs on your personal stage.",
+				}, "\n"),
 			},
 			Run: func(c *cli.Cli) error {
 				p, err := c.InitProject()
@@ -179,7 +225,34 @@ var CmdState = &cli.Command{
 		{
 			Name: "repair",
 			Description: cli.Description{
-				Short: "Repair the state of your deployment",
+				Short: "Repair the state of your app",
+				Long: strings.Join([]string{
+					"Repairs the state of your app if it's corrupted.",
+					"",
+					"Sometimes, if something goes wrong with your app, or if the state was direclty",
+					"edited, the state can become corrupted. This will cause your `sst deploy` command",
+					"to fail.",
+					"",
+					"This command looks for the following issues and fixes them.",
+					"",
+					"1. Since the state is a list of resources, if one resource depends on another,",
+					"   it needs to be listed after the one it depends on. This command finds resources",
+					"   that depend on each other but are not ordered correctly and **reorders them**.",
+					"",
+					"2. If resource B depends on resource A, but resource A is not listed in the state,",
+					"   it'll **remove the dependency**.",
+					"",
+					"This command does this by going through all the resources in the state, fixing the",
+					"issues and updating the state.",
+					"",
+					"You can run this for specific stages as well.",
+					"",
+					"```bash frame=\"none\"",
+					"sst state repair --stage production",
+					"```",
+					"",
+					"By default, it runs on your personal stage.",
+				}, "\n"),
 			},
 			Run: func(c *cli.Cli) error {
 				p, err := c.InitProject()
