@@ -1,5 +1,13 @@
 /// <reference path="./.sst/platform/config.d.ts" />
 
+/**
+ * ## AWS Cluster Spot capacity
+ *
+ * This example, shows how to use the Fargate Spot capacity provider for your services.
+ *
+ * We have it set to use only Fargate Spot instances for all non-production stages. Learn more
+ * about the [`capacity`](/docs/component/aws/cluster#capacity) prop.
+ */
 export default $config({
   app(input) {
     return {
@@ -11,13 +19,12 @@ export default $config({
   async run() {
     const vpc = new sst.aws.Vpc("MyVpc");
 
-    // Create a cluster and use Fargate spot instances
     const cluster = new sst.aws.Cluster("MyCluster", { vpc });
     cluster.addService("MyService", {
       loadBalancer: {
         ports: [{ listen: "80/http" }],
       },
-      capacity: "spot",
+      capacity: $app.stage === "production" ? undefined : "spot",
     });
   },
 });
