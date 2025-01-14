@@ -2175,7 +2175,7 @@ export interface ClusterTaskArgs extends ClusterBaseArgs {
  * Add a service to your cluster.
  *
  * ```ts title="sst.config.ts"
- * cluster.addService("MyService");
+ * const service = cluster.addService("MyService");
  * ```
  *
  * #### Configure the container image
@@ -2200,7 +2200,7 @@ export interface ClusterTaskArgs extends ClusterBaseArgs {
  *     min: 4,
  *     max: 16,
  *     cpuUtilization: 50,
- *     memoryUtilization: 50,
+ *     memoryUtilization: 50
  *   }
  * });
  * ```
@@ -2213,8 +2213,8 @@ export interface ClusterTaskArgs extends ClusterBaseArgs {
  * ```ts title="sst.config.ts"
  * const service = cluster.addService("MyService", {
  *   serviceRegistry: {
- *     port: 80,
- *   },
+ *     port: 80
+ *   }
  * });
  *
  * const api = new sst.aws.ApiGatewayV2("MyApi", {
@@ -2235,7 +2235,7 @@ export interface ClusterTaskArgs extends ClusterBaseArgs {
  *     domain: "example.com",
  *     rules: [
  *       { listen: "80/http" },
- *       { listen: "443/https", forward: "80/http" },
+ *       { listen: "443/https", forward: "80/http" }
  *     ]
  *   }
  * });
@@ -2250,7 +2250,7 @@ export interface ClusterTaskArgs extends ClusterBaseArgs {
  * const bucket = new sst.aws.Bucket("MyBucket");
  *
  * cluster.addService("MyService", {
- *   link: [bucket],
+ *   link: [bucket]
  * });
  * ```
  *
@@ -2261,6 +2261,32 @@ export interface ClusterTaskArgs extends ClusterBaseArgs {
  *
  * console.log(Resource.MyBucket.name);
  * ```
+ *
+ * #### Service discovery
+ *
+ * This component automatically creates a Cloud Map service host name for the service. So
+ * anything in the same VPC can access it using the service's host name.
+ *
+ * For example, if you link the service to a Lambda function that's in the same VPC.
+ *
+ * ```ts title="sst.config.ts" {2,4}
+ * new sst.aws.Function("MyFunction", {
+ *   vpc,
+ *   url: true,
+ *   link: [service],
+ *   handler: "lambda.handler"
+ * });
+ * ```
+ *
+ * You can access the service by its host name using the [SDK](/docs/reference/sdk/).
+ *
+ * ```ts title="lambda.ts"
+ * import { Resource } from "sst";
+ *
+ * await fetch(`http://${Resource.MyService.service}`);
+ * ```
+ *
+ * [Check out an example](/docs/examples/#aws-cluster-service-discovery).
  *
  * ---
  *

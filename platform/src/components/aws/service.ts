@@ -141,9 +141,9 @@ export class Service extends Component implements Link.Linkable {
     this._url = !self.loadBalancer
       ? undefined
       : all([self.domain, self.loadBalancer?.dnsName]).apply(
-          ([domain, loadBalancer]) =>
-            domain ? `https://${domain}/` : `http://${loadBalancer}`,
-        );
+        ([domain, loadBalancer]) =>
+          domain ? `https://${domain}/` : `http://${loadBalancer}`,
+      );
 
     this.registerOutputs({ _hint: this._url });
     registerReceiver();
@@ -238,9 +238,9 @@ export class Service extends Component implements Link.Linkable {
             const listenConditions =
               v.conditions || v.path
                 ? {
-                    path: v.conditions?.path ?? v.path,
-                    query: v.conditions?.query,
-                  }
+                  path: v.conditions?.path ?? v.path,
+                  query: v.conditions?.query,
+                }
                 : undefined;
             if (protocolType(listenProtocol) === "network" && listenConditions)
               throw new VisibleError(
@@ -481,40 +481,39 @@ export class Service extends Component implements Link.Linkable {
             const buildActions = (r?: (typeof rules)[number]) => [
               ...(!r
                 ? [
-                    {
-                      type: "fixed-response",
-                      fixedResponse: {
-                        statusCode: "403",
-                        contentType: "text/plain",
-                        messageBody: "Forbidden",
-                      },
+                  {
+                    type: "fixed-response",
+                    fixedResponse: {
+                      statusCode: "403",
+                      contentType: "text/plain",
+                      messageBody: "Forbidden",
                     },
-                  ]
+                  },
+                ]
                 : []),
               ...(r?.type === "forward"
                 ? [
-                    {
-                      type: "forward",
-                      targetGroupArn:
-                        targets[
-                          `${r.container}${r.forwardProtocol.toUpperCase()}${
-                            r.forwardPort
-                          }`
-                        ].arn,
-                    },
-                  ]
+                  {
+                    type: "forward",
+                    targetGroupArn:
+                      targets[
+                        `${r.container}${r.forwardProtocol.toUpperCase()}${r.forwardPort
+                        }`
+                      ].arn,
+                  },
+                ]
                 : []),
               ...(r?.type === "redirect"
                 ? [
-                    {
-                      type: "redirect",
-                      redirect: {
-                        port: r.redirectPort.toString(),
-                        protocol: r.redirectProtocol.toUpperCase(),
-                        statusCode: "HTTP_301",
-                      },
+                  {
+                    type: "redirect",
+                    redirect: {
+                      port: r.redirectPort.toString(),
+                      protocol: r.redirectProtocol.toUpperCase(),
+                      statusCode: "HTTP_301",
                     },
-                  ]
+                  },
+                ]
                 : []),
             ];
             const listener = new lb.Listener(
@@ -537,8 +536,7 @@ export class Service extends Component implements Link.Linkable {
             customRules.forEach(
               (r) =>
                 new lb.ListenerRule(
-                  `${name}Listener${listenerId}Rule${
-                    r.listenConditions!.path ?? ""
+                  `${name}Listener${listenerId}Rule${r.listenConditions!.path ?? ""
                   }${r.listenConditions!.query ?? ""}`,
                   {
                     listenerArn: listener.arn,
@@ -612,35 +610,35 @@ export class Service extends Component implements Link.Linkable {
             desiredCount: scaling.min,
             ...(capacity
               ? {
-                  // setting `forceNewDeployment` ensures that the service is not recreated
-                  // when the capacity provider config changes.
-                  forceNewDeployment: true,
-                  capacityProviderStrategies: capacity.apply((v) => [
-                    ...(v.fargate
-                      ? [
-                          {
-                            capacityProvider: "FARGATE",
-                            base: v.fargate?.base,
-                            weight: v.fargate?.weight,
-                          },
-                        ]
-                      : []),
-                    ...(v.spot
-                      ? [
-                          {
-                            capacityProvider: "FARGATE_SPOT",
-                            base: v.spot?.base,
-                            weight: v.spot?.weight,
-                          },
-                        ]
-                      : []),
-                  ]),
-                }
+                // setting `forceNewDeployment` ensures that the service is not recreated
+                // when the capacity provider config changes.
+                forceNewDeployment: true,
+                capacityProviderStrategies: capacity.apply((v) => [
+                  ...(v.fargate
+                    ? [
+                      {
+                        capacityProvider: "FARGATE",
+                        base: v.fargate?.base,
+                        weight: v.fargate?.weight,
+                      },
+                    ]
+                    : []),
+                  ...(v.spot
+                    ? [
+                      {
+                        capacityProvider: "FARGATE_SPOT",
+                        base: v.spot?.base,
+                        weight: v.spot?.weight,
+                      },
+                    ]
+                    : []),
+                ]),
+              }
               : // @deprecated do not use `launchType`, set `capacityProviderStrategies`
-                // to `[{ capacityProvider: "FARGATE", weight: 1 }]` instead
-                {
-                  launchType: "FARGATE",
-                }),
+              // to `[{ capacityProvider: "FARGATE", weight: 1 }]` instead
+              {
+                launchType: "FARGATE",
+              }),
             networkConfiguration: {
               // If the vpc is an SST vpc, services are automatically deployed to the public
               // subnets. So we need to assign a public IP for the service to be accessible.
@@ -850,7 +848,7 @@ export class Service extends Component implements Link.Linkable {
   }
 
   /**
-   * The name of the Cloud Map service.
+   * The name of the Cloud Map service. This is useful for service discovery.
    */
   public get service() {
     return this.dev
