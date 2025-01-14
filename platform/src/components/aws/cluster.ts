@@ -24,6 +24,7 @@ import {
   getPartitionOutput,
   getRegionOutput,
   ecr,
+  getCallerIdentityOutput,
 } from "@pulumi/aws";
 import { ImageArgs, Platform } from "@pulumi/docker-build";
 import { Cluster as ClusterV1 } from "./cluster-v1";
@@ -2781,6 +2782,7 @@ export function createTaskRole(
   args: ClusterTaskArgs,
   opts: ComponentResourceOptions,
   parent: Component,
+  dev: boolean,
   additionalPermissions?: FunctionArgs["permissions"],
 ) {
   if (args.taskRole)
@@ -2823,6 +2825,7 @@ export function createTaskRole(
       {
         assumeRolePolicy: iam.assumeRolePolicyForPrincipal({
           Service: "ecs-tasks.amazonaws.com",
+          ...(dev ? { AWS: getCallerIdentityOutput({}, opts).accountId } : {}),
         }),
         inlinePolicies: policy.apply(({ statements }) =>
           statements ? [{ name: "inline", policy: policy.json }] : [],
@@ -2847,7 +2850,6 @@ export function createExecutionRole(
       { parent },
     );
 
-  const partition = getPartitionOutput({}, opts).partition;
   return new iam.Role(
     ...transform(
       args.transform?.executionRole,
@@ -2857,7 +2859,9 @@ export function createExecutionRole(
           Service: "ecs-tasks.amazonaws.com",
         }),
         managedPolicyArns: [
-          interpolate`arn:${partition}:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy`,
+          interpolate`arn:${
+            getPartitionOutput({}, opts).partition
+          }:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy`,
         ],
         inlinePolicies: [
           {

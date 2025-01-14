@@ -94,7 +94,7 @@ export class Service extends Component implements Link.Linkable {
     const capacity = normalizeCapacity();
     const vpc = normalizeVpc();
 
-    const taskRole = createTaskRole(name, args, opts, self);
+    const taskRole = createTaskRole(name, args, opts, self, !!dev);
 
     this.dev = !!dev;
     this.cloudmapNamespace = vpc.cloudmapNamespaceName;

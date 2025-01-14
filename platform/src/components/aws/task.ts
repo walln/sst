@@ -74,6 +74,7 @@ export class Task extends Component implements Link.Linkable {
       args,
       opts,
       self,
+      dev,
       dev
         ? [
             {
