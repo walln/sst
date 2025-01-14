@@ -273,8 +273,8 @@ func (r *Runtime) Build(ctx context.Context, input *runtime.BuildInput) (*runtim
 				"--cpu=x64",
 			}
 			if properties.Architecture == "arm64" {
-				cmd[4] = "--arch=arm64"
-				cmd[5] = "--cpu=arm64"
+				cmd[3] = "--arch=arm64"
+				cmd[4] = "--cpu=arm64"
 			}
 			if slices.Contains(installPackages, "sharp") {
 				cmd = append(cmd, "--libc=glibc")
