@@ -184,25 +184,45 @@ export type ClusterVpcsNormalizedArgs = Required<
 interface ServiceRules {
   /**
    * The port and protocol the service listens on. Uses the format `{port}/{protocol}`.
+   *
+   * @example
+   * ```js
+   * {
+   *   listen: "80/http"
+   * }
+   * ```
    */
   listen: Input<Port>;
   /**
    * The port and protocol of the container the service forwards the traffic to. Uses the
    * format `{port}/{protocol}`.
+   *
+   * @example
+   * ```js
+   * {
+   *   forward: "80/http"
+   * }
+   * ```
    * @default The same port and protocol as `listen`.
    */
   forward?: Input<Port>;
   /**
-   * The name of the container to forward the traffic to.
+   * The name of the container to forward the traffic to. This maps to the `name` defined in the
+   * `container` prop.
    *
-   * You need this if there's more than one container.
-   *
-   * If there is only one container, the traffic is automatically forwarded to that
-   * container.
+   * You only need this if there's more than one container. If there's only one container, the
+   * traffic is automatically forwarded there.
    */
   container?: Input<string>;
   /**
    * The port and protocol to redirect the traffic to. Uses the format `{port}/{protocol}`.
+   *
+   * @example
+   * ```js
+   * {
+   *   redirect: "80/http"
+   * }
+   * ```
    */
   redirect?: Input<Port>;
   /**
@@ -210,21 +230,24 @@ interface ServiceRules {
    */
   path?: Input<string>;
   /**
-   * The conditions for the redirect. Only applicable to "http" protocols.
+   * The conditions for the redirect. Only applicable to `http` and `https` protocols.
    */
   conditions?: Input<{
     /**
      * Configure path-based routing. Only requests matching the path are forwarded to
      * the container.
      *
+     * ```js
+     * {
+     *   path: "/api/*"
+     * }
+     * ```
+     *
      * The path pattern is case-sensitive, supports wildcards, and can be up to 128
      * characters.
-     * - `*` matches 0 or more characters.
-     * - `?` matches exactly 1 character.
-     *
-     * For example:
-     * - `/api/*`
-     * - `/api/*.png
+     * - `*` matches 0 or more characters. For example, `/api/*` matches `/api/` or
+     *   `/api/orders`.
+     * - `?` matches exactly 1 character. For example, `/api/?.png` matches `/api/a.png`.
      *
      * @default Requests to all paths are forwarded.
      */
@@ -233,9 +256,15 @@ interface ServiceRules {
      * Configure query string based routing. Only requests matching one of the query
      * string conditions are forwarded to the container.
      *
+     * Takes a list of `key`, the name of the query string parameter, and `value` pairs.
+     * Where `value` is the value of the query string parameter. But it can be a pattern as well.
+     *
+     * If multiple `key` and `value` pairs are provided, it'll match requests with **any** of the
+     * query string parameters.
+     *
      * @example
      *
-     * Matching requests with query string `version=v1`.
+     * For example, to match requests with query string `version=v1`.
      *
      * ```js
      * {
@@ -245,7 +274,7 @@ interface ServiceRules {
      * }
      * ```
      *
-     * Matching requests with query string matching `env=test*`.
+     * Or match requests with query string matching `env=test*`.
      *
      * ```js
      * {
@@ -255,7 +284,7 @@ interface ServiceRules {
      * }
      * ```
      *
-     * Matching requests with query string `version=v1` or `env=test*`.
+     * Match requests with query string `version=v1` **or** `env=test*`.
      *
      * ```js
      * {
@@ -266,7 +295,7 @@ interface ServiceRules {
      * }
      * ```
      *
-     * Matching requests with any query string key with value `example`.
+     * Match requests with any query string key with value `example`.
      *
      * ```js
      * {
@@ -280,7 +309,16 @@ interface ServiceRules {
      */
     query?: Input<
       Input<{
+        /**
+         * The name of the query string parameter.
+         */
         key?: Input<string>;
+        /**
+         * The value of the query string parameter.
+         *
+         * If no `key` is provided, it'll match any request where a query string parameter with
+         * the given value exists.
+         */
         value: Input<string>;
       }>[]
     >;
