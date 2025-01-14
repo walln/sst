@@ -284,9 +284,10 @@ func (r *Runtime) Build(ctx context.Context, input *runtime.BuildInput) (*runtim
 			proc := process.Command("npm", cmd...)
 			proc.Dir = input.Out()
 			log.Info("running npm", "cmd", cmd)
-			err = proc.Run()
+			output, err := proc.CombinedOutput()
+			slog.Info("npm output", "output", string(output))
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed to run npm install: %w", err)
 			}
 			log.Info("done installing", "packages", installPackages)
 		}
