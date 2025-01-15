@@ -47,12 +47,17 @@ type StackInput struct {
 	Dev        bool
 	Verbose    bool
 	Continue   bool
+	SkipHash   string
 }
 
 type ConcurrentUpdateEvent struct{}
 
 type BuildSuccessEvent struct {
 	Files []string
+	Hash  string
+}
+
+type SkipEvent struct {
 }
 
 type Dev struct {
@@ -373,6 +378,12 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 		defer js.Cleanup(buildResult)
 	}
 
+	// disable for now until we hash env too
+	if input.SkipHash != "" && buildResult.OutputFiles[0].Hash == input.SkipHash && false {
+		bus.Publish(&SkipEvent{})
+		return nil
+	}
+
 	var meta = map[string]interface{}{}
 	err = json.Unmarshal([]byte(buildResult.Metafile), &meta)
 	if err != nil {
@@ -386,7 +397,10 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 		}
 		files = append(files, absPath)
 	}
-	bus.Publish(&BuildSuccessEvent{files})
+	bus.Publish(&BuildSuccessEvent{
+		Files: files,
+		Hash:  buildResult.OutputFiles[0].Hash,
+	})
 	slog.Info("tracked files")
 
 	config := auto.ConfigMap{}
@@ -432,7 +446,6 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 		for {
 			select {
 			case cmd := <-partial:
-				slog.Info("partial loop", "cmd", cmd)
 				data, err := os.ReadFile(statePath)
 				if err == nil {
 					next := xxh3.Hash(data)
@@ -482,15 +495,26 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 						}
 					}
 
-					errors = append(errors, Error{
-						Message: event.DiagnosticEvent.Message,
-						URN:     event.DiagnosticEvent.URN,
-						Help:    help,
-					})
-					telemetry.Track("cli.resource.error", map[string]interface{}{
-						"error": event.DiagnosticEvent.Message,
-						"urn":   event.DiagnosticEvent.URN,
-					})
+					exists := false
+					if event.DiagnosticEvent.URN != "" {
+						for _, item := range errors {
+							if item.URN == event.DiagnosticEvent.URN {
+								exists = true
+								break
+							}
+						}
+					}
+					if !exists {
+						errors = append(errors, Error{
+							Message: strings.TrimSpace(event.DiagnosticEvent.Message),
+							URN:     event.DiagnosticEvent.URN,
+							Help:    help,
+						})
+						telemetry.Track("cli.resource.error", map[string]interface{}{
+							"error": event.DiagnosticEvent.Message,
+							"urn":   event.DiagnosticEvent.URN,
+						})
+					}
 				}
 
 				if event.ResOpFailedEvent != nil {
@@ -618,6 +642,7 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 	complete.Finished = finished
 	complete.Errors = errors
 	complete.ImportDiffs = importDiffs
+	types.Generate(p.PathConfig(), complete.Links)
 	defer bus.Publish(complete)
 	if input.Command == "diff" {
 		return err
@@ -627,7 +652,6 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 	outputsFile, _ := os.Create(outputsFilePath)
 	defer outputsFile.Close()
 	json.NewEncoder(outputsFile).Encode(complete.Outputs)
-	types.Generate(p.PathConfig(), complete.Links)
 
 	if input.Command != "diff " {
 		var update provider.Update
@@ -649,11 +673,11 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 	}
 
 	slog.Info("done running stack command")
-	if err != nil {
-		slog.Error("stack run failed", "error", err)
+	if runError != nil {
+		slog.Error("stack run failed", "error", runError)
 		return ErrStackRunFailed
 	}
-	return runError
+	return nil
 }
 
 func (p *Project) Lock(updateID string, command string) error {

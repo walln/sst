@@ -210,7 +210,9 @@ func (u *UI) Event(unknown interface{}) {
 
 	case *deployer.DeployFailedEvent:
 		u.reset()
-		u.printEvent(TEXT_DANGER, "Error", evt.Error)
+		if evt.Error != "" {
+			u.printEvent(TEXT_DANGER, "Error", evt.Error)
+		}
 
 	case *project.StackCommandEvent:
 		u.reset()
@@ -249,6 +251,15 @@ func (u *UI) Event(unknown interface{}) {
 	case *project.BuildFailedEvent:
 		u.reset()
 		u.printEvent(TEXT_DANGER, "Error", evt.Error)
+		break
+
+	case *project.SkipEvent:
+		u.println(
+			TEXT_INFO_BOLD.Render("~"),
+			TEXT_NORMAL_BOLD.Render("  No changes"),
+		)
+		u.reset()
+		break
 
 	case *apitype.ResourcePreEvent:
 		u.timing[evt.Metadata.URN] = time.Now()
@@ -440,6 +451,7 @@ func (u *UI) Event(unknown interface{}) {
 					}
 					u.println(TEXT_NORMAL.Render("   " + line))
 				}
+
 				importDiffs, ok := evt.ImportDiffs[status.URN]
 				if ok {
 					isSSTComponent := strings.Contains(status.URN, "::sst")
@@ -461,10 +473,10 @@ func (u *UI) Event(unknown interface{}) {
 						if !isSSTComponent {
 							u.print(TEXT_INFO.Render("`" + string(diff.Input) + ": " + string(value) + ",`"))
 						}
-						u.println()
+						u.blank()
 					}
 				} else {
-					u.println()
+					u.blank()
 				}
 			}
 		}
@@ -553,12 +565,12 @@ func (u *UI) printEvent(barColor lipgloss.Style, label string, message ...string
 		u.print(TEXT_DIM.Render(fmt.Sprint(fmt.Sprintf("%-11s", label), " ")))
 	}
 	if len(message) > 0 {
-		u.print(TEXT_DIM.Render(message[0]))
+		u.print(TEXT_NORMAL.Render(message[0]))
 	}
 	u.println()
 	for _, msg := range message[1:] {
 		u.print(barColor.Copy().Bold(true).Render("|  "))
-		u.println(TEXT_DIM.Render(msg))
+		u.println(TEXT_NORMAL.Render(msg))
 	}
 }
 
@@ -632,9 +644,9 @@ func (u *UI) FormatURN(urn string) string {
 }
 
 func Success(msg string) {
-	fmt.Fprint(os.Stderr, strings.TrimSpace(TEXT_SUCCESS_BOLD.Render(IconCheck)+"  "+TEXT_NORMAL.Render(fmt.Sprintln(msg))))
+	fmt.Fprintln(os.Stderr, strings.TrimSpace(TEXT_SUCCESS_BOLD.Render(IconCheck)+"  "+TEXT_NORMAL.Render(msg)))
 }
 
 func Error(msg string) {
-	fmt.Fprint(os.Stderr, strings.TrimSpace(TEXT_DANGER_BOLD.Render(IconX)+"  "+TEXT_NORMAL.Render(fmt.Sprintln(msg))))
+	fmt.Fprintln(os.Stderr, strings.TrimSpace(TEXT_DANGER_BOLD.Render(IconX)+"  "+TEXT_NORMAL.Render(msg)))
 }

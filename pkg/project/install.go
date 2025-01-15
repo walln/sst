@@ -104,6 +104,7 @@ func (p *Project) writePackageJson() error {
 		slog.Info("adding dependency", "name", entry.Name)
 		dependencies[entry.Package] = entry.Version
 	}
+	dependencies["@pulumi/pulumi"] = global.PULUMI_VERSION
 
 	dataToWrite, err := json.MarshalIndent(result, "", "  ")
 	if err != nil {

@@ -66,6 +66,12 @@ export class Component extends ComponentResource {
       transformations: [
         // Ensure logical and physical names are prefixed
         (args) => {
+          // Ensure component names do not contain spaces
+          if (name.includes(" "))
+            throw new Error(
+              `Invalid component name "${name}" (${args.type}). Component names cannot contain spaces.`,
+            );
+
           // Ensure names are prefixed with parent's name
           if (
             args.type !== type &&
@@ -166,6 +172,7 @@ export class Component extends ComponentResource {
               "aws:ses/domainIdentityVerification:DomainIdentityVerification",
               "aws:sesv2/configurationSetEventDestination:ConfigurationSetEventDestination",
               "aws:sesv2/emailIdentity:EmailIdentity",
+              "aws:sns/topicPolicy:TopicPolicy",
               "aws:sns/topicSubscription:TopicSubscription",
               "aws:sqs/queuePolicy:QueuePolicy",
               "aws:ssm/parameter:Parameter",
@@ -273,6 +280,7 @@ export class Component extends ComponentResource {
             {
               types: [
                 "aws:elasticache/subnetGroup:SubnetGroup",
+                "aws:rds/clusterParameterGroup:ClusterParameterGroup",
                 "aws:rds/parameterGroup:ParameterGroup",
                 "aws:rds/subnetGroup:SubnetGroup",
               ],

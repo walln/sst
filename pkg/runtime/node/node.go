@@ -128,8 +128,7 @@ type NodeProperties struct {
 var NODE_EXTENSIONS = []string{".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"}
 
 func (r *Runtime) Run(ctx context.Context, input *runtime.RunInput) (runtime.Worker, error) {
-	cmd := process.CommandContext(
-		ctx,
+	cmd := process.Command(
 		"node",
 		"--enable-source-maps",
 		filepath.Join(

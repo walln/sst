@@ -23,6 +23,8 @@ var forceExternal = []string{
 }
 
 func (r *Runtime) Build(ctx context.Context, input *runtime.BuildInput) (*runtime.BuildOutput, error) {
+	log := slog.Default().With("service", "runtime.node").With("functionID", input.FunctionID)
+
 	r.concurrency.Acquire(ctx, 1)
 	defer r.concurrency.Release(1)
 	var properties NodeProperties
@@ -43,7 +45,7 @@ func (r *Runtime) Build(ctx context.Context, input *runtime.BuildInput) (*runtim
 
 	handler := "bundle" + filepath.Ext(input.Handler)
 	target := filepath.Join(input.Out(), "bundle"+extension)
-	slog.Info("loader info", "loader", properties.Loader)
+	log.Info("loader info", "loader", properties.Loader)
 
 	loader := map[string]esbuild.Loader{}
 	for key, value := range properties.Loader {
@@ -191,10 +193,10 @@ func (r *Runtime) Build(ctx context.Context, input *runtime.BuildInput) (*runtim
 		errors = append(errors, text)
 	}
 	for _, error := range result.Errors {
-		slog.Error("esbuild error", "error", error)
+		log.Error("esbuild error", "error", error)
 	}
 	for _, warning := range result.Warnings {
-		slog.Error("esbuild error", "error", warning)
+		log.Error("esbuild error", "error", warning)
 	}
 
 	if input.Dev {
@@ -231,6 +233,7 @@ func (r *Runtime) Build(ctx context.Context, input *runtime.BuildInput) (*runtim
 		}
 
 		if len(installPackages) > 0 {
+			log.Info("installing", "packages", installPackages)
 			src, err := fs.FindUp(filepath.Dir(target), "package.json")
 			if err != nil {
 				return nil, err
@@ -264,6 +267,7 @@ func (r *Runtime) Build(ctx context.Context, input *runtime.BuildInput) (*runtim
 
 			cmd := []string{
 				"install",
+				// npm will refuse to install packages if platform does not match
 				"--force",
 				"--platform=linux",
 				"--os=linux",
@@ -279,10 +283,13 @@ func (r *Runtime) Build(ctx context.Context, input *runtime.BuildInput) (*runtim
 			}
 			proc := process.Command("npm", cmd...)
 			proc.Dir = input.Out()
-			err = proc.Run()
+			log.Info("running npm", "cmd", cmd)
+			output, err := proc.CombinedOutput()
+			slog.Info("npm output", "output", string(output))
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed to run npm install: %w", err)
 			}
+			log.Info("done installing", "packages", installPackages)
 		}
 	}
 

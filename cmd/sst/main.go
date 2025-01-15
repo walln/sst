@@ -21,10 +21,8 @@ import (
 	"github.com/sst/sst/v3/internal/util"
 	"github.com/sst/sst/v3/pkg/flag"
 	"github.com/sst/sst/v3/pkg/global"
-	"github.com/sst/sst/v3/pkg/id"
 	"github.com/sst/sst/v3/pkg/process"
 	"github.com/sst/sst/v3/pkg/project"
-	"github.com/sst/sst/v3/pkg/project/provider"
 	"github.com/sst/sst/v3/pkg/telemetry"
 )
 
@@ -380,7 +378,8 @@ var root = &cli.Command{
 					"    servers started in a separate tab and are not deployed.",
 					"  - `Service` components are not deployed, and instead their `dev.command` is",
 					"    started in a separate tab.",
-					"  - `Postgres` and `Redis` link to a local database if the `dev` prop is set.",
+					"  - `Postgres`, `Aurora`, and `Redis` link to a local database if the `dev` prop is",
+					"    set.",
 					"- Start an [`sst tunnel`](#tunnel) session in a new tab if your app has a `Vpc`",
 					"  with `bastion` enabled.",
 					"- Load any [linked resources](/docs/linking) in the environment.",
@@ -1004,69 +1003,7 @@ var root = &cli.Command{
 			},
 			Run: CmdRefresh,
 		},
-		{
-			Name:   "state",
-			Hidden: true,
-			Description: cli.Description{
-				Short: "Manage state of your deployment",
-			},
-			Children: []*cli.Command{
-				{
-					Name: "edit",
-					Description: cli.Description{
-						Short: "Edit the state of your deployment",
-					},
-					Run: func(c *cli.Cli) error {
-						p, err := c.InitProject()
-						if err != nil {
-							return err
-						}
-						defer p.Cleanup()
-
-						var update provider.Update
-						update.Version = version
-						update.ID = id.Descending()
-						update.TimeStarted = time.Now().UTC().Format(time.RFC3339)
-						err = p.Lock(update.ID, "edit")
-						if err != nil {
-							return util.NewReadableError(err, "Could not lock state")
-						}
-						defer p.Unlock()
-						defer func() {
-							update.TimeCompleted = time.Now().UTC().Format(time.RFC3339)
-							provider.PutUpdate(p.Backend(), p.App().Name, p.App().Stage, update)
-						}()
-						workdir, err := p.NewWorkdir()
-						if err != nil {
-							return err
-						}
-						path, err := workdir.Pull()
-						if err != nil {
-							return util.NewReadableError(err, "Could not pull state")
-						}
-						defer workdir.Cleanup()
-						editor := os.Getenv("EDITOR")
-						if editor == "" {
-							editor = "vim"
-						}
-						editorArgs := append(strings.Fields(editor), path)
-						fmt.Println(editorArgs)
-						cmd := process.Command(editorArgs[0], editorArgs[1:]...)
-						cmd.Stdin = os.Stdin
-						cmd.Stdout = os.Stdout
-						cmd.Stderr = os.Stderr
-						if err := cmd.Start(); err != nil {
-							return util.NewReadableError(err, "Could not start editor")
-						}
-						if err := cmd.Wait(); err != nil {
-							return util.NewReadableError(err, "Editor exited with error")
-						}
-
-						return workdir.Push(update.ID)
-					},
-				},
-			},
-		},
+		CmdState,
 		CmdCert,
 		CmdTunnel,
 		CmdDiagnostic,

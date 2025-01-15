@@ -3,6 +3,7 @@ import path from "path";
 import crypto from "crypto";
 import archiver from "archiver";
 import type { BuildOptions, Loader } from "esbuild";
+import { glob } from "glob";
 import {
 	all,
 	asset,
@@ -49,9 +50,19 @@ export type FunctionArn = `arn:${string}` & {};
 
 export type FunctionPermissionArgs = {
 	/**
+	 * Configures whether the permission is allowed or denied.
+	 * @default `"allow"`
+	 * @example
+	 * ```ts
+	 * {
+	 *   effect: "deny"
+	 * }
+	 * ```
+	 */
+	effect?: "allow" | "deny";
+	/**
 	 * The [IAM actions](https://docs.aws.amazon.com/service-authorization/latest/reference/reference_policies_actions-resources-contextkeys.html#actions_table) that can be performed.
 	 * @example
-	 *
 	 * ```js
 	 * {
 	 *   actions: ["s3:*"]
@@ -62,7 +73,6 @@ export type FunctionPermissionArgs = {
 	/**
 	 * The resourcess specified using the [IAM ARN format](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_identifiers.html).
 	 * @example
-	 *
 	 * ```js
 	 * {
 	 *   resources: ["arn:aws:s3:::my-bucket/*"]
@@ -204,8 +214,21 @@ export interface FunctionArgs {
 	 */
 	live?: Input<false>;
 	/**
-	 * Disable running this function [Live](/docs/live/) in `sst dev`.
-	 * @default Live mode enabled in `sst dev`
+	 * Disable running this function [_Live_](/docs/live/) in `sst dev`.
+	 *
+	 * By default, the functions in your app are run locally in `sst dev`. To do this, a _stub_
+	 * version of your function is deployed, instead of the real function.
+	 *
+	 * :::note
+	 * In `sst dev` a _stub_ version of your function is deployed.
+	 * :::
+	 *
+	 * This shows under the **Functions** tab in the multiplexer sidebar where your invocations
+	 * are logged. You can turn this off by setting `dev` to `false`.
+	 *
+	 * Read more about [Live](/docs/live/) and [`sst dev`](/docs/reference/cli/#dev).
+	 *
+	 * @default `true`
 	 * @example
 	 * ```js
 	 * {
@@ -304,24 +327,27 @@ export interface FunctionArgs {
 	 */
 	bundle?: Input<string>;
 	/**
-	 * Path to the handler for the function with the format `{file}.{method}`.
+	 * Path to the handler for the function.
+	 *
+	 * - For Node.js this is in the format `{path}/{file}.{method}`.
+	 * - For Golang this is `{path}`.
+	 *
+	 * @example
+	 *
+	 * For example with Node.js you might have.
+	 *
+	 * ```js
+	 * {
+	 *   handler: "packages/functions/src/main.handler"
+	 * }
+	 * ```
+	 *
+	 * Where `packages/functions/src` is the path. And `main` is the file, where you might have
+	 * a `main.ts` or `main.js`. And `handler` is the method exported in that file.
 	 *
 	 * :::note
 	 * You don't need to specify the file extension.
 	 * :::
-	 *
-	 * The handler path is relative to the root your repo or the `sst.config.ts`.
-	 *
-	 * @example
-	 *
-	 * Here there is a file called `index.js` (or `.ts`) in the `packages/functions/src/`
-	 * directory with an exported method called `handler`.
-	 *
-	 * ```js
-	 * {
-	 *   handler: "packages/functions/src/index.handler"
-	 * }
-	 * ```
 	 *
 	 * If `bundle` is specified, the handler needs to be in the root of the bundle directory.
 	 *
@@ -331,6 +357,17 @@ export interface FunctionArgs {
 	 *   handler: "index.handler"
 	 * }
 	 * ```
+	 *
+	 * For Golang it might look like this.
+	 *
+	 * ```js
+	 * {
+	 *   handler: "packages/functions/src"
+	 * }
+	 * ```
+	 *
+	 * Where `packages/functions/src` is the path to your Go app. And the path is relative to the
+	 * root your repo or the `sst.config.ts`.
 	 */
 	handler: Input<string>;
 	/**
@@ -1727,21 +1764,21 @@ export class Function extends Component implements Link.Linkable {
 					iam.getPolicyDocumentOutput({
 						statements: [
 							...argsPermissions,
-							...linkPermissions.map((item) => ({
-								actions: item.actions,
-								resources: item.resources,
-							})),
+							...linkPermissions,
 							...(dev
 								? [
 										{
+											effect: "allow",
 											actions: ["appsync:*"],
 											resources: ["*"],
 										},
 										{
+											effect: "allow",
 											actions: ["iot:*"],
 											resources: ["*"],
 										},
 										{
+											effect: "allow",
 											actions: ["s3:*"],
 											resources: [
 												interpolate`arn:${partition}:s3:::${bootstrapData.asset}`,
@@ -1750,7 +1787,14 @@ export class Function extends Component implements Link.Linkable {
 										},
 									]
 								: []),
-						],
+						].map((item) => ({
+							effect: (() => {
+								const effect = item.effect ?? "allow";
+								return effect.charAt(0).toUpperCase() + effect.slice(1);
+							})(),
+							actions: item.actions,
+							resources: item.resources,
+						})),
 					}),
 			);
 
@@ -1923,17 +1967,42 @@ export class Function extends Component implements Link.Linkable {
 						});
 						archive.pipe(ws);
 
-						// set the date to 0 so that the zip file is deterministic
-						archive.glob(
-							"**",
+						const files = [];
+
+						for (const item of [
 							{
-								cwd: bundle,
+								from: bundle,
+								to: ".",
+								isDir: true,
+							},
+							...(!dev ? copyFiles : []),
+						]) {
+							if (!item.isDir) {
+								files.push({
+									from: item.from,
+									to: item.to,
+								});
+							}
+							const found = await glob("**", {
+								cwd: item.from,
 								dot: true,
 								ignore:
 									sourcemaps?.map((item) => path.relative(bundle, item)) || [],
-							},
-							{ date: new Date(0), mode: 0o777 },
-						);
+							});
+							files.push(
+								...found.map((file) => ({
+									from: path.join(item.from, file),
+									to: path.join(item.to, file),
+								})),
+							);
+						}
+						files.sort((a, b) => a.to.localeCompare(b.to));
+						for (const file of files) {
+							archive.file(file.from, {
+								name: file.to,
+								date: new Date(0),
+							});
+						}
 
 						// Add handler wrapper into the zip
 						if (wrapper) {
@@ -1943,19 +2012,6 @@ export class Function extends Component implements Link.Linkable {
 							});
 						}
 
-						// Add copyFiles into the zip
-						if (!dev) {
-							for (const entry of copyFiles) {
-								entry.isDir
-									? archive.directory(entry.from, entry.to, {
-											date: new Date(0),
-										})
-									: archive.file(entry.from, {
-											name: entry.to,
-											date: new Date(0),
-										});
-							}
-						}
 						await archive.finalize();
 					});
 
