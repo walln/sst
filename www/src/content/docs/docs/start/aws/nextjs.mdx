@@ -3,6 +3,12 @@ title: Next.js on AWS with SST
 description: Create and deploy a Next.js app to AWS with SST.
 ---
 
+import { Image } from "astro:assets"
+
+import nextApp from "../../../../../assets/docs/start/start-nextjs-local.png"
+import nextAppContainer from "../../../../../assets/docs/start/start-nextjs-local-container.png"
+import consoleAutodeploy from "../../../../../assets/docs/start/sst-console-autodeploy.png"
+
 There are two ways to deploy a Next.js app to AWS with SST.
 
 1. [Serverless with OpenNext](#serverless)
@@ -44,7 +50,7 @@ npx create-next-app@latest aws-nextjs
 cd aws-nextjs
 ```
 
-We are picking all the default options.
+We are picking **TypeScript** and not selecting **ESLint**.
 
 ---
 
@@ -215,7 +221,7 @@ npm install @aws-sdk/client-s3 @aws-sdk/s3-request-presigner
 
 Head over to the local Next.js app in your browser, `http://localhost:3000` and try **uploading an image**. You should see it upload and then download the image.
 
-![SST Next.js app local](../../../../../assets/docs/start/start-nextjs-local.png)
+<Image src={nextApp} alt="SST Next.js app local" />
 
 ---
 
@@ -254,7 +260,7 @@ npx create-next-app@latest aws-nextjs-container
 cd aws-nextjs-container
 ```
 
-We are picking all the default options.
+We are picking **TypeScript** and not selecting **ESLint**.
 
 ---
 
@@ -460,7 +466,7 @@ npm install @aws-sdk/client-s3 @aws-sdk/s3-request-presigner
 
 Head over to the local Next.js app in your browser, `http://localhost:3000` and try **uploading an image**. You should see it upload and then download the image.
 
-![SST Next.js app local](../../../../../assets/docs/start/start-nextjs-local-container.png)
+<Image src={nextAppContainer} alt="SST Next.js app local" />
 
 ---
 
@@ -547,7 +553,7 @@ Congrats! Your app should now be live!
 
 As a next step, you can setup the [SST Console](/docs/console/) to _**git push to deploy**_ your app and view logs from it.
 
-![SST Console Autodeploy](../../../../../assets/docs/start/sst-console-autodeploy.png)
+<Image src={consoleAutodeploy} alt="SST Console Autodeploy" />
 
 You can [create a free account](https://console.sst.dev) and connect it to your AWS account.
 

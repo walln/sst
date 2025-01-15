@@ -17,6 +17,7 @@ const sidebar = [
       { label: "Bun", slug: "docs/start/aws/bun" },
       { label: "Nuxt", slug: "docs/start/aws/nuxt" },
       { label: "Solid", slug: "docs/start/aws/solid" },
+      { label: "Auth", slug: "docs/start/aws/auth" },
       { label: "Deno", slug: "docs/start/aws/deno" },
       { label: "tRPC", slug: "docs/start/aws/trpc" },
       { label: "Hono", slug: "docs/start/aws/hono" },
