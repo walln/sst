@@ -1860,7 +1860,7 @@ function renderTransformResourceType() {
   return `<code class="type">Component Class</code>`;
 }
 function renderTransformCallbackType() {
-  return `<code class="type">(args, opts) => void</code>`;
+  return `<code class="type">(args, opts, name) => void</code>`;
 }
 
 /***************************************/

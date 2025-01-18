@@ -60,7 +60,7 @@ export class Component extends ComponentResource {
   ) {
     const transforms = ComponentTransforms.get(type) ?? [];
     for (const transform of transforms) {
-      transform({ props: args, opts });
+      transform({ name, props: args, opts });
     }
     super(type, name, args, {
       transformations: [
@@ -437,7 +437,7 @@ export class Component extends ComponentResource {
 const ComponentTransforms = new Map<string, any[]>();
 export function $transform<T, Args, Options>(
   resource: { new (name: string, args: Args, opts?: Options): T },
-  cb: (args: Args, opts: Options) => void,
+  cb: (args: Args, opts: Options, name: string) => void,
 ) {
   // @ts-expect-error
   const type = resource.__pulumiType;
@@ -448,14 +448,14 @@ export function $transform<T, Args, Options>(
       ComponentTransforms.set(type, transforms);
     }
     transforms.push((input: any) => {
-      cb(input.props, input.opts);
+      cb(input.props, input.opts, input.name);
       return input;
     });
     return;
   }
   runtime.registerStackTransformation((input) => {
     if (input.type !== type) return;
-    cb(input.props as any, input.opts as any);
+    cb(input.props as any, input.opts as any, input.name);
     return input;
   });
 }
