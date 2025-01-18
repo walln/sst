@@ -71,6 +71,15 @@ export module task {
     aws?: AwsOptions;
   }
 
+  export interface RunOptions extends Options {
+    /**
+     * Configure the capacity provider; regular Fargate or Fargate Spot, for this task.
+     *
+     * @default `"fargate"`
+     */
+    capacity?: "fargate" | "spot";
+  }
+
   interface Task {
     /**
      * The ARN of the task.
@@ -209,7 +218,7 @@ export module task {
   export async function run(
     resource: Resource,
     environment?: Record<string, string>,
-    options?: Options
+    options?: RunOptions
   ): Promise<RunResponse> {
     const c = await client();
     const u = url(c.region, options?.aws);
@@ -221,8 +230,14 @@ export module task {
         "Content-Type": "application/x-amz-json-1.1",
       },
       body: JSON.stringify({
+        capacityProviderStrategy: [
+          {
+            capacityProvider:
+              options?.capacity === "spot" ? "FARGATE_SPOT" : "FARGATE",
+            weight: 1,
+          },
+        ],
         cluster: resource.cluster,
-        launchType: "FARGATE",
         taskDefinition: resource.taskDefinition,
         networkConfiguration: {
           awsvpcConfiguration: {
@@ -280,7 +295,7 @@ export module task {
    * ```
    *
    * Stopping a task is asnychronous. When you call `stop`, AWS marks a task to be stopped,
-   * but it may take a few minutes for the task to actually stop. 
+   * but it may take a few minutes for the task to actually stop.
    *
    * :::note
    * Stopping a task in asyncrhonous.
