@@ -446,7 +446,7 @@ export interface ApiGatewayV2AuthorizerArgs {
      * }
      * ```
      */
-    function: Input<string | FunctionArgs>;
+    function: Input<string | FunctionArgs | FunctionArn>;
     /**
      * The JWT payload version.
      * @default `"2.0"`
