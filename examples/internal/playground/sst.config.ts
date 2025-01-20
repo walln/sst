@@ -154,9 +154,22 @@ export default $config({
       const api = new sst.aws.ApiGatewayV2("MyApiV2", {
         link: [bucket],
       });
-      api.route("GET /", {
-        handler: "functions/apiv2/index.handler",
+      const authorizer = api.addAuthorizer({
+        name: "MyAuthorizer",
+        lambda: {
+          function: "functions/apiv2/index.authorizer",
+          identitySources: [],
+        },
       });
+      api.route(
+        "GET /",
+        {
+          handler: "functions/apiv2/index.handler",
+        },
+        {
+          auth: { lambda: authorizer.id },
+        }
+      );
       return api;
     }
 
