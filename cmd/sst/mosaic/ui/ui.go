@@ -20,6 +20,7 @@ import (
 	"github.com/sst/sst/v3/cmd/sst/mosaic/cloudflare"
 	"github.com/sst/sst/v3/cmd/sst/mosaic/deployer"
 	"github.com/sst/sst/v3/cmd/sst/mosaic/ui/common"
+	"github.com/sst/sst/v3/pkg/flag"
 	"github.com/sst/sst/v3/pkg/project"
 
 	"golang.org/x/crypto/ssh/terminal"
@@ -586,6 +587,9 @@ func (u *UI) Destroy() {
 func (u *UI) header(version, app, stage string) {
 	if u.hasHeader {
 		return
+	}
+	if flag.SST_EXPERIMENTAL_RUN {
+		version = version + " (experimental)"
 	}
 	u.println(
 		TEXT_HIGHLIGHT_BOLD.Render("SST "+version),
