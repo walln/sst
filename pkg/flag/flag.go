@@ -18,4 +18,6 @@ var SST_SKIP_DEPENDENCY_CHECK = os.Getenv("SST_SKIP_DEPENDENCY_CHECK") != ""
 var SST_TELEMETRY_DISABLED = os.Getenv("SST_TELEMETRY_DISABLED") == "1" || os.Getenv("DO_NOT_TRACK") == "1"
 var SST_BUN_VERSION = os.Getenv("SST_BUN_VERSION")
 var SST_VERBOSE = os.Getenv("SST_VERBOSE") != ""
+var SST_EXPERIMENTAL_RUN = os.Getenv("SST_EXPERIMENTAL_RUN") != ""
+
 var NO_BUN = os.Getenv("NO_BUN") != ""

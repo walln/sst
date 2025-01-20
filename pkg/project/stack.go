@@ -170,7 +170,7 @@ var ErrStageNotFound = fmt.Errorf("stage not found")
 var ErrPassphraseInvalid = fmt.Errorf("passphrase invalid")
 var ErrProtectedStage = fmt.Errorf("cannot remove protected stage")
 
-func (p *Project) Run(ctx context.Context, input *StackInput) error {
+func (p *Project) RunOld(ctx context.Context, input *StackInput) error {
 	slog.Info("running stack command", "cmd", input.Command)
 
 	if p.app.Protect && input.Command == "remove" {
@@ -307,7 +307,7 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 	}
 	slog.Info("built stack")
 
-	completed, err := getCompletedEvent(ctx, stack)
+	completed, err := getCompletedEvent(ctx, passphrase, workdir)
 	if err != nil {
 		bus.Publish(&BuildFailedEvent{
 			Error: err.Error(),
@@ -635,7 +635,7 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 	}
 
 	slog.Info("parsing state")
-	complete, err := getCompletedEvent(context.Background(), stack)
+	complete, err := getCompletedEvent(context.Background(), passphrase, workdir)
 	if err != nil {
 		return err
 	}
