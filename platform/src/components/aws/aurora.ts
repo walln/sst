@@ -1225,22 +1225,24 @@ Listening on "${dev.host}:${dev.port}"...`,
         port: this.port,
         host: this.host,
       },
-      include: [
-        permission({
-          actions: ["secretsmanager:GetSecretValue"],
-          resources: [this.secretArn],
-        }),
-        permission({
-          actions: [
-            "rds-data:BatchExecuteStatement",
-            "rds-data:BeginTransaction",
-            "rds-data:CommitTransaction",
-            "rds-data:ExecuteStatement",
-            "rds-data:RollbackTransaction",
+      include: this.dev?.enabled
+        ? []
+        : [
+            permission({
+              actions: ["secretsmanager:GetSecretValue"],
+              resources: [this.secretArn],
+            }),
+            permission({
+              actions: [
+                "rds-data:BatchExecuteStatement",
+                "rds-data:BeginTransaction",
+                "rds-data:CommitTransaction",
+                "rds-data:ExecuteStatement",
+                "rds-data:RollbackTransaction",
+              ],
+              resources: [this.clusterArn],
+            }),
           ],
-          resources: [this.clusterArn],
-        }),
-      ],
     };
   }
 
