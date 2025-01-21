@@ -285,34 +285,11 @@ With Issues, there is:
 - **Source maps** are supported **automatically**
 - **No impact on performance** or cold starts, since the functions aren't modified
 
-:::tip
+:::note
 Issues works out of the box and has no impact on performance or cold starts.
 :::
 
 Issues currently only supports Node.js functions. Other runtimes and containers are on the roadmap.
-
----
-
-#### Behind the scenes
-
-Here's how it works.
-
-1. When an app is deployed or when an account is first synced, we add a log subscriber to your Lambda functions. 
-   - There's a maximum of 2 subscribers allowed. More on this below.
-2. The subscriber filters for anything that looks like an error and processes those log lines.
-3. It applies the source maps to the error stack trace.
-4. Finally, it groups similar looking errors together.
-
----
-
-#### Log subscriber
-
-The process of adding a log subscriber to your Lambda functions might fail. This can happen if:
-
-- We don't have enough permissions to add a subscriber. In this case, update the permissions that you've granted to the Console.
-- We've hit the limit for the number of subscribers. To fix this, you can remove one of the existing subscribers.
-
-You can see these errors in the Issues tab. Once you've fixed these issues, you can hit **Retry** and it'll try attaching the subscriber again. 
 
 ---
 
@@ -332,9 +309,51 @@ console.error(new Error("my-error"));
 
 ---
 
-#### Limits
+#### How it works
 
-There's a soft limit of 10K issues per hour per workspace. If your account goes over this limit, Issues will be temporarily paused. You can [contact us][contact-us] if this happens.
+Here's how Issues works behind the scenes.
+
+1. When an app is deployed or when an account is first synced, we add a log subscriber to the CloudWatch Log groups in your SST apps.
+   - This is added to your AWS account and includes a Lambda function. More on this below.
+2. If the subscriber filter matches anything that looks like an error it invokes the Lambda function.
+3. The Lambda function tries to parse the error and fetches the source maps from the state bucket in your account.
+4. It then hits an endpoint in the SST Console and passes in that error.
+5. Finally, the Console groups similar looking errors together and displays them.
+
+---
+
+#### Log subscriber
+
+The log subscriber also includes the following:
+
+1. **Lambda function** that'll be invoked when a log with an error is matched.
+   - This function has a max concurrency set to 10.
+   - If it falls behind on processing by over 10 minutes, it'll discard the logs.
+   - This prevents it from scaling indefinitely when there's a burst of errors.
+   - This also means that if there are a lot of errors, the alerts might be delayed by up to 10 minutes.
+2. **IAM role** that gives it access to query the logs and the state bucket for the source maps.
+3. **Log group** with a 1 day retention.
+
+These are added to **every region** in your AWS account that has a CloudWatch log group from your SST apps. It's deployed using a CloudFormation stack.
+
+This process of adding a log subscriber might fail if we:
+
+- Don't have enough permissions. In this case, update the permissions that you've granted to the Console.
+- Hit the limit for the number of subscribers, there's a maximum of 2 subscribers. To fix this, you can remove one of the existing subscribers.
+
+You can see these errors in the Issues tab. Once you've fixed these issues, you can hit **Retry** and it'll try attaching the subscriber again. 
+
+---
+
+#### Costs
+
+AWS will bill you for the Lambda function log subscriber that's in your account. This is usually fairly minimal.
+
+Even if your apps are generating an infinite number of errors, the Lambda function is limited to a concurrency of 10. So the **maximum** you'll be charged $43 x 10 = **$430 per month x # of regions** that are being monitored.
+
+You can also disable Issues from your workspace settings, if you are using a separate service for monitoring.
+
+[Learn more about Lambda pricing](https://aws.amazon.com/lambda/pricing/).
 
 ---
 
@@ -422,8 +441,6 @@ We designed Autodeploy to be a better fit for SST apps when compared to alternat
 4. **Integrates with the Console**
    - You can see which resources were updated in a deploy.
    - Your resource updates will also show you the related git commit.
-
-Autodeploy is free while in beta. But AWS will charge you for the CodeBuild build minutes that are used. [Learn more about CodeBuild pricing](https://aws.amazon.com/codebuild/pricing/).
 
 ---
 
@@ -611,6 +628,12 @@ Both `target` and `runner` are optional and come with defaults, but they can be 
 
 ---
 
+#### Costs
+
+AWS will bill you for the **CodeBuild build minutes** that are used to run your builds. [Learn more about CodeBuild pricing](https://aws.amazon.com/codebuild/pricing/).
+
+---
+
 ## FAQ
 
 Here are some frequently asked questions about the Console.
@@ -623,7 +646,7 @@ Here are some frequently asked questions about the Console.
 
 - Is there a free tier?
 
-  If your workspace has less than 350 active resources for the month, it's considered to be in the free tier. This count also resets every month.
+  If your workspace has 350 active resources or fewer for the month, it's considered to be in the free tier. This count also resets every month.
 
 - What happens if I go over the free tier?
 
