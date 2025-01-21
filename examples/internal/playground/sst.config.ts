@@ -334,9 +334,10 @@ export default $config({
       const cron = new sst.aws.Cron("MyCron", {
         schedule: "rate(1 minute)",
         function: {
-          handler: "functions/handler-example/index.handler",
+          handler: "functions/cron/index.handler",
           link: [bucket],
         },
+        event: { foo: "bar" },
       });
       ret.cron = cron.nodes.function.name;
       return cron;
