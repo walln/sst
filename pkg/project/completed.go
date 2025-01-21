@@ -29,15 +29,6 @@ func (p *Project) GetCompleted(ctx context.Context) (*CompleteEvent, error) {
 }
 
 func getCompletedEvent(ctx context.Context, passphrase string, workdir *PulumiWorkdir) (*CompleteEvent, error) {
-	checkpoint, err := workdir.Export()
-	if err != nil {
-		return nil, err
-	}
-	decrypted, err := state.Decrypt(ctx, passphrase, checkpoint)
-	if err != nil {
-		return nil, err
-	}
-	deployment := decrypted.Latest
 	complete := &CompleteEvent{
 		Links:       common.Links{},
 		Versions:    map[string]int{},
@@ -51,6 +42,15 @@ func getCompletedEvent(ctx context.Context, passphrase string, workdir *PulumiWo
 		Finished:    false,
 		Resources:   []apitype.ResourceV3{},
 	}
+	checkpoint, err := workdir.Export()
+	if err != nil {
+		return nil, err
+	}
+	decrypted, err := state.Decrypt(ctx, passphrase, checkpoint)
+	if err != nil {
+		return nil, err
+	}
+	deployment := decrypted.Latest
 	if len(deployment.Resources) == 0 {
 		return complete, nil
 	}

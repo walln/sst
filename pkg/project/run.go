@@ -70,20 +70,50 @@ func (p *Project) RunNext(ctx context.Context, input *StackInput) error {
 	}
 	defer workdir.Cleanup()
 
+	passphrase, err := provider.Passphrase(p.home, p.app.Name, p.app.Stage)
+	if err != nil {
+		return err
+	}
+
+	outfile := filepath.Join(p.PathPlatformDir(), fmt.Sprintf("sst.config.%v.mjs", time.Now().UnixMilli()))
+	os.WriteFile(
+		filepath.Join(workdir.path, "Pulumi.yaml"),
+		[]byte("name: "+p.app.Name+"\nruntime: nodejs\nmain: "+outfile+"\n"),
+		0644,
+	)
+	pulumiStdout, err := os.Create(p.PathLog("pulumi"))
+	if err != nil {
+		return err
+	}
+	defer pulumiStdout.Close()
+	pulumiStderr, err := os.Create(p.PathLog("pulumi.err"))
+	if err != nil {
+		return err
+	}
+	defer pulumiStderr.Close()
 	statePath, err := workdir.Pull()
 	if err != nil {
 		if errors.Is(err, provider.ErrStateNotFound) {
 			if input.Command != "deploy" {
 				return ErrStageNotFound
 			}
+			cmd := process.Command(global.PulumiPath(), "stack", "init", "organization/"+p.app.Name+"/"+p.app.Stage)
+			cmd.Stdout = pulumiStdout
+			cmd.Stderr = pulumiStderr
+			cmd.Dir = workdir.path
+			cmd.Env = os.Environ()
+			cmd.Env = append(cmd.Env,
+				"PULUMI_BACKEND_URL=file://"+workdir.Backend(),
+				"PULUMI_CONFIG_PASSPHRASE="+passphrase,
+			)
+			err := cmd.Run()
+			if err != nil {
+				return err
+			}
+
 		} else {
 			return err
 		}
-	}
-
-	passphrase, err := provider.Passphrase(p.home, p.app.Name, p.app.Stage)
-	if err != nil {
-		return err
 	}
 
 	completed, err := getCompletedEvent(ctx, passphrase, workdir)
@@ -127,7 +157,6 @@ func (p *Project) RunNext(ctx context.Context, input *StackInput) error {
 	}
 	providerShim = append(providerShim, fmt.Sprintf("import * as sst from \"%s\";", path.Join(p.PathPlatformDir(), "src/components")))
 
-	outfile := filepath.Join(p.PathPlatformDir(), fmt.Sprintf("sst.config.%v.mjs", time.Now().UnixMilli()))
 	buildResult, err := js.Build(js.EvalOptions{
 		Dir:     p.PathRoot(),
 		Outfile: outfile,
@@ -235,15 +264,11 @@ func (p *Project) RunNext(ctx context.Context, input *StackInput) error {
 		pulumiPath = filepath.Join(global.BinPath(), "..")
 	}
 
-	os.WriteFile(
-		filepath.Join(workdir.path, "Pulumi.yaml"),
-		[]byte("name: "+p.app.Name+"\nruntime: nodejs\nmain: "+outfile+"\n"),
-		0644,
-	)
 	eventLogPath := filepath.Join(workdir.path, "event.log")
 	args := []string{
 		"--stack", fmt.Sprintf("organization/%v/%v", p.app.Name, p.app.Stage),
 		"--non-interactive",
+		"--yes",
 		"--event-log", eventLogPath,
 		"-f",
 	}
@@ -281,8 +306,8 @@ func (p *Project) RunNext(ctx context.Context, input *StackInput) error {
 	}
 	cmd := process.Command(filepath.Join(pulumiPath, "bin/pulumi"), args...)
 	cmd.Env = env
-	cmd.Stdout, _ = os.Create(p.PathLog("pulumi"))
-	cmd.Stderr, _ = os.Create(p.PathLog("pulumi.err"))
+	cmd.Stdout = pulumiStdout
+	cmd.Stderr = pulumiStderr
 	cmd.Dir = workdir.Backend()
 	slog.Info("starting pulumi", "args", cmd.Args)
 
