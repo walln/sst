@@ -588,7 +588,7 @@ func (u *UI) header(version, app, stage string) {
 	if u.hasHeader {
 		return
 	}
-	if flag.SST_EXPERIMENTAL_RUN {
+	if flag.SST_EXPERIMENTAL {
 		version = version + " (experimental)"
 	}
 	u.println(

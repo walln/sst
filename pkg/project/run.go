@@ -30,7 +30,7 @@ import (
 )
 
 func (p *Project) Run(ctx context.Context, input *StackInput) error {
-	if flag.SST_EXPERIMENTAL_RUN {
+	if flag.SST_EXPERIMENTAL {
 		slog.Info("using next run system")
 		return p.RunNext(ctx, input)
 	}
