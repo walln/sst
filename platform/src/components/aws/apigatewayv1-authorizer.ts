@@ -166,7 +166,7 @@ export class ApiGatewayV1Authorizer extends Component {
           throw new VisibleError(
             "Cannot access `nodes.function` because the data source does not use a Lambda function.",
           );
-        return self.fn;
+        return self.fn.apply((fn) => fn.getFunction());
       },
     };
   }
