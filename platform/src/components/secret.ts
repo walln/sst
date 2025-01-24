@@ -78,6 +78,8 @@ export class SecretMissingError extends VisibleError {
  * console.log(mySecret.value);
  * ```
  *
+ * This is an [Output](/docs/components#outputs) that can be used as an Input to other components.
+ *
  * #### Link the secret to a resource
  *
  * You can link the secret to other resources, like a function or your Next.js app.
