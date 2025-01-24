@@ -88,11 +88,12 @@ var CmdDiagnostic = &cli.Command{
 		if err != nil {
 			return err
 		}
+		defer workdir.Cleanup()
+
 		statePath, err := workdir.Pull()
 		if err != nil {
 			return err
 		}
-		defer workdir.Cleanup()
 		err = addFile(statePath, "state.json")
 		if err != nil {
 			return err

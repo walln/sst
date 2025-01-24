@@ -3,11 +3,13 @@ package project
 import (
 	"encoding/json"
 	"fmt"
+
+	"os"
+	"path/filepath"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/sst/sst/v3/pkg/id"
 	"github.com/sst/sst/v3/pkg/project/provider"
-	"os"
-	"path/filepath"
 )
 
 type PulumiWorkdir struct {

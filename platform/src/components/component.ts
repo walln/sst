@@ -490,3 +490,9 @@ export class Version extends ComponentResource {
     this.registerOutputs({ target, version });
   }
 }
+
+export type ComponentVersion = { major: number; minor: number };
+export function parseComponentVersion(version: string): ComponentVersion {
+  const [major, minor] = version.split(".");
+  return { major: parseInt(major), minor: parseInt(minor) };
+}
