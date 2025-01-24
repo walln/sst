@@ -2774,10 +2774,12 @@ export class Cluster extends Component {
   }
 }
 
+/** @internal */
 export function normalizeArchitecture(args: ClusterTaskArgs) {
   return output(args.architecture ?? "x86_64").apply((v) => v);
 }
 
+/** @internal */
 export function normalizeCpu(args: ClusterTaskArgs) {
   return output(args.cpu ?? "0.25 vCPU").apply((v) => {
     if (!supportedCpus[v]) {
@@ -2791,6 +2793,7 @@ export function normalizeCpu(args: ClusterTaskArgs) {
   });
 }
 
+/** @internal */
 export function normalizeMemory(
   cpu: ReturnType<typeof normalizeCpu>,
   args: ClusterTaskArgs,
@@ -2807,6 +2810,7 @@ export function normalizeMemory(
   });
 }
 
+/** @internal */
 export function normalizeStorage(args: ClusterTaskArgs) {
   return output(args.storage ?? "20 GB").apply((v) => {
     const storage = toGBs(v);
@@ -2818,6 +2822,7 @@ export function normalizeStorage(args: ClusterTaskArgs) {
   });
 }
 
+/** @internal */
 export function normalizeContainers(
   type: "service" | "task",
   args: ClusterServiceArgs,
@@ -2909,6 +2914,7 @@ export function normalizeContainers(
   );
 }
 
+/** @internal */
 export function createTaskRole(
   name: string,
   args: ClusterTaskArgs,
@@ -2968,6 +2974,7 @@ export function createTaskRole(
   );
 }
 
+/** @internal */
 export function createExecutionRole(
   name: string,
   args: ClusterTaskArgs,
@@ -3020,6 +3027,7 @@ export function createExecutionRole(
   );
 }
 
+/** @internal */
 export function createTaskDefinition(
   name: string,
   args: ServiceArgs,
