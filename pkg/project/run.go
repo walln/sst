@@ -12,6 +12,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/events"
@@ -38,7 +39,8 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 }
 
 func (p *Project) RunNext(ctx context.Context, input *StackInput) error {
-	slog.Info("running stack command", "cmd", input.Command)
+	log := slog.Default().With("service", "project.run")
+	log.Info("running stack command", "cmd", input.Command)
 
 	if p.app.Protect && input.Command == "remove" {
 		return ErrProtectedStage
@@ -121,13 +123,13 @@ func (p *Project) RunNext(ctx context.Context, input *StackInput) error {
 		bus.Publish(&BuildFailedEvent{
 			Error: err.Error(),
 		})
-		slog.Info("state file might be corrupted", "err", err)
+		log.Info("state file might be corrupted", "err", err)
 		return err
 	}
 	completed.Finished = true
 	completed.Old = true
 	bus.Publish(completed)
-	slog.Info("got previous deployment")
+	log.Info("got previous deployment")
 
 	cli := map[string]interface{}{
 		"command": input.Command,
@@ -210,7 +212,7 @@ func (p *Project) RunNext(ctx context.Context, input *StackInput) error {
 		Files: files,
 		Hash:  buildResult.OutputFiles[0].Hash,
 	})
-	slog.Info("tracked files")
+	log.Info("tracked files")
 
 	secrets := map[string]string{}
 	fallback := map[string]string{}
@@ -305,11 +307,12 @@ func (p *Project) RunNext(ctx context.Context, input *StackInput) error {
 		args = append([]string{"destroy"}, args...)
 	}
 	cmd := process.Command(filepath.Join(pulumiPath, "bin/pulumi"), args...)
+	process.Detach(cmd)
 	cmd.Env = env
 	cmd.Stdout = pulumiStdout
 	cmd.Stderr = pulumiStderr
 	cmd.Dir = workdir.Backend()
-	slog.Info("starting pulumi", "args", cmd.Args)
+	log.Info("starting pulumi", "args", cmd.Args)
 
 	eventlog, err := os.Create(p.PathLog("event"))
 	if err != nil {
@@ -362,9 +365,9 @@ func (p *Project) RunNext(ctx context.Context, input *StackInput) error {
 
 	go func() {
 		<-ctx.Done()
-		// if cmd.Process != nil {
-		// 	cmd.Process.Signal(syscall.SIGINT)
-		// }
+		if cmd.Process != nil {
+			cmd.Process.Signal(syscall.SIGINT)
+		}
 	}()
 
 	eventLog, err := os.OpenFile(eventLogPath, os.O_RDWR|os.O_CREATE, 0644)
@@ -475,7 +478,7 @@ loop:
 		return err
 	}
 
-	slog.Info("parsing state")
+	log.Info("parsing state")
 	complete, err := getCompletedEvent(context.Background(), passphrase, workdir)
 	if err != nil {
 		return err
@@ -513,7 +516,7 @@ loop:
 		}
 	}
 
-	slog.Info("done running stack command")
+	log.Info("done running stack command")
 	if cmd.ProcessState.ExitCode() > 0 {
 		return ErrStackRunFailed
 	}
