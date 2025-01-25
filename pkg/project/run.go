@@ -358,15 +358,20 @@ func (p *Project) RunNext(ctx context.Context, input *StackInput) error {
 	if err != nil {
 		return err
 	}
-	exited := make(chan error)
+	exited := make(chan error, 1)
 	go func() {
 		exited <- cmd.Wait()
+		log.Info("pulumi exited", "err", err)
 	}()
 
 	go func() {
 		<-ctx.Done()
 		if cmd.Process != nil {
-			cmd.Process.Signal(syscall.SIGINT)
+			log.Info("sending interrupt")
+			err := cmd.Process.Signal(syscall.SIGINT)
+			if err != nil {
+				log.Error("failed to send interrupt", "err", err)
+			}
 		}
 	}()
 
@@ -377,6 +382,7 @@ func (p *Project) RunNext(ctx context.Context, input *StackInput) error {
 	reader := bufio.NewReader(eventLog)
 loop:
 	for {
+		log.Info("waiting for event")
 		bytes, err := reader.ReadBytes('\n')
 		if err != nil {
 			if err == io.EOF {
@@ -388,7 +394,8 @@ loop:
 					continue
 				}
 			}
-			return err
+			slog.Error("failed to read event", "err", err)
+			continue
 		}
 		var event events.EngineEvent
 		err = json.Unmarshal(bytes, &event)
@@ -466,7 +473,8 @@ loop:
 
 		bytes, err = json.Marshal(event)
 		if err != nil {
-			break
+			log.Info("failed to marshal event", "err", err)
+			continue
 		}
 		eventlog.Write(bytes)
 		eventlog.WriteString("\n")
