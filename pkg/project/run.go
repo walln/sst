@@ -394,7 +394,7 @@ loop:
 					continue
 				}
 			}
-			slog.Error("failed to read event", "err", err)
+			log.Error("failed to read event", "err", err)
 			continue
 		}
 		var event events.EngineEvent
@@ -480,7 +480,9 @@ loop:
 		eventlog.WriteString("\n")
 	}
 
+	log.Info("sending final partial")
 	partial <- 0
+	log.Info("waiting for final partial")
 	err = <-partialDone
 	if err != nil {
 		return err
