@@ -259,7 +259,7 @@ func (p *Project) RunNext(ctx context.Context, input *StackInput) error {
 		"PULUMI_HOME="+global.ConfigDir(),
 	)
 	if input.ServerPort != 0 {
-		env = append(env, "SST_SERVER=http://localhost:"+fmt.Sprint(input.ServerPort))
+		env = append(env, "SST_SERVER=http://127.0.0.1:"+fmt.Sprint(input.ServerPort))
 	}
 	pulumiPath := flag.SST_PULUMI_PATH
 	if pulumiPath == "" {
