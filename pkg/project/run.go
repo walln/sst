@@ -26,7 +26,6 @@ import (
 	"github.com/sst/sst/v3/pkg/project/provider"
 	"github.com/sst/sst/v3/pkg/telemetry"
 	"github.com/sst/sst/v3/pkg/types"
-	"github.com/zeebo/xxh3"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -70,7 +69,7 @@ func (p *Project) RunNext(ctx context.Context, input *StackInput) error {
 	if err != nil {
 		return err
 	}
-	defer workdir.Cleanup()
+	// defer workdir.Cleanup()
 
 	passphrase, err := provider.Passphrase(p.home, p.app.Name, p.app.Stage)
 	if err != nil {
@@ -93,7 +92,7 @@ func (p *Project) RunNext(ctx context.Context, input *StackInput) error {
 		return err
 	}
 	defer pulumiStderr.Close()
-	statePath, err := workdir.Pull()
+	_, err = workdir.Pull()
 	if err != nil {
 		if errors.Is(err, provider.ErrStateNotFound) {
 			if input.Command != "deploy" {
@@ -254,7 +253,7 @@ func (p *Project) RunNext(ctx context.Context, input *StackInput) error {
 		"PULUMI_SKIP_UPDATE_CHECK=true",
 		"PULUMI_BACKEND_URL=file://"+workdir.Backend(),
 		"PULUMI_DEBUG_COMMANDS=true",
-		"PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=true",
+		// "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=true",
 		"NODE_OPTIONS=--enable-source-maps --no-deprecation",
 		"PULUMI_HOME="+global.ConfigDir(),
 	)
@@ -266,13 +265,17 @@ func (p *Project) RunNext(ctx context.Context, input *StackInput) error {
 		pulumiPath = filepath.Join(global.BinPath(), "..")
 	}
 
-	eventLogPath := filepath.Join(workdir.path, "event.log")
+	eventlogPath := workdir.EventLogPath()
+	eventlog, err := os.OpenFile(eventlogPath, os.O_RDWR|os.O_CREATE, 0644)
+	if err != nil {
+		return err
+	}
+	defer eventlog.Close()
+
 	args := []string{
 		"--stack", fmt.Sprintf("organization/%v/%v", p.app.Name, p.app.Stage),
 		"--non-interactive",
-		"--yes",
-		"--event-log", eventLogPath,
-		"-f",
+		"--event-log", eventlogPath,
 	}
 
 	if input.Command == "deploy" || input.Command == "diff" {
@@ -298,13 +301,13 @@ func (p *Project) RunNext(ctx context.Context, input *StackInput) error {
 
 	switch input.Command {
 	case "diff":
-		args = append([]string{"diff"}, args...)
+		args = append([]string{"preview"}, args...)
 	case "refresh":
 		args = append([]string{"refresh"}, args...)
 	case "deploy":
-		args = append([]string{"up"}, args...)
+		args = append([]string{"up", "--yes", "-f"}, args...)
 	case "remove":
-		args = append([]string{"destroy"}, args...)
+		args = append([]string{"destroy", "--yes", "-f"}, args...)
 	}
 	cmd := process.Command(filepath.Join(pulumiPath, "bin/pulumi"), args...)
 	process.Detach(cmd)
@@ -314,40 +317,27 @@ func (p *Project) RunNext(ctx context.Context, input *StackInput) error {
 	cmd.Dir = workdir.Backend()
 	log.Info("starting pulumi", "args", cmd.Args)
 
-	eventlog, err := os.Create(p.PathLog("event"))
-	if err != nil {
-		return err
-	}
-	defer eventlog.Close()
-
 	errors := []Error{}
 	finished := false
 	importDiffs := map[string][]ImportDiff{}
+
 	partial := make(chan int, 1000)
+	partialContext, partialCancel := context.WithCancel(ctx)
+	defer partialCancel()
 	partialDone := make(chan error)
 	go func() {
-		last := uint64(0)
+		if input.Command == "diff" {
+			return
+		}
 		for {
 			select {
-			case cmd := <-partial:
-				data, err := os.ReadFile(statePath)
-				if err == nil {
-					next := xxh3.Hash(data)
-					if next != last && next != 0 && input.Command != "diff" {
-						err := provider.PushPartialState(p.Backend(), updateID, p.App().Name, p.App().Stage, data)
-						if err != nil && cmd == 0 {
-							partialDone <- err
-							return
-						}
-					}
-					last = next
-					if cmd == 0 {
-						partialDone <- provider.PushSnapshot(p.Backend(), updateID, p.App().Name, p.App().Stage, data)
-						return
-					}
-				}
+			case <-partialContext.Done():
+				partialDone <- nil
+				return
+			case <-partial:
+				workdir.PushPartial(updateID)
 			case <-time.After(time.Second * 5):
-				partial <- 1
+				workdir.PushPartial(updateID)
 				continue
 			}
 		}
@@ -375,14 +365,9 @@ func (p *Project) RunNext(ctx context.Context, input *StackInput) error {
 		}
 	}()
 
-	eventLog, err := os.OpenFile(eventLogPath, os.O_RDWR|os.O_CREATE, 0644)
-	if err != nil {
-		return err
-	}
-	reader := bufio.NewReader(eventLog)
+	reader := bufio.NewReader(eventlog)
 loop:
 	for {
-		log.Info("waiting for event")
 		bytes, err := reader.ReadBytes('\n')
 		if err != nil {
 			if err == io.EOF {
@@ -476,16 +461,18 @@ loop:
 			log.Info("failed to marshal event", "err", err)
 			continue
 		}
-		eventlog.Write(bytes)
-		eventlog.WriteString("\n")
 	}
 
-	log.Info("sending final partial")
-	partial <- 0
-	log.Info("waiting for final partial")
-	err = <-partialDone
-	if err != nil {
-		return err
+	if input.Command != "diff" {
+		log.Info("canceling partial")
+		partialCancel()
+		log.Info("waiting for partial to exit")
+		<-partialDone
+
+		err = workdir.Push(updateID)
+		if err != nil {
+			return err
+		}
 	}
 
 	log.Info("parsing state")
