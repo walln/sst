@@ -11,7 +11,7 @@ export type PostType = {
 
 export const fetchPost = createServerFn({ method: 'GET' })
   .middleware([logMiddleware])
-  .validator((d: string) => d)
+  .validator((d) => d as string)
   .handler(async ({ data }) => {
     console.info(`Fetching post with id ${data}...`)
     const post = await axios
