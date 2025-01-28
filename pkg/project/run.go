@@ -54,6 +54,7 @@ func (p *Project) RunNext(ctx context.Context, input *StackInput) error {
 	})
 
 	updateID := id.Descending()
+	log = log.With("updateID", updateID)
 	if input.Command != "diff" {
 		err := p.Lock(updateID, input.Command)
 		if err != nil {
@@ -368,6 +369,7 @@ func (p *Project) RunNext(ctx context.Context, input *StackInput) error {
 	reader := bufio.NewReader(eventlog)
 loop:
 	for {
+		log.Info("waiting for event")
 		bytes, err := reader.ReadBytes('\n')
 		if err != nil {
 			if err == io.EOF {
