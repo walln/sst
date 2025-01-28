@@ -15,9 +15,7 @@ export class SecretMissingError extends VisibleError {
 /**
  * The `Secret` component lets you create secrets in your app.
  *
- * :::note
- * Secrets are encrypted when they are stored in your state file or in a function package.
- * :::
+ * <VideoAside title="Watch a video on how secrets work" href="https://youtu.be/7tW2L3P6LKw" />
  *
  * Secrets are encrypted and stored in an S3 Bucket in your AWS account. If used in
  * your app config, they'll be encrypted in your state file as well. If used in
