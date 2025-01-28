@@ -304,7 +304,7 @@ func (p *Project) RunNext(ctx context.Context, input *StackInput) error {
 	case "diff":
 		args = append([]string{"preview"}, args...)
 	case "refresh":
-		args = append([]string{"refresh"}, args...)
+		args = append([]string{"refresh", "--yes"}, args...)
 	case "deploy":
 		args = append([]string{"up", "--yes", "-f"}, args...)
 	case "remove":
