@@ -463,18 +463,6 @@ loop:
 		}
 	}
 
-	if input.Command != "diff" {
-		log.Info("canceling partial")
-		partialCancel()
-		log.Info("waiting for partial to exit")
-		<-partialDone
-
-		err = workdir.Push(updateID)
-		if err != nil {
-			return err
-		}
-	}
-
 	log.Info("parsing state")
 	complete, err := getCompletedEvent(context.Background(), passphrase, workdir)
 	if err != nil {
@@ -485,8 +473,17 @@ loop:
 	complete.ImportDiffs = importDiffs
 	types.Generate(p.PathConfig(), complete.Links)
 	defer bus.Publish(complete)
-	if input.Command == "diff" {
-		return err
+
+	if input.Command != "diff" {
+		log.Info("canceling partial")
+		partialCancel()
+		log.Info("waiting for partial to exit")
+		<-partialDone
+
+		err = workdir.Push(updateID)
+		if err != nil {
+			return err
+		}
 	}
 
 	outputsFilePath := filepath.Join(p.PathWorkingDir(), "outputs.json")

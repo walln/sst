@@ -13,6 +13,7 @@ import (
 	"sync"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	appsyncSdk "github.com/aws/aws-sdk-go-v2/service/appsync"
@@ -79,10 +80,9 @@ func (a *AwsProvider) Init(app string, stage string, args map[string]interface{}
 
 	cfg, err := config.LoadDefaultConfig(
 		ctx,
+		config.WithRetryMaxAttempts(10),
 		func(lo *config.LoadOptions) error {
-			if a.profile != "" {
-				lo.SharedConfigProfile = a.profile
-			}
+			lo.SharedConfigProfile = a.profile
 			if region, ok := args["region"].(string); ok && region != "" {
 				lo.Region = region
 				lo.DefaultRegion = "us-east-1"
