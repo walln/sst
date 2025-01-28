@@ -38,6 +38,7 @@
     "archiver": "6.0.1",
     "astro-sst": "2.40.1",
     "aws4fetch": "1.0.18",
+    "bun": "1.2.1",
     "esbuild": "0.20.2",
     "glob": "10.3.10",
     "prettier": "3.1.1",
@@ -50,7 +51,6 @@
     "@pulumiverse/vercel": "1.11.0",
     "@types/archiver": "6.0.2",
     "@types/aws-lambda": "8.10.133",
-    "bun": "1.2.0",
     "vitest": "^1.2.2"
   },
   "overrides": {
