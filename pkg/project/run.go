@@ -369,7 +369,6 @@ func (p *Project) RunNext(ctx context.Context, input *StackInput) error {
 	reader := bufio.NewReader(eventlog)
 loop:
 	for {
-		log.Info("waiting for event")
 		bytes, err := reader.ReadBytes('\n')
 		if err != nil {
 			if err == io.EOF {
@@ -387,15 +386,13 @@ loop:
 		var event events.EngineEvent
 		err = json.Unmarshal(bytes, &event)
 		if err != nil {
-			break
+			slog.Error("failed to unmarshal event", "err", err)
+			continue
 		}
-		if event.DiagnosticEvent != nil && event.DiagnosticEvent.Severity == "error" {
-			if strings.HasPrefix(event.DiagnosticEvent.Message, "update failed") {
-				break
-			}
-			if strings.Contains(event.DiagnosticEvent.Message, "failed to register new resource") {
-				break
-			}
+		if event.DiagnosticEvent != nil &&
+			event.DiagnosticEvent.Severity == "error" &&
+			!strings.HasPrefix(event.DiagnosticEvent.Message, "update failed") &&
+			!strings.Contains(event.DiagnosticEvent.Message, "failed to register new resource") {
 
 			// check if the error is a common error
 			help := []string{}
@@ -414,6 +411,7 @@ loop:
 					}
 				}
 			}
+
 			if !exists {
 				errors = append(errors, Error{
 					Message: strings.TrimSpace(event.DiagnosticEvent.Message),
