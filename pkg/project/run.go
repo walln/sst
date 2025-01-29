@@ -369,6 +369,7 @@ func (p *Project) RunNext(ctx context.Context, input *StackInput) error {
 	reader := bufio.NewReader(eventlog)
 loop:
 	for {
+		log.Info("trying to tail event log")
 		bytes, err := reader.ReadBytes('\n')
 		if err != nil {
 			if err == io.EOF {
