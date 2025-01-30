@@ -374,6 +374,8 @@ func (p *Project) RunNext(ctx context.Context, input *StackInput) error {
 	}()
 
 	reader := bufio.NewReader(eventlog)
+
+	eofs := 0
 loop:
 	for {
 		bytes, err := reader.ReadBytes('\n')
@@ -381,6 +383,11 @@ loop:
 			if err == io.EOF {
 				select {
 				case <-exited:
+					log.Info("eof and exited", "eofs", eofs)
+					eofs++
+					if eofs < 2 {
+						continue
+					}
 					log.Info("breaking out of tail loop")
 					break loop
 				case <-time.After(time.Millisecond * 100):
