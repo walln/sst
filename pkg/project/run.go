@@ -70,7 +70,7 @@ func (p *Project) RunNext(ctx context.Context, input *StackInput) error {
 	if err != nil {
 		return err
 	}
-	// defer workdir.Cleanup()
+	defer workdir.Cleanup()
 
 	passphrase, err := provider.Passphrase(p.home, p.app.Name, p.app.Stage)
 	if err != nil {
@@ -183,8 +183,10 @@ func (p *Project) RunNext(ctx context.Context, input *StackInput) error {
 		bus.Publish(&BuildFailedEvent{
 			Error: err.Error(),
 		})
+		log.Error("failed to build sst.config.ts", "err", err)
 		return err
 	}
+	log.Info("built sst.config.ts", "to", outfile)
 	if !flag.SST_NO_CLEANUP {
 		defer js.Cleanup(buildResult)
 	}
@@ -349,19 +351,24 @@ func (p *Project) RunNext(ctx context.Context, input *StackInput) error {
 	if err != nil {
 		return err
 	}
-	exited := make(chan error, 1)
+	exited := make(chan struct{})
 	go func() {
-		exited <- cmd.Wait()
+		cmd.Wait()
 		log.Info("pulumi exited", "err", err)
+		close(exited)
 	}()
 
 	go func() {
-		<-ctx.Done()
-		if cmd.Process != nil {
-			log.Info("sending interrupt")
-			err := cmd.Process.Signal(syscall.SIGINT)
-			if err != nil {
-				log.Error("failed to send interrupt", "err", err)
+		select {
+		case <-exited:
+			return
+		case <-ctx.Done():
+			if cmd.Process != nil {
+				log.Info("sending interrupt")
+				err := cmd.Process.Signal(syscall.SIGINT)
+				if err != nil {
+					log.Error("failed to send interrupt", "err", err)
+				}
 			}
 		}
 	}()
@@ -372,12 +379,13 @@ loop:
 		log.Info("trying to tail event log")
 		bytes, err := reader.ReadBytes('\n')
 		if err != nil {
+			log.Info("failed to read event", "err", err)
 			if err == io.EOF {
 				select {
 				case <-exited:
+					slog.Info("breaking out of tail loop")
 					break loop
-				default:
-					time.Sleep(time.Millisecond * 100)
+				case <-time.After(time.Millisecond * 100):
 					continue
 				}
 			}
