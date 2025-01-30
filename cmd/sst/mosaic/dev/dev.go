@@ -49,6 +49,7 @@ func Start(ctx context.Context, p *project.Project, server *server.Server) error
 		flusher.Flush()
 		ctx := r.Context()
 		events := bus.SubscribeAll()
+		defer bus.Unsubscribe(events)
 		if complete != nil {
 			go func() {
 				events <- complete

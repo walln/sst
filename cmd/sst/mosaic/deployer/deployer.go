@@ -38,6 +38,7 @@ func Start(ctx context.Context, p *project.Project, server *server.Server) error
 				for _, file := range evt.Files {
 					watchedFiles[file] = true
 				}
+				continue
 			case *watcher.FileChangedEvent, *DeployRequestedEvent:
 				if evt, ok := evt.(*watcher.FileChangedEvent); !ok || watchedFiles[evt.Path] {
 					log.Info("deploying")
@@ -50,7 +51,7 @@ func Start(ctx context.Context, p *project.Project, server *server.Server) error
 					if err != nil {
 						log.Error("stack deploy error", "error", err)
 						transformed := errors.Transform(err)
-						if _, ok := transformed.(*util.ReadableError); ok {
+						if _, ok := transformed.(*util.ReadableError); ok && transformed.Error() != "" {
 							bus.Publish(&DeployFailedEvent{Error: transformed.Error()})
 						}
 					}

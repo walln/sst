@@ -378,7 +378,6 @@ loop:
 	for {
 		bytes, err := reader.ReadBytes('\n')
 		if err != nil {
-			log.Info("failed to read event", "err", err)
 			if err == io.EOF {
 				select {
 				case <-exited:
@@ -388,15 +387,16 @@ loop:
 					continue
 				}
 			}
-			log.Error("failed to read event", "err", err)
 			continue
 		}
+
 		var event events.EngineEvent
 		err = json.Unmarshal(bytes, &event)
 		if err != nil {
-			slog.Error("failed to unmarshal event", "err", err)
+			log.Error("failed to unmarshal event", "err", err)
 			continue
 		}
+
 		if event.DiagnosticEvent != nil &&
 			event.DiagnosticEvent.Severity == "error" &&
 			!strings.HasPrefix(event.DiagnosticEvent.Message, "update failed") &&
@@ -426,6 +426,7 @@ loop:
 					URN:     event.DiagnosticEvent.URN,
 					Help:    help,
 				})
+				log.Info("telemetry tracking error")
 				telemetry.Track("cli.resource.error", map[string]interface{}{
 					"error": event.DiagnosticEvent.Message,
 					"urn":   event.DiagnosticEvent.URN,
@@ -462,12 +463,6 @@ loop:
 
 		if event.SummaryEvent != nil {
 			finished = true
-		}
-
-		bytes, err = json.Marshal(event)
-		if err != nil {
-			log.Info("failed to marshal event", "err", err)
-			continue
 		}
 	}
 
