@@ -376,14 +376,13 @@ func (p *Project) RunNext(ctx context.Context, input *StackInput) error {
 	reader := bufio.NewReader(eventlog)
 loop:
 	for {
-		log.Info("trying to tail event log")
 		bytes, err := reader.ReadBytes('\n')
 		if err != nil {
 			log.Info("failed to read event", "err", err)
 			if err == io.EOF {
 				select {
 				case <-exited:
-					slog.Info("breaking out of tail loop")
+					log.Info("breaking out of tail loop")
 					break loop
 				case <-time.After(time.Millisecond * 100):
 					continue
