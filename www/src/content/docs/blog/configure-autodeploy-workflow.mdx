@@ -108,8 +108,7 @@ async workflow({ $, event }) {
 
 We also rolled out a couple of other updates to Autodeploy:
 
-- The build processes now uses Ubuntu instead of Amazon Linux.
-- We implemented a workaround so you won't get the annoying Docker Hub rate limit errors.
+- We implemented a workaround so you won't get the annoying Docker Hub rate limit errors while deploying the `Service` component.
 - You can now return multiple stages in [`autodeploy.target`](/docs/reference/config#console-autodeploy-target). This means that when you git push to your repo, the Console can deploy to multiple stages.
 
 You can learn more about the [Console](/docs/console) and [Autodeploy](/docs/console#autodeploy) in the docs.

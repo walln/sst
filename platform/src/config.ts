@@ -1127,9 +1127,11 @@ export interface Config {
        * }
        * ```
        *
-       * The workflow function is run inside a Bun process and passes in `$` as
-       * the [Bun Shell](https://bun.sh/docs/runtime/shell). This makes _bash-like_
-       * scripting easier.
+       * The build process is run inside an Ubuntu machine.
+       *
+       * While the workflow function is run inside a Bun process. It passes in `$`
+       * as the [Bun Shell](https://bun.sh/docs/runtime/shell). This makes
+       * _bash-like_ scripting easier.
        *
        * :::tip
        * Use the Bun Shell to make running commands easier.
