@@ -787,11 +787,16 @@ export interface Target {
 
 export interface WorkflowInput {
   /**
-   * The Bun shell.
+   * The [Bun shell](https://bun.sh/docs/runtime/shell). It's a cross-platform
+   * _bash-like_ shell for scripting with JavaScript and TypeScript.
    */
   $: Shell;
   /**
    * The event that triggered the workflow.
+   *
+   * This includes git branch, pull request, or tag events. And it also
+   * includes a user event for manual deploys that are triggered through the
+   * Console.
    */
   event: BranchEvent | PullRequestEvent | TagEvent | UserEvent;
 }
@@ -853,11 +858,23 @@ export interface Config {
      * are asked to sepcify the stage you want to deploy to. So in this case, it skips step 1
      * from above and does not call `autodeploy.target`.
      *
-     * Both `target` and `runner` are optional and come with defaults, so you don't need to
-     * configure anything. But you can customize them.
+     * You can further configure Autodeploy through the `autodeploy` prop.
      *
-     * ```ts title="sst.config.ts" {"target", "runner"}
+     * ```ts title="sst.config.ts"
      * console: {
+     *   autodeploy: {
+     *     target(event) {}, // Customize the target stage
+     *     runner(stage) {}, // Customize the runner
+     *     async workflow({ $, input }) {} // Customize the workflow
+     *   }
+     * }
+     * ```
+     *
+     * Here, `target`, `runner`, and `workflow` are all optional and come with defaults, so
+     * you don't need to configure anything. But you can customize them.
+     *
+     * ```ts
+     * {
      *   autodeploy: {
      *     target(event) {
      *       if (
@@ -877,7 +894,26 @@ export interface Config {
      *
      * For example, here we are only auto-deploying to the `production` stage when you git push
      * to the `main` branch. We are also setting the timeout to 3 hours for the `production`
-     * stage.
+     * stage. You can read more about the `target` and `runner` props below.
+     *
+     * Finally, if you want to configure exactly what happens in the build, you can pass in
+     * a `workflow` function.
+     *
+     * ```ts
+     * {
+     *   autodeploy: {
+     *     async workflow({ $, event }) {
+     *       await $`npm i -g pnpm`;
+     *       await $`pnpm i`;
+     *       event.action === "removed"
+     *         ? await $`pnpm sst remove`
+     *         : await $`pnpm sst deploy`;
+     *     }
+     *   }
+     * }
+     * ```
+     *
+     * You can read more the `workflow` prop below.
      *
      * @default Auto-deploys branches and PRs.
      */
@@ -971,11 +1007,17 @@ export interface Config {
        * If you don't want to auto-deploy for a given event, you can return `undefined`. For
        * example, to skip any deploys to the `staging` stage.
        *
-       * ```ts title="sst.config.ts" {2}
-       * target(event) {
-       *   if (event.type === "branch" && event.branch === "staging") return;
-       *   if (event.type === "branch" && event.branch === "main" && event.action === "pushed") {
-       *     return { stage: "production" };
+       * ```ts {3}
+       * {
+       *   target(event) {
+       *     if (event.type === "branch" && event.branch === "staging") return;
+       *     if (
+       *       event.type === "branch" &&
+       *       event.branch === "main" &&
+       *       event.action === "pushed"
+       *     ) {
+       *       return { stage: "production" };
+       *     }
        *   }
        * }
        * ```
@@ -1063,14 +1105,15 @@ export interface Config {
        */
       runner?: Runner | ((input: RunnerInput) => Runner);
       /**
-       * Customize the commands that are run during the deployment.
+       * Customize the commands that are run during the build process. This is
+       * useful for running tests, or completely customizing the build process.
        *
-       * The default workflow automatically figures out the package manager you are using,
-       * installs the dependencies, and runs `sst deploy` or `sst remove` based on the
-       * event.
+       * The default workflow automatically figures out the package manager you
+       * are using, installs the dependencies, and runs `sst deploy` or `sst remove`
+       * based on the event.
        *
-       * For example, if you are using `pnpm`, the following workflow is equivalent
-       * to the default workflow.
+       * For example, if you are using pnpm, the following is equivalent to the
+       * default workflow.
        *
        * ```ts
        * {
@@ -1084,16 +1127,17 @@ export interface Config {
        * }
        * ```
        *
-       * Note that the `SST_STAGE` environment variable is set to the stage name. So you
-       * don't need to pass in `--stage` to the SST CLI.
+       * The workflow function is run inside a Bun process and passes in `$` as
+       * the [Bun Shell](https://bun.sh/docs/runtime/shell). This makes _bash-like_
+       * scripting easier.
        *
        * :::tip
-       * You don't need to pass in `--stage` to the SST CLI.
+       * Use the Bun Shell to make running commands easier.
        * :::
        *
-       * Here is an example of running tests before deploying.
+       * For example, here's how you can run tests before deploying.
        *
-       * ```ts
+       * ```ts {5}
        * {
        *   async workflow({ $, event }) {
        *     await $`npm i -g pnpm`;
@@ -1106,12 +1150,25 @@ export interface Config {
        * }
        * ```
        *
-       * The workflow function is run inside a Bun process. You have access to the Bun `$`
-       * Shell to make running commands easier.
+       * When you pass in a `workflow`, you are effectively taking control of what
+       * runs in your build.
        *
-       * Here's an example of handling errors on test failures.
+       * :::caution
+       * If you don't run `sst deploy`, your app won't be deployed.
+       * :::
        *
-       * ```ts
+       * This means that if you don't run `sst deploy`, your app won't be deployed.
+       *
+       * :::tip
+       * Throwing an error will fail the build and display the error in the Console.
+       * :::
+       *
+       * If you throw an error in the workflow, the deploy will fail and the error
+       * will be displayed in the Autodeploy logs.
+       *
+       * Here's a more detailed example of using the Bun Shell to handle failures.
+       *
+       * ```ts {6,9}
        * {
        *   async workflow({ $, event }) {
        *     await $`npm i -g pnpm`;
@@ -1119,7 +1176,7 @@ export interface Config {
        *
        *     const { exitCode } = await $`pnpm test`.nothrow();
        *     if (exitCode !== 0) {
-       *       // process test report here
+       *       // Process the test report and then fail the build
        *       throw new Error("Failed to run tests");
        *     }
        *
@@ -1129,6 +1186,15 @@ export interface Config {
        *   }
        * }
        * ```
+       *
+       * You'll notice we are not passing in `--stage` to the SST commands.
+       *
+       * :::tip
+       * You don't need to pass in `--stage` to the SST commands.
+       * :::
+       *
+       * This is because the `SST_STAGE` environment variable is already set in
+       * the build process.
        */
       workflow?(input: WorkflowInput): Promise<void>;
     };
