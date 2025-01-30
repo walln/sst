@@ -136,6 +136,7 @@ export class Component extends ComponentResource {
               "aws:appsync/domainName:DomainName",
               "aws:appsync/domainNameApiAssociation:DomainNameApiAssociation",
               "aws:ec2/routeTableAssociation:RouteTableAssociation",
+              "aws:ecs/clusterCapacityProviders:ClusterCapacityProviders",
               "aws:efs/fileSystem:FileSystem",
               "aws:efs/mountTarget:MountTarget",
               "aws:efs/accessPoint:AccessPoint",

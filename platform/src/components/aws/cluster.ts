@@ -2581,10 +2581,14 @@ export class Cluster extends Component {
     }
 
     function createCapacityProviders() {
-      return new ecs.ClusterCapacityProviders(`${name}CapacityProviders`, {
-        clusterName: cluster.name,
-        capacityProviders: ["FARGATE", "FARGATE_SPOT"],
-      });
+      return new ecs.ClusterCapacityProviders(
+        `${name}CapacityProviders`,
+        {
+          clusterName: cluster.name,
+          capacityProviders: ["FARGATE", "FARGATE_SPOT"],
+        },
+        { parent: self },
+      );
     }
   }
 
