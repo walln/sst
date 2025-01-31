@@ -780,9 +780,9 @@ export interface UserEvent {
 
 export interface Target {
   /**
-   * The stage the app will be deployed to.
+   * The stage or a list of stages the app will be deployed to.
    */
-  stage: string;
+  stage: string | string[];
 }
 
 export interface WorkflowInput {
@@ -883,11 +883,11 @@ export interface Config {
      */
     autodeploy: {
       /**
-       * Defines the stage the app will be auto-deployed to.
+       * Defines the stage or a list of stages the app will be auto-deployed to.
        *
        * When a git event is received, Autodeploy will run the `target` function with the
-       * git event. This function should return the stage the app will be deployed to.
-       * Or `undefined` if the deploy should be skipped.
+       * git event. This function should return the stage or a list of stages the app will
+       * be deployed to. Or `undefined` if the deploy should be skipped.
        *
        * :::tip
        * Return `undefined` to skip the deploy.
