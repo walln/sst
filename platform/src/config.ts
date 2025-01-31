@@ -1127,7 +1127,8 @@ export interface Config {
        * }
        * ```
        *
-       * The build process is run inside an Ubuntu machine.
+       * The build process is run inside an
+       * [Amazon Linux 2](https://aws.amazon.com/amazon-linux-2/) machine.
        *
        * While the workflow function is run inside a Bun process. It passes in `$`
        * as the [Bun Shell](https://bun.sh/docs/runtime/shell). This makes
