@@ -73,6 +73,40 @@ export default $config({
       },
     };
 
+    // Redirect /u/* to api.console.sst.dev/link/*
+    const redirectToConsoleBehavior = {
+      targetOriginId: "redirect",
+      viewerProtocolPolicy: "redirect-to-https",
+      allowedMethods: ["GET", "HEAD", "OPTIONS"],
+      cachedMethods: ["GET", "HEAD"],
+      functionAssociations: [
+        {
+          eventType: "viewer-request",
+          functionArn: new aws.cloudfront.Function("ConsoleRedirect", {
+            runtime: "cloudfront-js-2.0",
+            code: [
+              `async function handler(event) {`,
+              `  const request = event.request;`,
+              // ie. request.uri is /u/123
+              `  return {`,
+              `    statusCode: 302,`,
+              `    statusDescription: 'Found',`,
+              `    headers: {`,
+              `      location: { value: "https://api.console.sst.dev/link/" + request.uri.split("/u/")[1] }`,
+              `    },`,
+              `  };`,
+              `}`,
+            ].join("\n"),
+          }).arn,
+        },
+      ],
+      forwardedValues: {
+        queryString: true,
+        headers: ["Origin"],
+        cookies: { forward: "none" },
+      },
+    };
+
     // Strip .html from /blog
     const stripHtmlBehavior = {
       targetOriginId: "redirect",
@@ -141,6 +175,7 @@ export default $config({
             { pathPattern: "/examples*", ...redirectToGuideBehavior },
             { pathPattern: "/chapters*", ...redirectToGuideBehavior },
             { pathPattern: "/archives*", ...redirectToGuideBehavior },
+            { pathPattern: "/u/*", ...redirectToConsoleBehavior },
           ]);
         },
       },
