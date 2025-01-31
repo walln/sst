@@ -97,6 +97,7 @@ export class Component extends ComponentResource {
             args.type === "pulumi-nodejs:dynamic:Resource" ||
             args.type === "random:index/randomId:RandomId" ||
             args.type === "random:index/randomPassword:RandomPassword" ||
+            args.type === "command:local:Command" ||
             args.type === "tls:index/privateKey:PrivateKey" ||
             // resources manually named
             [
