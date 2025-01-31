@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/sst/sst/v3/pkg/id"
 	"github.com/sst/sst/v3/pkg/project/common"
 	"github.com/sst/sst/v3/pkg/project/provider"
 	"github.com/sst/sst/v3/pkg/state"
@@ -16,7 +17,7 @@ func (p *Project) GetCompleted(ctx context.Context) (*CompleteEvent, error) {
 	if err != nil {
 		return nil, err
 	}
-	workdir, err := p.NewWorkdir()
+	workdir, err := p.NewWorkdir(id.Descending())
 	if err != nil {
 		return nil, err
 	}

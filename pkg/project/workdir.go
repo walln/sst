@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/sst/sst/v3/pkg/id"
 	"github.com/sst/sst/v3/pkg/project/provider"
 	"github.com/zeebo/xxh3"
 	"golang.org/x/sync/errgroup"
@@ -20,9 +19,9 @@ type PulumiWorkdir struct {
 	lastPushed uint64
 }
 
-func (p *Project) NewWorkdir() (*PulumiWorkdir, error) {
+func (p *Project) NewWorkdir(id string) (*PulumiWorkdir, error) {
 	workdir := PulumiWorkdir{
-		path:    filepath.Join(p.PathWorkingDir(), "pulumi", id.Descending()),
+		path:    filepath.Join(p.PathWorkingDir(), "pulumi", id),
 		project: p,
 	}
 	err := os.MkdirAll(workdir.path, 0755)

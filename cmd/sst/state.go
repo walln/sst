@@ -35,11 +35,7 @@ var CmdState = &cli.Command{
 				}
 				defer p.Cleanup()
 
-				var update provider.Update
-				update.Version = version
-				update.ID = id.Descending()
-				update.TimeStarted = time.Now().UTC().Format(time.RFC3339)
-				err = p.Lock(update.ID, "edit")
+				update, err := p.Lock("edit")
 				if err != nil {
 					return util.NewReadableError(err, "Could not lock state")
 				}
@@ -48,7 +44,7 @@ var CmdState = &cli.Command{
 					update.TimeCompleted = time.Now().UTC().Format(time.RFC3339)
 					provider.PutUpdate(p.Backend(), p.App().Name, p.App().Stage, update)
 				}()
-				workdir, err := p.NewWorkdir()
+				workdir, err := p.NewWorkdir(update.ID)
 				if err != nil {
 					return err
 				}
@@ -112,7 +108,7 @@ var CmdState = &cli.Command{
 					return err
 				}
 				defer p.Cleanup()
-				workdir, err := p.NewWorkdir()
+				workdir, err := p.NewWorkdir(id.Descending())
 				if err != nil {
 					return err
 				}
@@ -197,11 +193,7 @@ var CmdState = &cli.Command{
 				}
 				defer p.Cleanup()
 
-				var update provider.Update
-				update.Version = version
-				update.ID = id.Descending()
-				update.TimeStarted = time.Now().UTC().Format(time.RFC3339)
-				err = p.Lock(update.ID, "edit")
+				update, err := p.Lock("edit")
 				if err != nil {
 					return util.NewReadableError(err, "Could not lock state")
 				}
@@ -210,7 +202,7 @@ var CmdState = &cli.Command{
 					update.TimeCompleted = time.Now().UTC().Format(time.RFC3339)
 					provider.PutUpdate(p.Backend(), p.App().Name, p.App().Stage, update)
 				}()
-				workdir, err := p.NewWorkdir()
+				workdir, err := p.NewWorkdir(update.ID)
 				if err != nil {
 					return err
 				}
@@ -285,11 +277,7 @@ var CmdState = &cli.Command{
 				}
 				defer p.Cleanup()
 
-				var update provider.Update
-				update.Version = version
-				update.ID = id.Descending()
-				update.TimeStarted = time.Now().UTC().Format(time.RFC3339)
-				err = p.Lock(update.ID, "edit")
+				update, err := p.Lock("repair")
 				if err != nil {
 					return util.NewReadableError(err, "Could not lock state")
 				}
@@ -298,7 +286,7 @@ var CmdState = &cli.Command{
 					update.TimeCompleted = time.Now().UTC().Format(time.RFC3339)
 					provider.PutUpdate(p.Backend(), p.App().Name, p.App().Stage, update)
 				}()
-				workdir, err := p.NewWorkdir()
+				workdir, err := p.NewWorkdir(update.ID)
 				if err != nil {
 					return err
 				}

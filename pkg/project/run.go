@@ -20,7 +20,6 @@ import (
 	"github.com/sst/sst/v3/pkg/bus"
 	"github.com/sst/sst/v3/pkg/flag"
 	"github.com/sst/sst/v3/pkg/global"
-	"github.com/sst/sst/v3/pkg/id"
 	"github.com/sst/sst/v3/pkg/js"
 	"github.com/sst/sst/v3/pkg/process"
 	"github.com/sst/sst/v3/pkg/project/provider"
@@ -30,11 +29,11 @@ import (
 )
 
 func (p *Project) Run(ctx context.Context, input *StackInput) error {
-	if flag.SST_EXPERIMENTAL {
-		slog.Info("using next run system")
-		return p.RunNext(ctx, input)
-	}
-	return p.RunOld(ctx, input)
+	// if flag.SST_EXPERIMENTAL {
+	// 	slog.Info("using next run system")
+	// }
+	// return p.RunOld(ctx, input)
+	return p.RunNext(ctx, input)
 }
 
 func (p *Project) RunNext(ctx context.Context, input *StackInput) error {
@@ -53,20 +52,21 @@ func (p *Project) RunNext(ctx context.Context, input *StackInput) error {
 		Version: p.Version(),
 	})
 
-	updateID := id.Descending()
-	log = log.With("updateID", updateID)
+	var update *provider.Update
+	var err error
 	if input.Command != "diff" {
-		err := p.Lock(updateID, input.Command)
+		update, err = p.Lock(input.Command)
 		if err != nil {
 			if err == provider.ErrLockExists {
 				bus.Publish(&ConcurrentUpdateEvent{})
 			}
 			return err
 		}
+		log = log.With("updateID", update.ID)
 		defer p.Unlock()
 	}
 
-	workdir, err := p.NewWorkdir()
+	workdir, err := p.NewWorkdir(update.ID)
 	if err != nil {
 		return err
 	}
@@ -338,15 +338,14 @@ func (p *Project) RunNext(ctx context.Context, input *StackInput) error {
 				partialDone <- nil
 				return
 			case <-partial:
-				workdir.PushPartial(updateID)
+				workdir.PushPartial(update.ID)
 			case <-time.After(time.Second * 5):
-				workdir.PushPartial(updateID)
+				workdir.PushPartial(update.ID)
 				continue
 			}
 		}
 	}()
 
-	started := time.Now().Format(time.RFC3339)
 	err = cmd.Start()
 	if err != nil {
 		return err
@@ -490,7 +489,7 @@ loop:
 		log.Info("waiting for partial to exit")
 		<-partialDone
 
-		err = workdir.Push(updateID)
+		err = workdir.Push(update.ID)
 		if err != nil {
 			return err
 		}
@@ -502,11 +501,6 @@ loop:
 	json.NewEncoder(outputsFile).Encode(complete.Outputs)
 
 	if input.Command != "diff " {
-		var update provider.Update
-		update.ID = updateID
-		update.Command = input.Command
-		update.Version = p.Version()
-		update.TimeStarted = started
 		update.TimeCompleted = time.Now().Format(time.RFC3339)
 		for _, err := range errors {
 			update.Errors = append(update.Errors, provider.SummaryError{

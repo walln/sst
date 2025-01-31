@@ -26,7 +26,6 @@ import (
 	"github.com/sst/sst/v3/pkg/bus"
 	"github.com/sst/sst/v3/pkg/flag"
 	"github.com/sst/sst/v3/pkg/global"
-	"github.com/sst/sst/v3/pkg/id"
 	"github.com/sst/sst/v3/pkg/js"
 	"github.com/sst/sst/v3/pkg/project/common"
 	"github.com/sst/sst/v3/pkg/project/provider"
@@ -185,9 +184,10 @@ func (p *Project) RunOld(ctx context.Context, input *StackInput) error {
 		Version: p.Version(),
 	})
 
-	updateID := id.Descending()
+	var update *provider.Update
+	var err error
 	if input.Command != "diff" {
-		err := p.Lock(updateID, input.Command)
+		update, err = p.Lock(input.Command)
 		if err != nil {
 			if err == provider.ErrLockExists {
 				bus.Publish(&ConcurrentUpdateEvent{})
@@ -197,7 +197,7 @@ func (p *Project) RunOld(ctx context.Context, input *StackInput) error {
 		defer p.Unlock()
 	}
 
-	workdir, err := p.NewWorkdir()
+	workdir, err := p.NewWorkdir(update.ID)
 	statePath, err := workdir.Pull()
 	if err != nil {
 		if errors.Is(err, provider.ErrStateNotFound) {
@@ -450,7 +450,7 @@ func (p *Project) RunOld(ctx context.Context, input *StackInput) error {
 				if err == nil {
 					next := xxh3.Hash(data)
 					if next != last && next != 0 && input.Command != "diff" {
-						err := provider.PushPartialState(p.Backend(), updateID, p.App().Name, p.App().Stage, data)
+						err := provider.PushPartialState(p.Backend(), update.ID, p.App().Name, p.App().Stage, data)
 						if err != nil && cmd == 0 {
 							partialDone <- err
 							return
@@ -458,7 +458,7 @@ func (p *Project) RunOld(ctx context.Context, input *StackInput) error {
 					}
 					last = next
 					if cmd == 0 {
-						partialDone <- provider.PushSnapshot(p.Backend(), updateID, p.App().Name, p.App().Stage, data)
+						partialDone <- provider.PushSnapshot(p.Backend(), update.ID, p.App().Name, p.App().Stage, data)
 						return
 					}
 				}
@@ -580,7 +580,6 @@ func (p *Project) RunOld(ctx context.Context, input *StackInput) error {
 		}
 	}
 
-	started := time.Now().Format(time.RFC3339)
 	var runError error
 	switch input.Command {
 	case "deploy":
@@ -654,11 +653,6 @@ func (p *Project) RunOld(ctx context.Context, input *StackInput) error {
 	json.NewEncoder(outputsFile).Encode(complete.Outputs)
 
 	if input.Command != "diff " {
-		var update provider.Update
-		update.ID = updateID
-		update.Command = input.Command
-		update.Version = p.Version()
-		update.TimeStarted = started
 		update.TimeCompleted = time.Now().Format(time.RFC3339)
 		for _, err := range errors {
 			update.Errors = append(update.Errors, provider.SummaryError{
@@ -680,8 +674,8 @@ func (p *Project) RunOld(ctx context.Context, input *StackInput) error {
 	return nil
 }
 
-func (p *Project) Lock(updateID string, command string) error {
-	return provider.Lock(p.home, updateID, p.Version(), command, p.app.Name, p.app.Stage)
+func (p *Project) Lock(command string) (*provider.Update, error) {
+	return provider.Lock(p.home, p.Version(), command, p.app.Name, p.app.Stage)
 }
 
 func (s *Project) Unlock() error {

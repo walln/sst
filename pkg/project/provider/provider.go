@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/sst/sst/v3/pkg/flag"
+	"github.com/sst/sst/v3/pkg/id"
 	"golang.org/x/exp/slog"
 )
 
@@ -145,9 +146,9 @@ func PutSummary(backend Home, app, stage, updateID string, summary Summary) erro
 	return putData(backend, "summary", app, stage+"/"+updateID, false, summary)
 }
 
-func PutUpdate(backend Home, app, stage string, update Update) error {
+func PutUpdate(backend Home, app, stage string, update *Update) error {
 	slog.Info("putting update", "app", app, "stage", stage)
-	update.RunID = os.Getenv("SST_RUN_ID")
+	update.RunID = flag.SST_RUN_ID
 	return putData(backend, "update", app, stage+"/"+update.ID, false, update)
 }
 
@@ -228,15 +229,16 @@ type lockData struct {
 	Ignore   bool      `json:"ignore"`
 }
 
-func Lock(backend Home, updateID, version, command, app, stage string) error {
+func Lock(backend Home, version, command, app, stage string) (*Update, error) {
+	updateID := id.Descending()
 	slog.Info("locking", "app", app, "stage", stage)
 	var lockData lockData
 	err := getData(backend, "lock", app, stage, false, &lockData)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if !lockData.Created.IsZero() {
-		return ErrLockExists
+		return nil, ErrLockExists
 	}
 	lockData.RunID = os.Getenv("SST_RUN_ID")
 	lockData.Created = time.Now()
@@ -245,21 +247,22 @@ func Lock(backend Home, updateID, version, command, app, stage string) error {
 	lockData.Ignore = true
 	err = putData(backend, "lock", app, stage, false, lockData)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	err = PutUpdate(backend, app, stage, Update{
+	update := &Update{
 		ID:          updateID,
 		Version:     version,
 		Command:     command,
 		Errors:      nil,
 		TimeStarted: time.Now().UTC().Format(time.RFC3339),
-	})
+	}
+	err = PutUpdate(backend, app, stage, update)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return update, nil
 }
 
 func Unlock(backend Home, version, app, stage string) error {
@@ -274,11 +277,8 @@ func ForceUnlock(backend Home, version, app, stage string) error {
 	if err != nil {
 		return err
 	}
-	// if lockData.UpdateID == "" {
-	// 	return ErrLockNotFound
-	// }
 	if lockData.UpdateID != "" {
-		err = PutUpdate(backend, app, stage, Update{
+		err = PutUpdate(backend, app, stage, &Update{
 			ID:            lockData.UpdateID,
 			Command:       lockData.Command,
 			RunID:         lockData.RunID,
