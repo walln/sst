@@ -92,7 +92,7 @@ export default $config({
               `    statusCode: 302,`,
               `    statusDescription: 'Found',`,
               `    headers: {`,
-              `      location: { value: "https://api.console.sst.dev/link/" + request.uri.split("/u/")[1] }`,
+              `      location: { value: "https://api.console.sst.dev/link" + request.uri }`,
               `    },`,
               `  };`,
               `}`,
