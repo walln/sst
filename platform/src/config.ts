@@ -687,6 +687,10 @@ export interface PullRequestEvent {
    */
   number: number;
   /**
+   * The title of the pull request.
+   */
+  title: string;
+  /**
    * The base branch of the PR. This is the branch the code is being merged into.
    */
   base: string;
