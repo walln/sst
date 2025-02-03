@@ -299,7 +299,7 @@ export function buildApp(
   );
 
   // Validate build output
-  return all([sitePath, build, result.id]).apply(([sitePath, build, _id]) => {
+  return all([sitePath, build, result.id]).apply(([sitePath, build, _]) => {
     const outputPath = path.join(sitePath, build.output);
     if (!fs.existsSync(outputPath)) {
       throw new VisibleError(
