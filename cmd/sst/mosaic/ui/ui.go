@@ -404,6 +404,13 @@ func (u *UI) Event(unknown interface{}) {
 				u.print(TEXT_NORMAL_BOLD.Render("  " + label + "    "))
 			}
 			u.println()
+			if evt.UpdateID != "" {
+				u.println(
+					TEXT_DIM_BOLD.Render("   "),
+					TEXT_DIM_BOLD.Render("Update: "),
+					TEXT_NORMAL.Render(`https://sst.dev/u/`+evt.UpdateID),
+				)
+			}
 			if len(evt.Hints) > 0 {
 				for k, v := range evt.Hints {
 					splits := strings.Split(k, "::")

@@ -80,6 +80,7 @@ type Task struct {
 }
 
 type CompleteEvent struct {
+	UpdateID    string
 	Links       common.Links
 	Devs        Devs
 	Tasks       map[string]Task

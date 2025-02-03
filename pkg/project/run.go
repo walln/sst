@@ -20,6 +20,7 @@ import (
 	"github.com/sst/sst/v3/pkg/bus"
 	"github.com/sst/sst/v3/pkg/flag"
 	"github.com/sst/sst/v3/pkg/global"
+	"github.com/sst/sst/v3/pkg/id"
 	"github.com/sst/sst/v3/pkg/js"
 	"github.com/sst/sst/v3/pkg/process"
 	"github.com/sst/sst/v3/pkg/project/provider"
@@ -52,7 +53,9 @@ func (p *Project) RunNext(ctx context.Context, input *StackInput) error {
 		Version: p.Version(),
 	})
 
-	var update *provider.Update
+	update := &provider.Update{
+		ID: id.Descending(),
+	}
 	var err error
 	if input.Command != "diff" {
 		update, err = p.Lock(input.Command)
@@ -477,6 +480,7 @@ loop:
 	if err != nil {
 		return err
 	}
+	complete.UpdateID = update.ID
 	complete.Finished = finished
 	complete.Errors = errors
 	complete.ImportDiffs = importDiffs
