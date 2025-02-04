@@ -420,10 +420,13 @@ interface TaskContainerArgs {
    */
   logging?: Input<{
     /**
-     * The duration the logs are kept in CloudWatch. Same as the top-level
-     * [`logging.retention`](#logging-retention).
+     * The duration the logs are kept in CloudWatch. Same as the top-level [`logging.retention`](#logging-retention).
      */
     retention?: Input<keyof typeof RETENTION>;
+    /**
+     * The name of the CloudWatch log group. Same as the top-level [`logging.name`](#logging-name).
+     */
+    name?: Input<string>;
   }>;
   /**
    * Key-value pairs of AWS Systems Manager Parameter Store parameter ARNs or AWS Secrets
@@ -760,6 +763,12 @@ interface ClusterBaseArgs {
      * @default `"1 month"`
      */
     retention?: Input<keyof typeof RETENTION>;
+    /**
+     * The name of the CloudWatch log group. If omitted, the log group name is generated
+     * based on the cluster name, service name, and container name.
+     * @default `"/sst/cluster/${CLUSTER_NAME}/${SERVICE_NAME}/${CONTAINER_NAME}"`
+     */
+    name?: Input<string>;
   }>;
   /**
    * Mount Amazon EFS file systems into the container.
@@ -2829,7 +2838,7 @@ export function normalizeStorage(args: ClusterTaskArgs) {
 /** @internal */
 export function normalizeContainers(
   type: "service" | "task",
-  args: ClusterServiceArgs,
+  args: ServiceArgs,
   name: string,
   architecture: ReturnType<typeof normalizeArchitecture>,
 ) {
@@ -2909,10 +2918,14 @@ export function normalizeContainers(
       }
 
       function normalizeLogging() {
-        return output(v.logging).apply((logging) => ({
-          ...logging,
-          retention: logging?.retention ?? "1 month",
-        }));
+        return all([v.logging, args.cluster.nodes.cluster.name]).apply(
+          ([logging, clusterName]) => ({
+            ...logging,
+            retention: logging?.retention ?? "1 month",
+            name:
+              logging?.name ?? `/sst/cluster/${clusterName}/${name}/${v.name}`,
+          }),
+        );
       }
     }),
   );
@@ -3157,7 +3170,7 @@ export function createTaskDefinition(
                 args.transform?.logGroup,
                 `${name}LogGroup${container.name}`,
                 {
-                  name: interpolate`/sst/cluster/${clusterName}/${name}/${container.name}`,
+                  name: container.logging.name,
                   retentionInDays: RETENTION[container.logging.retention],
                 },
                 { parent },
