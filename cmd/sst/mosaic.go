@@ -21,6 +21,7 @@ import (
 	"github.com/sst/sst/v3/cmd/sst/mosaic/watcher"
 	"github.com/sst/sst/v3/internal/util"
 	"github.com/sst/sst/v3/pkg/bus"
+	"github.com/sst/sst/v3/pkg/flag"
 	"github.com/sst/sst/v3/pkg/process"
 	"github.com/sst/sst/v3/pkg/project"
 	"github.com/sst/sst/v3/pkg/runtime"
@@ -176,6 +177,9 @@ func CmdMosaic(c *cli.Cli) error {
 		args := a
 		switch name {
 		case "aws":
+			if flag.SST_SKIP_APPSYNC {
+				continue
+			}
 			wg.Go(func() error {
 				defer c.Cancel()
 				return aws.Start(c.Context, p, server, args.(map[string]interface{}))

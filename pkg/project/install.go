@@ -169,7 +169,7 @@ func (p *Project) writeTypes() error {
 func (p *Project) fetchDeps() error {
 	slog.Info("fetching deps")
 	manager := global.BunPath()
-	if flag.NO_BUN {
+	if flag.SST_NO_BUN {
 		manager = "npm"
 	}
 	cmd := process.Command(manager, "install")
