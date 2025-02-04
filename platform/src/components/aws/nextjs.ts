@@ -795,39 +795,39 @@ export class Nextjs extends Component implements Link.Linkable {
               },
               ...(revalidationQueueArn
                 ? [
-                  {
-                    actions: [
-                      "sqs:SendMessage",
-                      "sqs:GetQueueAttributes",
-                      "sqs:GetQueueUrl",
-                    ],
-                    resources: [revalidationQueueArn],
-                  },
-                ]
+                    {
+                      actions: [
+                        "sqs:SendMessage",
+                        "sqs:GetQueueAttributes",
+                        "sqs:GetQueueUrl",
+                      ],
+                      resources: [revalidationQueueArn],
+                    },
+                  ]
                 : []),
               ...(revalidationTableArn
                 ? [
-                  {
-                    actions: [
-                      "dynamodb:BatchGetItem",
-                      "dynamodb:GetRecords",
-                      "dynamodb:GetShardIterator",
-                      "dynamodb:Query",
-                      "dynamodb:GetItem",
-                      "dynamodb:Scan",
-                      "dynamodb:ConditionCheckItem",
-                      "dynamodb:BatchWriteItem",
-                      "dynamodb:PutItem",
-                      "dynamodb:UpdateItem",
-                      "dynamodb:DeleteItem",
-                      "dynamodb:DescribeTable",
-                    ],
-                    resources: [
-                      revalidationTableArn,
-                      `${revalidationTableArn}/*`,
-                    ],
-                  },
-                ]
+                    {
+                      actions: [
+                        "dynamodb:BatchGetItem",
+                        "dynamodb:GetRecords",
+                        "dynamodb:GetShardIterator",
+                        "dynamodb:Query",
+                        "dynamodb:GetItem",
+                        "dynamodb:Scan",
+                        "dynamodb:ConditionCheckItem",
+                        "dynamodb:BatchWriteItem",
+                        "dynamodb:PutItem",
+                        "dynamodb:UpdateItem",
+                        "dynamodb:DeleteItem",
+                        "dynamodb:DescribeTable",
+                      ],
+                      resources: [
+                        revalidationTableArn,
+                        `${revalidationTableArn}/*`,
+                      ],
+                    },
+                  ]
                 : []),
             ],
             injections: [
@@ -1042,7 +1042,7 @@ export class Nextjs extends Component implements Link.Linkable {
               },
             ],
           },
-          { parent },
+          { parent, retainOnDelete: false },
         );
       });
     }
