@@ -304,10 +304,9 @@ export interface Runner {
   timeout?: `${number} ${"minute" | "minutes" | "hour" | "hours"}`;
   /**
    * The architecture of the build machine.
-   * @default `x86_64`
    *
-   * The `x86_64` machine uses the [`al2/standard/5.0`](https://github.com/aws/aws-codebuild-docker-images/tree/master/al2/x86_64/standard/5.0) build image.
-   * While `arm64` uses the [`al2/aarch64/standard/3.0`](https://github.com/aws/aws-codebuild-docker-images/tree/master/al2/aarch64/standard/3.0) image instead.
+   * The `x86_64` machine uses the [`al/standard/5.0`](https://github.com/aws/aws-codebuild-docker-images/tree/master/al/x86_64/standard/5.0) build image.
+   * While `arm64` uses the [`al/aarch64/standard/3.0`](https://github.com/aws/aws-codebuild-docker-images/tree/master/al/aarch64/standard/3.0) image instead.
    *
    * You can also configure what's used in the image:
    *
@@ -343,14 +342,27 @@ export interface Runner {
    *   To specify the package manager you want to use you can configure it through your
    *   `package.json`.
    *
-   *   ```js title="package.json"
-   *   {
-   *     packageManager: "pnpm@8.6.3"
-   *   }
-   *   ```
+   *   <Tabs>
+   *     <TabItem label="pnpm">
+   *     ```js title="package.json"
+   *     {
+   *       packageManager: "pnpm@8.6.3"
+   *     }
+   *     ```
+   *     </TabItem>
+   *     <TabItem label="bun">
+   *     ```js title="package.json"
+   *     {
+   *       packageManager: "bun@1.2.0"
+   *     }
+   *     ```
+   *     </TabItem>
+   *   </Tabs>
    *
-   * Feel free to get in touch if you want to use your own build image or configure what's used
-   * in the build image.
+   * Feel free to get in touch if you want to use your own build image or
+   * configure what's used in the build image.
+   *
+   * @default `x86_64`
    */
   architecture?: "x86_64" | "arm64";
   /**
@@ -1131,10 +1143,7 @@ export interface Config {
        * }
        * ```
        *
-       * The build process is run inside an
-       * [Amazon Linux 2](https://aws.amazon.com/amazon-linux-2/) machine.
-       *
-       * While the workflow function is run inside a Bun process. It passes in `$`
+       * The workflow function is run inside a Bun process. It passes in `$`
        * as the [Bun Shell](https://bun.sh/docs/runtime/shell). This makes
        * _bash-like_ scripting easier.
        *
@@ -1194,14 +1203,16 @@ export interface Config {
        * }
        * ```
        *
-       * You'll notice we are not passing in `--stage` to the SST commands.
+       * You'll notice we are not passing in `--stage` to the SST commands. This is because the `SST_STAGE` environment variable is already set in
+       * the build process.
        *
        * :::tip
        * You don't need to pass in `--stage` to the SST commands.
        * :::
        *
-       * This is because the `SST_STAGE` environment variable is already set in
-       * the build process.
+       * The build process is run inside an
+       * [Amazon Linux 2](https://aws.amazon.com/amazon-linux-2/) machine based on
+       * the `architecture` used.
        */
       workflow?(input: WorkflowInput): Promise<void>;
     };
