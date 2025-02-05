@@ -22,8 +22,8 @@ import (
 
 var log = slog.Default().With("service", "appsync.connection")
 
-var ErrSubscriptionFailed = fmt.Errorf("subscription failed")
-var ErrConnectionFailed = fmt.Errorf("connection failed")
+var ErrSubscriptionFailed = fmt.Errorf("appsync subscription failed")
+var ErrConnectionFailed = fmt.Errorf("appsync connection failed")
 
 type Connection struct {
 	conn             *websocket.Conn
@@ -102,8 +102,10 @@ func (c *Connection) connect(ctx context.Context) error {
 	msg := map[string]interface{}{}
 	err = conn.ReadJSON(&msg)
 	if err != nil {
+		log.Error("write to connection failed", "err", err)
 		return ErrConnectionFailed
 	}
+	log.Info("connect message", "msg", msg)
 	if msg["type"] != "connection_ack" {
 		return ErrConnectionFailed
 	}
