@@ -795,7 +795,9 @@ Learn more about [`Task`](/blog/tasks-in-v3).
 <Tabs>
   <TabItem label="v3">
   ```ts title="sst.config.ts"
+  const vpc = new sst.aws.Vpc("MyVpc");
   new sst.aws.Aurora("MyDatabase", {
+    vpc,
     engine: "postgres",
     version: "15.5",
     databaseName: "acme"
