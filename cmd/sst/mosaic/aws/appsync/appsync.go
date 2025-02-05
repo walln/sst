@@ -22,6 +22,9 @@ import (
 
 var log = slog.Default().With("service", "appsync.connection")
 
+var ErrSubscriptionFailed = fmt.Errorf("subscription failed")
+var ErrConnectionFailed = fmt.Errorf("connection failed")
+
 type Connection struct {
 	conn             *websocket.Conn
 	cfg              aws.Config
@@ -95,33 +98,46 @@ func (c *Connection) connect(ctx context.Context) error {
 		"type": "connection_init",
 	})
 	c.conn = conn
-	duration := time.Second * 30
-	timer := time.NewTimer(duration)
 
+	msg := map[string]interface{}{}
+	err = conn.ReadJSON(&msg)
+	if err != nil {
+		return ErrConnectionFailed
+	}
+	if msg["type"] != "connection_ack" {
+		return ErrConnectionFailed
+	}
+	duration := time.Millisecond * time.Duration(msg["connectionTimeoutMs"].(float64))
+
+	timer := time.NewTimer(duration)
 	go func() {
-		<-timer.C
-		log.Info("connection timeout")
-		conn.Close()
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			default:
-				err := c.connect(ctx)
-				if err != nil {
-					log.Info("failed to reconnect", "err", err)
-					time.Sleep(time.Second)
-					continue
-				}
-				for id, sub := range c.subscriptions {
-					log.Info("resubscribing", "sub", sub)
-					err := c.subscribe(ctx, sub.Channel, id)
+		select {
+		case <-ctx.Done():
+			return
+		case <-timer.C:
+			log.Info("connection timeout")
+			conn.Close()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				default:
+					err := c.connect(ctx)
 					if err != nil {
-						log.Error("failed to resubscribe", "err", err)
+						log.Info("failed to reconnect", "err", err)
+						time.Sleep(time.Second * 5)
 						continue
 					}
+					for id, sub := range c.subscriptions {
+						log.Info("resubscribing", "channel", sub.Channel, "id", id)
+						err := c.subscribe(ctx, sub.Channel, id)
+						if err != nil {
+							log.Error("failed to resubscribe", "err", err)
+							continue
+						}
+					}
+					return
 				}
-				break
 			}
 		}
 	}()
@@ -131,6 +147,7 @@ func (c *Connection) connect(ctx context.Context) error {
 			msg := map[string]interface{}{}
 			err := conn.ReadJSON(&msg)
 			if err != nil {
+				log.Info("connection closed")
 				timer.Reset(1 * time.Millisecond)
 				return
 			}
@@ -164,8 +181,6 @@ func (c *Connection) connect(ctx context.Context) error {
 	return nil
 }
 
-var ErrSubscriptionFailed = fmt.Errorf("subscription failed")
-
 func (c *Connection) Subscribe(ctx context.Context, channel string) (chan string, error) {
 	out := make(chan string, 1000)
 	subscriptionID := id.Ascending()
@@ -177,12 +192,7 @@ func (c *Connection) Subscribe(ctx context.Context, channel string) (chan string
 	if err != nil {
 		return nil, err
 	}
-	select {
-	case <-out:
-		return out, nil
-	case <-time.After(time.Second * 3):
-		return nil, ErrSubscriptionFailed
-	}
+	return out, nil
 }
 
 func (c *Connection) subscribe(ctx context.Context, channel string, subscriptionID string) error {
@@ -194,13 +204,31 @@ func (c *Connection) subscribe(ctx context.Context, channel string, subscription
 	if err != nil {
 		return err
 	}
+	old := c.subscriptions[subscriptionID].Out
+	tmp := make(chan string, 1)
+	defer func() {
+		c.subscriptions[subscriptionID] = SubscriptionInfo{
+			Channel: channel,
+			Out:     old,
+		}
+	}()
+	c.subscriptions[subscriptionID] = SubscriptionInfo{
+		Channel: channel,
+		Out:     tmp,
+	}
 	c.conn.WriteJSON(map[string]interface{}{
 		"type":          "subscribe",
 		"id":            subscriptionID,
 		"channel":       channel,
 		"authorization": auth,
 	})
-	return nil
+	select {
+	case <-tmp:
+		log.Info("subscribed", "channel", channel, "id", subscriptionID)
+		return nil
+	case <-time.After(time.Second * 3):
+		return ErrSubscriptionFailed
+	}
 }
 
 func (c *Connection) getAuth(ctx context.Context, body interface{}) (interface{}, error) {
