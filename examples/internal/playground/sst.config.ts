@@ -90,6 +90,7 @@ export default $config({
         link: [queue],
         url: true,
       });
+      ret.queue = queue.url;
 
       return queue;
     }
