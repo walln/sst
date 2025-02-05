@@ -33,11 +33,10 @@ While the goal with v3 is to support most of what's in v2, there are a few thing
 |----------|-------|
 | `Auth` | [In beta](https://github.com/sst/sst/issues/4893) |
 | `Script` | [#811](https://github.com/sst/sst/issues/4323) |
-| `RDS` MySQL | [#812](https://github.com/sst/sst/issues/4322) |
 | `Function` non-Node.js runtimes | [Python](https://github.com/sst/sst/issues/4669), [Container](https://github.com/sst/sst/issues/4462), [Custom](https://github.com/sst/sst/issues/4826) |
 
 :::note
-Currently, v3 only support WSL. Windows support is on the roadmap — [#347](https://github.com/sst/ion/issues/347)
+Currently, v3 only support WSL. Windows support is on the roadmap — [#347](https://github.com/sst/sst/issues/4685)
 :::
 
 Feel free to let us know via the linked GitHub issues if these are blockers for you. It'll help us prioritize this list.
@@ -796,7 +795,8 @@ Learn more about [`Task`](/blog/tasks-in-v3).
 <Tabs>
   <TabItem label="v3">
   ```ts title="sst.config.ts"
-  new sst.aws.Postgres("MyDatabase", {
+  new sst.aws.Aurora("MyDatabase", {
+    engine: "postgres",
     version: "15.5",
     databaseName: "acme"
   });
@@ -812,6 +812,8 @@ Learn more about [`Task`](/blog/tasks-in-v3).
   ```
   </TabItem>
 </Tabs>
+
+The `Aurora` component uses [Amazon Aurora Serverless v2](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless-v2.html).
 
 For migrations, we recommend using [Drizzle Kit](https://orm.drizzle.team/kit-docs/overview). Check out our [Drizzle example](/docs/start/aws/drizzle/).
 
