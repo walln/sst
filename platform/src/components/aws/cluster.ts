@@ -2624,7 +2624,8 @@ export class Cluster extends Component {
    * Add a service to the cluster.
    *
    * @param name Name of the service.
-   * @param args Configure the service.
+   * @param args? Configure the service.
+   * @param opts? Resource options.
    *
    * @example
    *
@@ -2676,7 +2677,11 @@ export class Cluster extends Component {
    *
    * This is useful for running sidecar containers.
    */
-  public addService(name: string, args?: ClusterServiceArgs) {
+  public addService(
+    name: string,
+    args?: ClusterServiceArgs,
+    opts?: ComponentResourceOptions,
+  ) {
     // Do not prefix the service to allow `Resource.MyService` to work.
     return new Service(
       name,
@@ -2685,7 +2690,7 @@ export class Cluster extends Component {
         vpc: this.vpc,
         ...args,
       },
-      { provider: this.constructorOpts.provider },
+      { provider: this.constructorOpts.provider, ...opts },
     );
   }
 
@@ -2693,7 +2698,8 @@ export class Cluster extends Component {
    * Add a task to the cluster.
    *
    * @param name Name of the task.
-   * @param args Configure the task.
+   * @param args? Configure the task.
+   * @param opts? Resource options.
    *
    * @example
    *
@@ -2725,7 +2731,11 @@ export class Cluster extends Component {
    *
    * This is useful for running sidecar containers.
    */
-  public addTask(name: string, args?: ClusterTaskArgs) {
+  public addTask(
+    name: string,
+    args?: ClusterTaskArgs,
+    opts?: ComponentResourceOptions,
+  ) {
     // Do not prefix the task to allow `Resource.MyTask` to work.
     return new Task(
       name,
@@ -2734,7 +2744,7 @@ export class Cluster extends Component {
         vpc: this.vpc,
         ...args,
       },
-      { provider: this.constructorOpts.provider },
+      { provider: this.constructorOpts.provider, ...opts },
     );
   }
 
