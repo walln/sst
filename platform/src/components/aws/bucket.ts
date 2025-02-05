@@ -790,14 +790,14 @@ export class Bucket extends Component implements Link.Linkable {
   }
 
   /**
-   * Subscribe to event notifications from this bucket. You can subscribe to these notifications
-   * with a function, a queue, or a topic.
+   * Subscribe to event notifications from this bucket. You can subscribe to these
+   * notifications with a function, a queue, or a topic.
    *
    * @param args The config for the event notifications.
    *
    * @example
    *
-   * Notify a function.
+   * For exmaple, to notify a function:
    *
    * ```js title="sst.config.ts" {5}
    * bucket.notify({
@@ -837,7 +837,7 @@ export class Bucket extends Component implements Link.Linkable {
    *
    * You can notify it by passing in the topic.
    *
-   * ```js {5}
+   * ```js title="sst.config.ts" {5}
    * bucket.notify({
    *   notifications: [
    *     {
@@ -850,7 +850,7 @@ export class Bucket extends Component implements Link.Linkable {
    *
    * You can also set it to only send notifications for specific S3 events.
    *
-   * ```js title="sst.config.ts" {6}
+   * ```js {6}
    * bucket.notify({
    *   notifications: [
    *     {
@@ -864,7 +864,7 @@ export class Bucket extends Component implements Link.Linkable {
    *
    * And you can add filters to be only notified from specific files in the bucket.
    *
-   * ```js title="sst.config.ts" {6}
+   * ```js {6}
    * bucket.notify({
    *   notifications: [
    *     {
