@@ -289,6 +289,11 @@ func (p *Project) RunNext(ctx context.Context, input *StackInput) error {
 			for key, value := range opts.(map[string]interface{}) {
 				switch v := value.(type) {
 				case map[string]interface{}:
+					bytes, err := json.Marshal(v)
+					if err != nil {
+						return err
+					}
+					args = append(args, "--config", fmt.Sprintf("%v:%v=%v", provider, key, string(bytes)))
 				case []interface{}:
 					bytes, err := json.Marshal(v)
 					if err != nil {
