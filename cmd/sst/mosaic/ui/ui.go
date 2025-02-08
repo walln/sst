@@ -387,7 +387,7 @@ func (u *UI) Event(unknown interface{}) {
 				"  ",
 				TEXT_NORMAL_BOLD.Render("Permalink"),
 				"   ",
-				TEXT_NORMAL.Render(`https://sst.dev/u/`+evt.UpdateID),
+				TEXT_NORMAL.Render(`https://sst.dev/u/`+evt.UpdateID[len(evt.UpdateID)-6:]),
 			)
 		}
 		u.blank()
@@ -500,7 +500,7 @@ func (u *UI) Event(unknown interface{}) {
 				u.println(
 					TEXT_NORMAL_BOLD.Render("View more in the console:"),
 					" ",
-					TEXT_INFO.Render(`https://sst.dev/u/`+evt.UpdateID),
+					TEXT_INFO.Render(`https://sst.dev/u/`+evt.UpdateID[len(evt.UpdateID)-6:]),
 				)
 			}
 		}
