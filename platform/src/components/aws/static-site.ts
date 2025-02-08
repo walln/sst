@@ -702,7 +702,7 @@ export class StaticSite extends Component implements Link.Linkable {
       return new OriginAccessControl(
         `${name}S3AccessControl`,
         { name: physicalName(64, name) },
-        { parent },
+        { parent, ignoreChanges: ["name"] },
       );
     }
 

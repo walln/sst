@@ -827,7 +827,7 @@ export class ApiGatewayV2 extends Component implements Link.Linkable {
               (accessLog) => RETENTION[accessLog.retention],
             ),
           },
-          { parent },
+          { parent, ignoreChanges: ["name"] },
         ),
       );
     }

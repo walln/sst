@@ -1,9 +1,8 @@
-import { ComponentResourceOptions, Output, all, output } from "@pulumi/pulumi";
+import { ComponentResourceOptions, Output, output } from "@pulumi/pulumi";
 import { Component, Transform, transform } from "../component";
 import { Link } from "../link";
 import type { Input } from "../input";
 import { FunctionArgs, FunctionArn } from "./function";
-import { physicalName } from "../naming";
 import { parseEventBusArn } from "./helpers/arn";
 import { BusLambdaSubscriber } from "./bus-lambda-subscriber";
 import { cloudwatch } from "@pulumi/aws";
@@ -199,14 +198,7 @@ export class Bus extends Component implements Link.Linkable {
 
     function createBus() {
       return new cloudwatch.EventBus(
-        ...transform(
-          args.transform?.bus,
-          `${name}Bus`,
-          {
-            name: physicalName(256, name),
-          },
-          { parent },
-        ),
+        ...transform(args.transform?.bus, `${name}Bus`, {}, { parent }),
       );
     }
   }

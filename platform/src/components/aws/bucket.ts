@@ -5,13 +5,7 @@ import {
   all,
   Output,
 } from "@pulumi/pulumi";
-import { RandomId } from "@pulumi/random";
-import {
-  physicalName,
-  hashNumberToPrettyString,
-  hashStringToPrettyString,
-  logicalName,
-} from "../naming";
+import { hashStringToPrettyString, logicalName } from "../naming";
 import { Component, Prettify, Transform, transform } from "../component";
 import { Link } from "../link";
 import type { Input } from "../input";
@@ -566,31 +560,16 @@ export class Bucket extends Component implements Link.Linkable {
     }
 
     function createBucket() {
-      const transformed = transform(
-        args.transform?.bucket,
-        `${name}Bucket`,
-        {
-          forceDestroy: true,
-        },
-        { parent },
-      );
-
-      if (!transformed[1].bucket) {
-        const randomId = new RandomId(
-          `${name}Id`,
-          { byteLength: 6 },
+      return new s3.BucketV2(
+        ...transform(
+          args.transform?.bucket,
+          `${name}Bucket`,
+          {
+            forceDestroy: true,
+          },
           { parent },
-        );
-        transformed[1].bucket = randomId.dec.apply((dec) =>
-          physicalName(
-            63,
-            name,
-            `-${hashNumberToPrettyString(parseInt(dec), 8)}`,
-          ).toLowerCase(),
-        );
-      }
-
-      return new s3.BucketV2(...transformed);
+        ),
+      );
     }
 
     function createVersioning() {
@@ -641,9 +620,9 @@ export class Bucket extends Component implements Link.Linkable {
               access === "public"
                 ? { type: "*", identifiers: ["*"] }
                 : {
-                  type: "Service",
-                  identifiers: ["cloudfront.amazonaws.com"],
-                },
+                    type: "Service",
+                    identifiers: ["cloudfront.amazonaws.com"],
+                  },
             ],
             actions: ["s3:GetObject"],
             resources: [interpolate`${bucket.arn}/*`],
