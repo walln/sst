@@ -408,10 +408,10 @@ loop:
 			continue
 		}
 
-		if event.DiagnosticEvent != nil &&
-			event.DiagnosticEvent.Severity == "error" &&
-			!strings.HasPrefix(event.DiagnosticEvent.Message, "update failed") &&
-			!strings.Contains(event.DiagnosticEvent.Message, "failed to register new resource") {
+		if event.DiagnosticEvent != nil && event.DiagnosticEvent.Severity == "error" {
+			if strings.HasPrefix(event.DiagnosticEvent.Message, "update failed") || strings.Contains(event.DiagnosticEvent.Message, "failed to register new resource") {
+				continue
+			}
 
 			// check if the error is a common error
 			help := []string{}
@@ -429,6 +429,10 @@ loop:
 						break
 					}
 				}
+			}
+
+			if exists {
+				continue
 			}
 
 			if !exists {
