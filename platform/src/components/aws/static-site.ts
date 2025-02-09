@@ -627,7 +627,7 @@ export class StaticSite extends Component implements Link.Linkable {
     const { sitePath, environment, indexPage } = prepare(args);
     const dev = normalizeDev();
 
-    if ($dev && args.dev !== false) {
+    if (dev) {
       this.devUrl = dev.url;
       this.registerOutputs({
         _metadata: {
@@ -636,7 +636,12 @@ export class StaticSite extends Component implements Link.Linkable {
           environment,
           url: this.url,
         },
-        _dev: dev,
+        _dev: {
+          environment,
+          command: dev.command,
+          directory: dev.directory,
+          autostart: dev.autostart,
+        },
       });
       return;
     }
@@ -666,18 +671,18 @@ export class StaticSite extends Component implements Link.Linkable {
         environment,
         url: this.url,
       },
-      _dev: dev,
     });
 
     function normalizeDev() {
-      const dev = args.dev === false ? {} : args.dev ?? {};
+      if (!$dev) return undefined;
+      if (args.dev === false) return undefined;
+
       return {
-        ...dev,
-        environment,
-        url: output(dev.url).apply((v) => v ?? URL_UNAVAILABLE),
-        command: output(dev.command).apply((v) => v ?? "npm run dev"),
-        autostart: output(dev.autostart).apply((v) => v ?? true),
-        directory: output(dev.directory).apply((v) => v ?? sitePath),
+        ...args.dev,
+        url: output(args.dev?.url).apply((v) => v ?? URL_UNAVAILABLE),
+        command: output(args.dev?.command).apply((v) => v ?? "npm run dev"),
+        autostart: output(args.dev?.autostart).apply((v) => v ?? true),
+        directory: output(args.dev?.directory).apply((v) => v ?? sitePath),
       };
     }
 
@@ -697,7 +702,7 @@ export class StaticSite extends Component implements Link.Linkable {
       return new OriginAccessControl(
         `${name}S3AccessControl`,
         { name: physicalName(64, name) },
-        { parent },
+        { parent, ignoreChanges: ["name"] },
       );
     }
 
@@ -762,7 +767,7 @@ export class StaticSite extends Component implements Link.Linkable {
             ...(await Promise.all(
               files.map(async (file) => {
                 const source = path.resolve(outputPath, file);
-                const content = await fs.promises.readFile(source, 'utf-8');
+                const content = await fs.promises.readFile(source, "utf-8");
                 const hash = crypto
                   .createHash("sha256")
                   .update(content)
@@ -958,7 +963,9 @@ async function handler(event) {
             follow: true,
             cwd: path.resolve(outputPath),
           }).forEach((filePath) =>
-            hash.update(fs.readFileSync(path.resolve(outputPath, filePath), 'utf-8')),
+            hash.update(
+              fs.readFileSync(path.resolve(outputPath, filePath), "utf-8"),
+            ),
           );
 
           return {

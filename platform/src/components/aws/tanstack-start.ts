@@ -444,6 +444,20 @@ export class TanstackStart extends Component implements Link.Linkable {
             .readdirSync(path.join(outputPath, assetsPath), {
               withFileTypes: true,
             })
+            .filter((item) => {
+              if (!item.isDirectory()) return true;
+
+              if (item.name === "_server") return false;
+
+              // Ignore empty folders, sometimes these are created for purely server routes (vinxi bug)
+              const isEmpty = !fs.readdirSync(
+                path.join(outputPath, assetsPath, item.name),
+              ).length;
+              if (isEmpty) return false;
+
+              // pass on everything else
+              return true;
+            })
             .map((item) => (item.isDirectory() ? `${item.name}/*` : item.name)),
         };
       });
@@ -485,13 +499,15 @@ export class TanstackStart extends Component implements Link.Linkable {
               },
             },
             behaviors: [
+              // These seem duplicate?
               {
                 cacheType: "server",
                 cfFunction: "serverCfFunction",
                 origin: "server",
               },
+              // I'm not even sure this is necessary. Default should send it to lambda.
               {
-                pattern: "_server/",
+                pattern: "_server/*",
                 cacheType: "server",
                 cfFunction: "serverCfFunction",
                 origin: "server",

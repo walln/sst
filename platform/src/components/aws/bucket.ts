@@ -5,13 +5,7 @@ import {
   all,
   Output,
 } from "@pulumi/pulumi";
-import { RandomId } from "@pulumi/random";
-import {
-  physicalName,
-  hashNumberToPrettyString,
-  hashStringToPrettyString,
-  logicalName,
-} from "../naming";
+import { hashStringToPrettyString, logicalName } from "../naming";
 import { Component, Prettify, Transform, transform } from "../component";
 import { Link } from "../link";
 import type { Input } from "../input";
@@ -566,31 +560,16 @@ export class Bucket extends Component implements Link.Linkable {
     }
 
     function createBucket() {
-      const transformed = transform(
-        args.transform?.bucket,
-        `${name}Bucket`,
-        {
-          forceDestroy: true,
-        },
-        { parent },
-      );
-
-      if (!transformed[1].bucket) {
-        const randomId = new RandomId(
-          `${name}Id`,
-          { byteLength: 6 },
+      return new s3.BucketV2(
+        ...transform(
+          args.transform?.bucket,
+          `${name}Bucket`,
+          {
+            forceDestroy: true,
+          },
           { parent },
-        );
-        transformed[1].bucket = randomId.dec.apply((dec) =>
-          physicalName(
-            63,
-            name,
-            `-${hashNumberToPrettyString(parseInt(dec), 8)}`,
-          ).toLowerCase(),
-        );
-      }
-
-      return new s3.BucketV2(...transformed);
+        ),
+      );
     }
 
     function createVersioning() {
@@ -641,9 +620,9 @@ export class Bucket extends Component implements Link.Linkable {
               access === "public"
                 ? { type: "*", identifiers: ["*"] }
                 : {
-                  type: "Service",
-                  identifiers: ["cloudfront.amazonaws.com"],
-                },
+                    type: "Service",
+                    identifiers: ["cloudfront.amazonaws.com"],
+                  },
             ],
             actions: ["s3:GetObject"],
             resources: [interpolate`${bucket.arn}/*`],
@@ -790,14 +769,14 @@ export class Bucket extends Component implements Link.Linkable {
   }
 
   /**
-   * Subscribe to event notifications from this bucket. You can subscribe to these notifications
-   * with a function, a queue, or a topic.
+   * Subscribe to event notifications from this bucket. You can subscribe to these
+   * notifications with a function, a queue, or a topic.
    *
    * @param args The config for the event notifications.
    *
    * @example
    *
-   * Notify a function.
+   * For exmaple, to notify a function:
    *
    * ```js title="sst.config.ts" {5}
    * bucket.notify({
@@ -837,7 +816,7 @@ export class Bucket extends Component implements Link.Linkable {
    *
    * You can notify it by passing in the topic.
    *
-   * ```js {5}
+   * ```js title="sst.config.ts" {5}
    * bucket.notify({
    *   notifications: [
    *     {
@@ -850,7 +829,7 @@ export class Bucket extends Component implements Link.Linkable {
    *
    * You can also set it to only send notifications for specific S3 events.
    *
-   * ```js title="sst.config.ts" {6}
+   * ```js {6}
    * bucket.notify({
    *   notifications: [
    *     {
@@ -864,7 +843,7 @@ export class Bucket extends Component implements Link.Linkable {
    *
    * And you can add filters to be only notified from specific files in the bucket.
    *
-   * ```js title="sst.config.ts" {6}
+   * ```js {6}
    * bucket.notify({
    *   notifications: [
    *     {

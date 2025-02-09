@@ -232,7 +232,7 @@ func (r *ChannelReader) Read(p []byte) (n int, err error) {
 	return 0, io.EOF
 }
 
-func sorted(ctx context.Context, sub appsync.SubscriptionChannel) iter.Seq[Packet] {
+func sorted(ctx context.Context, sub chan string) iter.Seq[Packet] {
 	return func(yield func(Packet) bool) {
 		history := make(map[string]map[int]Packet)
 		next := map[string]int{}

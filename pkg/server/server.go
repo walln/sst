@@ -51,7 +51,9 @@ func New() (*Server, error) {
 }
 
 func (s *Server) Start(ctx context.Context, p *project.Project) error {
-	defer slog.Info("server done")
+	log := slog.Default().With("service", "server")
+	log.Info("starting")
+	defer log.Info("server done")
 
 	resource.Register(ctx, p, s.Rpc)
 	aws.Register(ctx, p, s.Rpc)
@@ -62,7 +64,7 @@ func (s *Server) Start(ctx context.Context, p *project.Project) error {
 		Handler: s.Mux,
 	}
 	server.Addr = fmt.Sprintf("0.0.0.0:%d", s.Port)
-	slog.Info("server", "addr", server.Addr)
+	log.Info("server", "addr", server.Addr)
 	serverPath := resolveServerFile(p.PathConfig(), p.App().Stage)
 	u, _ := url.Parse("http://" + server.Addr)
 	os.WriteFile(serverPath, []byte(u.String()), 0644)
@@ -72,7 +74,7 @@ func (s *Server) Start(ctx context.Context, p *project.Project) error {
 	keyPath := filepath.Join(global.CertPath(), "key.pem")
 	certPath := filepath.Join(global.CertPath(), "cert.pem")
 	if _, err := os.Stat(keyPath); err == nil {
-		slog.Info("https enabled")
+		log.Info("https enabled")
 		proxy := httputil.NewSingleHostReverseProxy(u)
 		go http.ListenAndServeTLS(
 			fmt.Sprintf("0.0.0.0:%d", s.Port+1000),
@@ -81,13 +83,13 @@ func (s *Server) Start(ctx context.Context, p *project.Project) error {
 			proxy,
 		)
 		if err != nil {
-			slog.Error("failed to start https server", "err", err)
+			log.Error("failed to start https server", "err", err)
 			return err
 		}
 	}
 
 	<-ctx.Done()
-	slog.Info("shutting down server")
+	log.Info("shutting down server")
 	go server.Shutdown(ctx)
 	return nil
 }

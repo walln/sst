@@ -125,9 +125,17 @@ func run() error {
 		}
 		requestID := resp.Header.Get("lambda-runtime-aws-request-id")
 		writer := client.NewWriter(bridge.MessageNext, prefix+"/in")
-		resp.Write(writer)
-		writer.Close()
-		timeout := time.Second * 3
+		err = resp.Write(writer)
+		if err != nil {
+			slog.Error("failed to write message", slog.String("requestID", requestID), slog.String("error", err.Error()))
+			continue
+		}
+		err = writer.Close()
+		if err != nil {
+			slog.Error("failed to close message", slog.String("requestID", requestID), slog.String("error", err.Error()))
+			continue
+		}
+		timeout := time.Second * 8
 
 	loop:
 		for {

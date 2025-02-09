@@ -35,7 +35,7 @@ function addTransformationToRetainResourcesOnDelete() {
           "planetscale:index/branch:Branch",
         ].includes(args.type))
     ) {
-      args.opts.retainOnDelete = true;
+      args.opts.retainOnDelete = args.opts.retainOnDelete ?? true;
       return args;
     }
     return undefined;

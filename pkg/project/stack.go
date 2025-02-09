@@ -26,7 +26,6 @@ import (
 	"github.com/sst/sst/v3/pkg/bus"
 	"github.com/sst/sst/v3/pkg/flag"
 	"github.com/sst/sst/v3/pkg/global"
-	"github.com/sst/sst/v3/pkg/id"
 	"github.com/sst/sst/v3/pkg/js"
 	"github.com/sst/sst/v3/pkg/project/common"
 	"github.com/sst/sst/v3/pkg/project/provider"
@@ -76,11 +75,12 @@ type Devs map[string]Dev
 
 type Task struct {
 	Name      string `json:"-"`
-	Command   string `json:"command"`
+	Command   *string `json:"command"`
 	Directory string `json:"directory"`
 }
 
 type CompleteEvent struct {
+	UpdateID    string
 	Links       common.Links
 	Devs        Devs
 	Tasks       map[string]Task
@@ -170,7 +170,7 @@ var ErrStageNotFound = fmt.Errorf("stage not found")
 var ErrPassphraseInvalid = fmt.Errorf("passphrase invalid")
 var ErrProtectedStage = fmt.Errorf("cannot remove protected stage")
 
-func (p *Project) Run(ctx context.Context, input *StackInput) error {
+func (p *Project) RunOld(ctx context.Context, input *StackInput) error {
 	slog.Info("running stack command", "cmd", input.Command)
 
 	if p.app.Protect && input.Command == "remove" {
@@ -185,9 +185,10 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 		Version: p.Version(),
 	})
 
-	updateID := id.Descending()
+	var update *provider.Update
+	var err error
 	if input.Command != "diff" {
-		err := p.Lock(updateID, input.Command)
+		update, err = p.Lock(input.Command)
 		if err != nil {
 			if err == provider.ErrLockExists {
 				bus.Publish(&ConcurrentUpdateEvent{})
@@ -197,7 +198,7 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 		defer p.Unlock()
 	}
 
-	workdir, err := p.NewWorkdir()
+	workdir, err := p.NewWorkdir(update.ID)
 	statePath, err := workdir.Pull()
 	if err != nil {
 		if errors.Is(err, provider.ErrStateNotFound) {
@@ -264,7 +265,7 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 	env["NODE_OPTIONS"] = "--enable-source-maps --no-deprecation"
 	// env["TMPDIR"] = p.PathLog("")
 	if input.ServerPort != 0 {
-		env["SST_SERVER"] = fmt.Sprintf("http://localhost:%v", input.ServerPort)
+		env["SST_SERVER"] = fmt.Sprintf("http://127.0.0.1:%v", input.ServerPort)
 	}
 	pulumiPath := flag.SST_PULUMI_PATH
 	if pulumiPath == "" {
@@ -307,7 +308,7 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 	}
 	slog.Info("built stack")
 
-	completed, err := getCompletedEvent(ctx, stack)
+	completed, err := getCompletedEvent(ctx, passphrase, workdir)
 	if err != nil {
 		bus.Publish(&BuildFailedEvent{
 			Error: err.Error(),
@@ -450,7 +451,7 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 				if err == nil {
 					next := xxh3.Hash(data)
 					if next != last && next != 0 && input.Command != "diff" {
-						err := provider.PushPartialState(p.Backend(), updateID, p.App().Name, p.App().Stage, data)
+						err := provider.PushPartialState(p.Backend(), update.ID, p.App().Name, p.App().Stage, data)
 						if err != nil && cmd == 0 {
 							partialDone <- err
 							return
@@ -458,7 +459,7 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 					}
 					last = next
 					if cmd == 0 {
-						partialDone <- provider.PushSnapshot(p.Backend(), updateID, p.App().Name, p.App().Stage, data)
+						partialDone <- provider.PushSnapshot(p.Backend(), update.ID, p.App().Name, p.App().Stage, data)
 						return
 					}
 				}
@@ -580,7 +581,6 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 		}
 	}
 
-	started := time.Now().Format(time.RFC3339)
 	var runError error
 	switch input.Command {
 	case "deploy":
@@ -635,7 +635,7 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 	}
 
 	slog.Info("parsing state")
-	complete, err := getCompletedEvent(context.Background(), stack)
+	complete, err := getCompletedEvent(context.Background(), passphrase, workdir)
 	if err != nil {
 		return err
 	}
@@ -654,11 +654,6 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 	json.NewEncoder(outputsFile).Encode(complete.Outputs)
 
 	if input.Command != "diff " {
-		var update provider.Update
-		update.ID = updateID
-		update.Command = input.Command
-		update.Version = p.Version()
-		update.TimeStarted = started
 		update.TimeCompleted = time.Now().Format(time.RFC3339)
 		for _, err := range errors {
 			update.Errors = append(update.Errors, provider.SummaryError{
@@ -680,8 +675,8 @@ func (p *Project) Run(ctx context.Context, input *StackInput) error {
 	return nil
 }
 
-func (p *Project) Lock(updateID string, command string) error {
-	return provider.Lock(p.home, updateID, p.Version(), command, p.app.Name, p.app.Stage)
+func (p *Project) Lock(command string) (*provider.Update, error) {
+	return provider.Lock(p.home, p.Version(), command, p.app.Name, p.app.Stage)
 }
 
 func (s *Project) Unlock() error {

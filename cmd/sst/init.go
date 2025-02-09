@@ -218,7 +218,7 @@ func CmdInit(cli *cli.Cli) error {
 	}
 
 	cwd, err := os.Getwd()
-	mgr := npm.DetectPackageManager(cwd)
+	mgr, _ := npm.DetectPackageManager(cwd)
 	if mgr != "" {
 		cmd = process.Command(mgr, "install")
 		spin.Suffix = "  Installing dependencies..."

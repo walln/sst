@@ -26,7 +26,7 @@ func BunPath() string {
 }
 
 func NeedsBun() bool {
-	if flag.NO_BUN {
+	if flag.SST_NO_BUN {
 		return false
 	}
 	path := BunPath()

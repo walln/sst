@@ -3,17 +3,13 @@ package project
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"path/filepath"
 	"strings"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/auto"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	"github.com/sst/sst/v3/pkg/global"
+	"github.com/sst/sst/v3/pkg/id"
 	"github.com/sst/sst/v3/pkg/project/common"
 	"github.com/sst/sst/v3/pkg/project/provider"
+	"github.com/sst/sst/v3/pkg/state"
 )
 
 func (p *Project) GetCompleted(ctx context.Context) (*CompleteEvent, error) {
@@ -21,7 +17,7 @@ func (p *Project) GetCompleted(ctx context.Context) (*CompleteEvent, error) {
 	if err != nil {
 		return nil, err
 	}
-	workdir, err := p.NewWorkdir()
+	workdir, err := p.NewWorkdir(id.Descending())
 	if err != nil {
 		return nil, err
 	}
@@ -30,51 +26,10 @@ func (p *Project) GetCompleted(ctx context.Context) (*CompleteEvent, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer workdir.Cleanup()
-	pulumi, err := auto.NewPulumiCommand(&auto.PulumiCommandOptions{
-		Root:             filepath.Join(global.BinPath(), ".."),
-		SkipVersionCheck: true,
-	})
-	if err != nil {
-		return nil, err
-	}
-	ws, err := auto.NewLocalWorkspace(ctx,
-		auto.Pulumi(pulumi),
-		auto.WorkDir(workdir.Backend()),
-		auto.PulumiHome(global.ConfigDir()),
-		auto.Project(workspace.Project{
-			Name:    tokens.PackageName(p.app.Name),
-			Runtime: workspace.NewProjectRuntimeInfo("nodejs", nil),
-			Backend: &workspace.ProjectBackend{
-				URL: fmt.Sprintf("file://%v", workdir.Backend()),
-			},
-		}),
-		auto.EnvVars(
-			map[string]string{
-				"PULUMI_CONFIG_PASSPHRASE": passphrase,
-			},
-		),
-	)
-	if err != nil {
-		return nil, err
-	}
-	stack, err := auto.SelectStack(ctx,
-		p.app.Stage,
-		ws,
-	)
-	if err != nil {
-		return nil, err
-	}
-	return getCompletedEvent(ctx, stack)
+	return getCompletedEvent(ctx, passphrase, workdir)
 }
 
-func getCompletedEvent(ctx context.Context, stack auto.Stack) (*CompleteEvent, error) {
-	exported, err := stack.Export(ctx)
-	if err != nil {
-		return nil, err
-	}
-	var deployment apitype.DeploymentV3
-	json.Unmarshal(exported.Deployment, &deployment)
+func getCompletedEvent(ctx context.Context, passphrase string, workdir *PulumiWorkdir) (*CompleteEvent, error) {
 	complete := &CompleteEvent{
 		Links:       common.Links{},
 		Versions:    map[string]int{},
@@ -88,13 +43,22 @@ func getCompletedEvent(ctx context.Context, stack auto.Stack) (*CompleteEvent, e
 		Finished:    false,
 		Resources:   []apitype.ResourceV3{},
 	}
+	checkpoint, err := workdir.Export()
+	if err != nil {
+		return nil, err
+	}
+	decrypted, err := state.Decrypt(ctx, passphrase, checkpoint)
+	if err != nil {
+		return nil, err
+	}
+	deployment := decrypted.Latest
 	if len(deployment.Resources) == 0 {
 		return complete, nil
 	}
 	complete.Resources = deployment.Resources
 
 	for _, resource := range complete.Resources {
-		outputs := decrypt(resource.Outputs).(map[string]interface{})
+		outputs := parsePlaintext(resource.Outputs).(map[string]interface{})
 		if resource.URN.Type().Module().Package().Name() == "sst" {
 			if resource.Type == "sst:sst:Version" {
 				if outputs["target"] != nil && outputs["version"] != nil {
@@ -163,7 +127,7 @@ func getCompletedEvent(ctx context.Context, stack auto.Stack) (*CompleteEvent, e
 		}
 	}
 
-	outputs := decrypt(deployment.Resources[0].Outputs).(map[string]interface{})
+	outputs := parsePlaintext(deployment.Resources[0].Outputs).(map[string]interface{})
 	for key, value := range outputs {
 		if strings.HasPrefix(key, "_") {
 			continue
@@ -174,25 +138,20 @@ func getCompletedEvent(ctx context.Context, stack auto.Stack) (*CompleteEvent, e
 	return complete, nil
 }
 
-func decrypt(input interface{}) interface{} {
+func parsePlaintext(input interface{}) interface{} {
 	switch cast := input.(type) {
+	case apitype.SecretV1:
+		var parsed any
+		json.Unmarshal([]byte(cast.Plaintext), &parsed)
+		return parsed
 	case map[string]interface{}:
-		if cast["plaintext"] != nil {
-			var parsed any
-			str, ok := cast["plaintext"].(string)
-			if ok {
-				json.Unmarshal([]byte(str), &parsed)
-				return parsed
-			}
-			return cast["plaintext"]
-		}
 		for key, value := range cast {
-			cast[key] = decrypt(value)
+			cast[key] = parsePlaintext(value)
 		}
 		return cast
 	case []interface{}:
 		for i, value := range cast {
-			cast[i] = decrypt(value)
+			cast[i] = parsePlaintext(value)
 		}
 		return cast
 	default:

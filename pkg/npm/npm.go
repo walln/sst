@@ -6,7 +6,8 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"path/filepath"
+
+	"github.com/sst/sst/v3/internal/fs"
 )
 
 type Package struct {
@@ -41,7 +42,7 @@ func Get(name string, version string) (*Package, error) {
 	return &data, nil
 }
 
-func DetectPackageManager(dir string) string {
+func DetectPackageManager(dir string) (string, string) {
 	options := []struct {
 		search string
 		name   string
@@ -68,9 +69,11 @@ func DetectPackageManager(dir string) string {
 		},
 	}
 	for _, option := range options {
-		if _, err := os.Stat(filepath.Join(dir, option.search)); err == nil {
-			return option.name
+		lock, err := fs.FindUp(dir, option.search)
+		if err != nil {
+			continue
 		}
+		return option.name, lock
 	}
-	return ""
+	return "", ""
 }

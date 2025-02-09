@@ -8,7 +8,14 @@ import {
   output,
   secret,
 } from "@pulumi/pulumi";
-import { Component, Prettify, Transform, transform } from "../component";
+import {
+  Component,
+  ComponentVersion,
+  parseComponentVersion,
+  Prettify,
+  Transform,
+  transform,
+} from "../component";
 import { Input } from "../input";
 import { Dns } from "../dns";
 import { FunctionArgs } from "./function";
@@ -373,25 +380,25 @@ interface TaskContainerArgs {
   image?: Input<
     | string
     | {
-      /**
-       * The path to the Docker build context. Same as the top-level
-       * [`image.context`](#image-context).
-       */
-      context?: Input<string>;
-      /**
-       * The path to the Dockerfile. Same as the top-level
-       * [`image.dockerfile`](#image-dockerfile).
-       */
-      dockerfile?: Input<string>;
-      /**
-       * Key-value pairs of build args. Same as the top-level [`image.args`](#image-args).
-       */
-      args?: Input<Record<string, Input<string>>>;
-      /**
-       * The stage to build up to. Same as the top-level [`image.target`](#image-target).
-       */
-      target?: Input<string>;
-    }
+        /**
+         * The path to the Docker build context. Same as the top-level
+         * [`image.context`](#image-context).
+         */
+        context?: Input<string>;
+        /**
+         * The path to the Dockerfile. Same as the top-level
+         * [`image.dockerfile`](#image-dockerfile).
+         */
+        dockerfile?: Input<string>;
+        /**
+         * Key-value pairs of build args. Same as the top-level [`image.args`](#image-args).
+         */
+        args?: Input<Record<string, Input<string>>>;
+        /**
+         * The stage to build up to. Same as the top-level [`image.target`](#image-target).
+         */
+        target?: Input<string>;
+      }
   >;
   /**
    * The command to override the default command in the container. Same as the top-level
@@ -413,10 +420,13 @@ interface TaskContainerArgs {
    */
   logging?: Input<{
     /**
-     * The duration the logs are kept in CloudWatch. Same as the top-level
-     * [`logging.retention`](#logging-retention).
+     * The duration the logs are kept in CloudWatch. Same as the top-level [`logging.retention`](#logging-retention).
      */
     retention?: Input<keyof typeof RETENTION>;
+    /**
+     * The name of the CloudWatch log group. Same as the top-level [`logging.name`](#logging-name).
+     */
+    name?: Input<string>;
   }>;
   /**
    * Key-value pairs of AWS Systems Manager Parameter Store parameter ARNs or AWS Secrets
@@ -621,66 +631,66 @@ interface ClusterBaseArgs {
   image?: Input<
     | string
     | {
-      /**
-       * The path to the [Docker build context](https://docs.docker.com/build/building/context/#local-context). The path is relative to your project's `sst.config.ts`.
-       * @default `"."`
-       * @example
-       *
-       * To change where the Docker build context is located.
-       *
-       * ```js
-       * {
-       *   context: "./app"
-       * }
-       * ```
-       */
-      context?: Input<string>;
-      /**
-       * The path to the [Dockerfile](https://docs.docker.com/reference/cli/docker/image/build/#file).
-       * The path is relative to the build `context`.
-       * @default `"Dockerfile"`
-       * @example
-       * To use a different Dockerfile.
-       * ```js
-       * {
-       *   dockerfile: "Dockerfile.prod"
-       * }
-       * ```
-       */
-      dockerfile?: Input<string>;
-      /**
-       * Key-value pairs of [build args](https://docs.docker.com/build/guide/build-args/) to pass to the Docker build command.
-       * @example
-       * ```js
-       * {
-       *   args: {
-       *     MY_VAR: "value"
-       *   }
-       * }
-       * ```
-       */
-      args?: Input<Record<string, Input<string>>>;
-      /**
-       * Tags to apply to the Docker image.
-       * @example
-       * ```js
-       * {
-       *   tags: ["v1.0.0", "commit-613c1b2"]
-       * }
-       * ```
-       */
-      tags?: Input<Input<string>[]>;
-      /**
-       * The stage to build up to in a [multi-stage Dockerfile](https://docs.docker.com/build/building/multi-stage/#stop-at-a-specific-build-stage).
-       * @example
-       * ```js
-       * {
-       *   target: "stage1"
-       * }
-       * ```
-       */
-      target?: Input<string>;
-    }
+        /**
+         * The path to the [Docker build context](https://docs.docker.com/build/building/context/#local-context). The path is relative to your project's `sst.config.ts`.
+         * @default `"."`
+         * @example
+         *
+         * To change where the Docker build context is located.
+         *
+         * ```js
+         * {
+         *   context: "./app"
+         * }
+         * ```
+         */
+        context?: Input<string>;
+        /**
+         * The path to the [Dockerfile](https://docs.docker.com/reference/cli/docker/image/build/#file).
+         * The path is relative to the build `context`.
+         * @default `"Dockerfile"`
+         * @example
+         * To use a different Dockerfile.
+         * ```js
+         * {
+         *   dockerfile: "Dockerfile.prod"
+         * }
+         * ```
+         */
+        dockerfile?: Input<string>;
+        /**
+         * Key-value pairs of [build args](https://docs.docker.com/build/guide/build-args/) to pass to the Docker build command.
+         * @example
+         * ```js
+         * {
+         *   args: {
+         *     MY_VAR: "value"
+         *   }
+         * }
+         * ```
+         */
+        args?: Input<Record<string, Input<string>>>;
+        /**
+         * Tags to apply to the Docker image.
+         * @example
+         * ```js
+         * {
+         *   tags: ["v1.0.0", "commit-613c1b2"]
+         * }
+         * ```
+         */
+        tags?: Input<Input<string>[]>;
+        /**
+         * The stage to build up to in a [multi-stage Dockerfile](https://docs.docker.com/build/building/multi-stage/#stop-at-a-specific-build-stage).
+         * @example
+         * ```js
+         * {
+         *   target: "stage1"
+         * }
+         * ```
+         */
+        target?: Input<string>;
+      }
   >;
   /**
    * The command to override the default command in the container.
@@ -753,6 +763,12 @@ interface ClusterBaseArgs {
      * @default `"1 month"`
      */
     retention?: Input<keyof typeof RETENTION>;
+    /**
+     * The name of the CloudWatch log group. If omitted, the log group name is generated
+     * based on the cluster name, service name, and container name.
+     * @default `"/sst/cluster/${CLUSTER_NAME}/${SERVICE_NAME}/${CONTAINER_NAME}"`
+     */
+    name?: Input<string>;
   }>;
   /**
    * Mount Amazon EFS file systems into the container.
@@ -801,15 +817,15 @@ interface ClusterBaseArgs {
     efs: Input<
       | Efs
       | {
-        /**
-         * The ID of the EFS file system.
-         */
-        fileSystem: Input<string>;
-        /**
-         * The ID of the EFS access point.
-         */
-        accessPoint: Input<string>;
-      }
+          /**
+           * The ID of the EFS file system.
+           */
+          fileSystem: Input<string>;
+          /**
+           * The ID of the EFS access point.
+           */
+          accessPoint: Input<string>;
+        }
     >;
     /**
      * The path to mount the volume.
@@ -886,7 +902,7 @@ export interface ClusterArgs {
    *     containerSubnets: myVpc.publicSubnets,
    *     loadBalancerSubnets: myVpc.publicSubnets,
    *     cloudmapNamespaceId: myVpc.nodes.cloudmapNamespace.id,
-   *     cloudmapNamespaceName: myVpc.nodes.cloudmapNamespace.name,
+   *     cloudmapNamespaceName: myVpc.nodes.cloudmapNamespace.name
    *   }
    * }
    * ```
@@ -922,34 +938,34 @@ export interface ClusterServiceArgs extends ClusterBaseArgs {
    * disable this and deploy your service in `sst dev`, pass in `false`.
    */
   dev?:
-  | false
-  | {
-    /**
-     * The `url` when this is running in dev mode.
-     *
-     * Since this component is not deployed in `sst dev`, there is no real URL. But if you are
-     * using this component's `url` or linking to this component's `url`, it can be useful to
-     * have a placeholder URL. It avoids having to handle it being `undefined`.
-     * @default `"http://url-unavailable-in-dev.mode"`
-     */
-    url?: Input<string>;
-    /**
-     * The command that `sst dev` runs to start this in dev mode. This is the command you run
-     * when you want to run your service locally.
-     */
-    command?: Input<string>;
-    /**
-     * Configure if you want to automatically start this when `sst dev` starts. You can still
-     * start it manually later.
-     * @default `true`
-     */
-    autostart?: Input<boolean>;
-    /**
-     * Change the directory from where the `command` is run.
-     * @default Uses the `image.dockerfile` path
-     */
-    directory?: Input<string>;
-  };
+    | false
+    | {
+        /**
+         * The `url` when this is running in dev mode.
+         *
+         * Since this component is not deployed in `sst dev`, there is no real URL. But if you are
+         * using this component's `url` or linking to this component's `url`, it can be useful to
+         * have a placeholder URL. It avoids having to handle it being `undefined`.
+         * @default `"http://url-unavailable-in-dev.mode"`
+         */
+        url?: Input<string>;
+        /**
+         * The command that `sst dev` runs to start this in dev mode. This is the command you run
+         * when you want to run your service locally.
+         */
+        command?: Input<string>;
+        /**
+         * Configure if you want to automatically start this when `sst dev` starts. You can still
+         * start it manually later.
+         * @default `true`
+         */
+        autostart?: Input<boolean>;
+        /**
+         * Change the directory from where the `command` is run.
+         * @default Uses the `image.dockerfile` path
+         */
+        directory?: Input<string>;
+      };
   /**
    * Configure a public endpoint for the service. When configured, a load balancer
    * will be created to route traffic to the containers. By default, the endpoint is an
@@ -1008,119 +1024,119 @@ export interface ClusterServiceArgs extends ClusterBaseArgs {
     domain?: Input<
       | string
       | {
-        /**
-         * The custom domain you want to use.
-         *
-         * @example
-         * ```js
-         * {
-         *   domain: {
-         *     name: "example.com"
-         *   }
-         * }
-         * ```
-         *
-         * Can also include subdomains based on the current stage.
-         *
-         * ```js
-         * {
-         *   domain: {
-         *     name: `${$app.stage}.example.com`
-         *   }
-         * }
-         * ```
-         */
-        name: Input<string>;
-        /**
-         * Alias domains that should be used.
-         *
-         * @example
-         * ```js {4}
-         * {
-         *   domain: {
-         *     name: "app1.example.com",
-         *     aliases: ["app2.example.com"]
-         *   }
-         * }
-         * ```
-         */
-        aliases?: Input<string[]>;
-        /**
-         * The ARN of an ACM (AWS Certificate Manager) certificate that proves ownership of the
-         * domain. By default, a certificate is created and validated automatically.
-         *
-         * :::tip
-         * You need to pass in a `cert` for domains that are not hosted on supported `dns` providers.
-         * :::
-         *
-         * To manually set up a domain on an unsupported provider, you'll need to:
-         *
-         * 1. [Validate that you own the domain](https://docs.aws.amazon.com/acm/latest/userguide/domain-ownership-validation.html) by creating an ACM certificate. You can either validate it by setting a DNS record or by verifying an email sent to the domain owner.
-         * 2. Once validated, set the certificate ARN as the `cert` and set `dns` to `false`.
-         * 3. Add the DNS records in your provider to point to the load balancer endpoint.
-         *
-         * @example
-         * ```js
-         * {
-         *   domain: {
-         *     name: "example.com",
-         *     dns: false,
-         *     cert: "arn:aws:acm:us-east-1:112233445566:certificate/3a958790-8878-4cdc-a396-06d95064cf63"
-         *   }
-         * }
-         * ```
-         */
-        cert?: Input<string>;
-        /**
-         * The DNS provider to use for the domain. Defaults to the AWS.
-         *
-         * Takes an adapter that can create the DNS records on the provider. This can automate
-         * validating the domain and setting up the DNS routing.
-         *
-         * Supports Route 53, Cloudflare, and Vercel adapters. For other providers, you'll need
-         * to set `dns` to `false` and pass in a certificate validating ownership via `cert`.
-         *
-         * @default `sst.aws.dns`
-         *
-         * @example
-         *
-         * Specify the hosted zone ID for the Route 53 domain.
-         *
-         * ```js
-         * {
-         *   domain: {
-         *     name: "example.com",
-         *     dns: sst.aws.dns({
-         *       zone: "Z2FDTNDATAQYW2"
-         *     })
-         *   }
-         * }
-         * ```
-         *
-         * Use a domain hosted on Cloudflare, needs the Cloudflare provider.
-         *
-         * ```js
-         * {
-         *   domain: {
-         *     name: "example.com",
-         *     dns: sst.cloudflare.dns()
-         *   }
-         * }
-         * ```
-         *
-         * Use a domain hosted on Vercel, needs the Vercel provider.
-         *
-         * ```js
-         * {
-         *   domain: {
-         *     name: "example.com",
-         *     dns: sst.vercel.dns()
-         *   }
-         * }
-         * ```
-         */
-        dns?: Input<false | (Dns & {})>;
-      }
+          /**
+           * The custom domain you want to use.
+           *
+           * @example
+           * ```js
+           * {
+           *   domain: {
+           *     name: "example.com"
+           *   }
+           * }
+           * ```
+           *
+           * Can also include subdomains based on the current stage.
+           *
+           * ```js
+           * {
+           *   domain: {
+           *     name: `${$app.stage}.example.com`
+           *   }
+           * }
+           * ```
+           */
+          name: Input<string>;
+          /**
+           * Alias domains that should be used.
+           *
+           * @example
+           * ```js {4}
+           * {
+           *   domain: {
+           *     name: "app1.example.com",
+           *     aliases: ["app2.example.com"]
+           *   }
+           * }
+           * ```
+           */
+          aliases?: Input<string[]>;
+          /**
+           * The ARN of an ACM (AWS Certificate Manager) certificate that proves ownership of the
+           * domain. By default, a certificate is created and validated automatically.
+           *
+           * :::tip
+           * You need to pass in a `cert` for domains that are not hosted on supported `dns` providers.
+           * :::
+           *
+           * To manually set up a domain on an unsupported provider, you'll need to:
+           *
+           * 1. [Validate that you own the domain](https://docs.aws.amazon.com/acm/latest/userguide/domain-ownership-validation.html) by creating an ACM certificate. You can either validate it by setting a DNS record or by verifying an email sent to the domain owner.
+           * 2. Once validated, set the certificate ARN as the `cert` and set `dns` to `false`.
+           * 3. Add the DNS records in your provider to point to the load balancer endpoint.
+           *
+           * @example
+           * ```js
+           * {
+           *   domain: {
+           *     name: "example.com",
+           *     dns: false,
+           *     cert: "arn:aws:acm:us-east-1:112233445566:certificate/3a958790-8878-4cdc-a396-06d95064cf63"
+           *   }
+           * }
+           * ```
+           */
+          cert?: Input<string>;
+          /**
+           * The DNS provider to use for the domain. Defaults to the AWS.
+           *
+           * Takes an adapter that can create the DNS records on the provider. This can automate
+           * validating the domain and setting up the DNS routing.
+           *
+           * Supports Route 53, Cloudflare, and Vercel adapters. For other providers, you'll need
+           * to set `dns` to `false` and pass in a certificate validating ownership via `cert`.
+           *
+           * @default `sst.aws.dns`
+           *
+           * @example
+           *
+           * Specify the hosted zone ID for the Route 53 domain.
+           *
+           * ```js
+           * {
+           *   domain: {
+           *     name: "example.com",
+           *     dns: sst.aws.dns({
+           *       zone: "Z2FDTNDATAQYW2"
+           *     })
+           *   }
+           * }
+           * ```
+           *
+           * Use a domain hosted on Cloudflare, needs the Cloudflare provider.
+           *
+           * ```js
+           * {
+           *   domain: {
+           *     name: "example.com",
+           *     dns: sst.cloudflare.dns()
+           *   }
+           * }
+           * ```
+           *
+           * Use a domain hosted on Vercel, needs the Vercel provider.
+           *
+           * ```js
+           * {
+           *   domain: {
+           *     name: "example.com",
+           *     dns: sst.vercel.dns()
+           *   }
+           * }
+           * ```
+           */
+          dns?: Input<false | (Dns & {})>;
+        }
     >;
     /** @deprecated Use `rules` instead. */
     ports?: Input<Prettify<ServiceRules>[]>;
@@ -1254,129 +1270,129 @@ export interface ClusterServiceArgs extends ClusterBaseArgs {
     domain?: Input<
       | string
       | {
-        /**
-         * The custom domain you want to use.
-         *
-         * @example
-         * ```js
-         * {
-         *   domain: {
-         *     name: "example.com"
-         *   }
-         * }
-         * ```
-         *
-         * Can also include subdomains based on the current stage.
-         *
-         * ```js
-         * {
-         *   domain: {
-         *     name: `${$app.stage}.example.com`
-         *   }
-         * }
-         * ```
-         *
-         * Wildcard domains are supported.
-         *
-         * ```js
-         * {
-         *   domain: {
-         *     name: "*.example.com"
-         *   }
-         * }
-         * ```
-         */
-        name: Input<string>;
-        /**
-         * Alias domains that should be used.
-         *
-         * @example
-         * ```js {4}
-         * {
-         *   domain: {
-         *     name: "app1.example.com",
-         *     aliases: ["app2.example.com"]
-         *   }
-         * }
-         * ```
-         */
-        aliases?: Input<string[]>;
-        /**
-         * The ARN of an ACM (AWS Certificate Manager) certificate that proves ownership of the
-         * domain. By default, a certificate is created and validated automatically.
-         *
-         * :::tip
-         * You need to pass in a `cert` for domains that are not hosted on supported `dns` providers.
-         * :::
-         *
-         * To manually set up a domain on an unsupported provider, you'll need to:
-         *
-         * 1. [Validate that you own the domain](https://docs.aws.amazon.com/acm/latest/userguide/domain-ownership-validation.html) by creating an ACM certificate. You can either validate it by setting a DNS record or by verifying an email sent to the domain owner.
-         * 2. Once validated, set the certificate ARN as the `cert` and set `dns` to `false`.
-         * 3. Add the DNS records in your provider to point to the load balancer endpoint.
-         *
-         * @example
-         * ```js
-         * {
-         *   domain: {
-         *     name: "example.com",
-         *     dns: false,
-         *     cert: "arn:aws:acm:us-east-1:112233445566:certificate/3a958790-8878-4cdc-a396-06d95064cf63"
-         *   }
-         * }
-         * ```
-         */
-        cert?: Input<string>;
-        /**
-         * The DNS provider to use for the domain. Defaults to the AWS.
-         *
-         * Takes an adapter that can create the DNS records on the provider. This can automate
-         * validating the domain and setting up the DNS routing.
-         *
-         * Supports Route 53, Cloudflare, and Vercel adapters. For other providers, you'll need
-         * to set `dns` to `false` and pass in a certificate validating ownership via `cert`.
-         *
-         * @default `sst.aws.dns`
-         *
-         * @example
-         *
-         * Specify the hosted zone ID for the Route 53 domain.
-         *
-         * ```js
-         * {
-         *   domain: {
-         *     name: "example.com",
-         *     dns: sst.aws.dns({
-         *       zone: "Z2FDTNDATAQYW2"
-         *     })
-         *   }
-         * }
-         * ```
-         *
-         * Use a domain hosted on Cloudflare, needs the Cloudflare provider.
-         *
-         * ```js
-         * {
-         *   domain: {
-         *     name: "example.com",
-         *     dns: sst.cloudflare.dns()
-         *   }
-         * }
-         * ```
-         *
-         * Use a domain hosted on Vercel, needs the Vercel provider.
-         *
-         * ```js
-         * {
-         *   domain: {
-         *     name: "example.com",
-         *     dns: sst.vercel.dns()
-         *   }
-         * }
-         * ```
-         */
-        dns?: Input<false | (Dns & {})>;
-      }
+          /**
+           * The custom domain you want to use.
+           *
+           * @example
+           * ```js
+           * {
+           *   domain: {
+           *     name: "example.com"
+           *   }
+           * }
+           * ```
+           *
+           * Can also include subdomains based on the current stage.
+           *
+           * ```js
+           * {
+           *   domain: {
+           *     name: `${$app.stage}.example.com`
+           *   }
+           * }
+           * ```
+           *
+           * Wildcard domains are supported.
+           *
+           * ```js
+           * {
+           *   domain: {
+           *     name: "*.example.com"
+           *   }
+           * }
+           * ```
+           */
+          name: Input<string>;
+          /**
+           * Alias domains that should be used.
+           *
+           * @example
+           * ```js {4}
+           * {
+           *   domain: {
+           *     name: "app1.example.com",
+           *     aliases: ["app2.example.com"]
+           *   }
+           * }
+           * ```
+           */
+          aliases?: Input<string[]>;
+          /**
+           * The ARN of an ACM (AWS Certificate Manager) certificate that proves ownership of the
+           * domain. By default, a certificate is created and validated automatically.
+           *
+           * :::tip
+           * You need to pass in a `cert` for domains that are not hosted on supported `dns` providers.
+           * :::
+           *
+           * To manually set up a domain on an unsupported provider, you'll need to:
+           *
+           * 1. [Validate that you own the domain](https://docs.aws.amazon.com/acm/latest/userguide/domain-ownership-validation.html) by creating an ACM certificate. You can either validate it by setting a DNS record or by verifying an email sent to the domain owner.
+           * 2. Once validated, set the certificate ARN as the `cert` and set `dns` to `false`.
+           * 3. Add the DNS records in your provider to point to the load balancer endpoint.
+           *
+           * @example
+           * ```js
+           * {
+           *   domain: {
+           *     name: "example.com",
+           *     dns: false,
+           *     cert: "arn:aws:acm:us-east-1:112233445566:certificate/3a958790-8878-4cdc-a396-06d95064cf63"
+           *   }
+           * }
+           * ```
+           */
+          cert?: Input<string>;
+          /**
+           * The DNS provider to use for the domain. Defaults to the AWS.
+           *
+           * Takes an adapter that can create the DNS records on the provider. This can automate
+           * validating the domain and setting up the DNS routing.
+           *
+           * Supports Route 53, Cloudflare, and Vercel adapters. For other providers, you'll need
+           * to set `dns` to `false` and pass in a certificate validating ownership via `cert`.
+           *
+           * @default `sst.aws.dns`
+           *
+           * @example
+           *
+           * Specify the hosted zone ID for the Route 53 domain.
+           *
+           * ```js
+           * {
+           *   domain: {
+           *     name: "example.com",
+           *     dns: sst.aws.dns({
+           *       zone: "Z2FDTNDATAQYW2"
+           *     })
+           *   }
+           * }
+           * ```
+           *
+           * Use a domain hosted on Cloudflare, needs the Cloudflare provider.
+           *
+           * ```js
+           * {
+           *   domain: {
+           *     name: "example.com",
+           *     dns: sst.cloudflare.dns()
+           *   }
+           * }
+           * ```
+           *
+           * Use a domain hosted on Vercel, needs the Vercel provider.
+           *
+           * ```js
+           * {
+           *   domain: {
+           *     name: "example.com",
+           *     dns: sst.vercel.dns()
+           *   }
+           * }
+           * ```
+           */
+          dns?: Input<false | (Dns & {})>;
+        }
     >;
     /** @deprecated Use `rules` instead. */
     ports?: Input<Prettify<ServiceRules>[]>;
@@ -1815,41 +1831,41 @@ export interface ClusterServiceArgs extends ClusterBaseArgs {
   capacity?: Input<
     | "spot"
     | {
-      /**
-       * Configure how the regular Fargate capacity is allocated.
-       */
-      fargate?: Input<{
         /**
-         * Start the first `base` number of tasks with the given capacity.
-         *
-         * :::caution
-         * You can only specify `base` for one capacity provider.
-         * :::
+         * Configure how the regular Fargate capacity is allocated.
          */
-        base?: Input<number>;
+        fargate?: Input<{
+          /**
+           * Start the first `base` number of tasks with the given capacity.
+           *
+           * :::caution
+           * You can only specify `base` for one capacity provider.
+           * :::
+           */
+          base?: Input<number>;
+          /**
+           * Ensure the given ratio of tasks are started for this capacity.
+           */
+          weight: Input<number>;
+        }>;
         /**
-         * Ensure the given ratio of tasks are started for this capacity.
+         * Configure how the Fargate spot capacity is allocated.
          */
-        weight: Input<number>;
-      }>;
-      /**
-       * Configure how the Fargate spot capacity is allocated.
-       */
-      spot?: Input<{
-        /**
-         * Start the first `base` number of tasks with the given capacity.
-         *
-         * :::caution
-         * You can only specify `base` for one capacity provider.
-         * :::
-         */
-        base?: Input<number>;
-        /**
-         * Ensure the given ratio of tasks are started for this capacity.
-         */
-        weight: Input<number>;
-      }>;
-    }
+        spot?: Input<{
+          /**
+           * Start the first `base` number of tasks with the given capacity.
+           *
+           * :::caution
+           * You can only specify `base` for one capacity provider.
+           * :::
+           */
+          base?: Input<number>;
+          /**
+           * Ensure the given ratio of tasks are started for this capacity.
+           */
+          weight: Input<number>;
+        }>;
+      }
   >;
   /**
    * Configure the health check that ECS runs on your containers.
@@ -2109,18 +2125,18 @@ export interface ClusterTaskArgs extends ClusterBaseArgs {
    * [Live](/docs/live/) and [`sst dev`](/docs/reference/cli/#dev).
    */
   dev?:
-  | false
-  | {
-    /**
-     * The command that `sst dev` runs in dev mode.
-     */
-    command?: Input<string>;
-    /**
-     * Change the directory from where the `command` is run.
-     * @default Uses the `image.dockerfile` path
-     */
-    directory?: Input<string>;
-  };
+    | false
+    | {
+        /**
+         * The command that `sst dev` runs in dev mode.
+         */
+        command?: Input<string>;
+        /**
+         * Change the directory from where the `command` is run.
+         * @default Uses the `image.dockerfile` path
+         */
+        directory?: Input<string>;
+      };
   /**
    * [Transform](/docs/components#transform) how this component creates its underlying
    * resources.
@@ -2147,6 +2163,23 @@ export interface ClusterTaskArgs extends ClusterBaseArgs {
      */
     logGroup?: Transform<cloudwatch.LogGroupArgs>;
   };
+}
+
+export interface ClusterGetArgs {
+  /**
+   * The ID of the cluster.
+   */
+  id: Input<string>;
+  /**
+   * The VPC used for the cluster.
+   */
+  vpc: ClusterArgs["vpc"];
+}
+
+interface ClusterRef {
+  ref: true;
+  id: Input<string>;
+  vpc: ClusterArgs["vpc"];
 }
 
 /**
@@ -2428,7 +2461,7 @@ export interface ClusterTaskArgs extends ClusterBaseArgs {
  */
 export class Cluster extends Component {
   private constructorOpts: ComponentResourceOptions;
-  private cluster: ecs.Cluster;
+  private cluster: Output<ecs.Cluster>;
   private vpc: Vpc | Output<Prettify<ClusterVpcsNormalizedArgs>>;
   public static v1 = ClusterV1;
 
@@ -2438,34 +2471,52 @@ export class Cluster extends Component {
     opts: ComponentResourceOptions = {},
   ) {
     super(__pulumiType, name, args, opts);
-    const _version = 2;
+    const _version = { major: 2, minor: 0 };
     const self = this;
+    this.constructorOpts = opts;
 
-    self.registerVersion({
-      new: _version,
-      old: $cli.state.version[name],
-      message: [
-        `There is a new version of "Cluster" that has breaking changes.`,
-        ``,
-        `What changed:`,
-        `  - In the old version, load balancers were deployed in public subnets, and services were deployed in private subnets. The VPC was required to have NAT gateways.`,
-        `  - In the latest version, both the load balancer and the services are deployed in public subnets. The VPC is not required to have NAT gateways. So the new default makes this cheaper to run.`,
-        ``,
-        `To upgrade:`,
-        `  - Set \`forceUpgrade: "v${_version}"\` on the "Cluster" component. Learn more https://sst.dev/docs/component/aws/cluster#forceupgrade`,
-        ``,
-        `To continue using v${$cli.state.version[name]}:`,
-        `  - Rename "Cluster" to "Cluster.v${$cli.state.version[name]}". Learn more about versioning - https://sst.dev/docs/components/#versioning`,
-      ].join("\n"),
-      forceUpgrade: args.forceUpgrade,
-    });
+    if (args && "ref" in args) {
+      const ref = reference();
+      const vpc = normalizeVpc();
+      this.cluster = ref.cluster;
+      this.vpc = vpc;
+      return;
+    }
 
+    registerVersion();
     const vpc = normalizeVpc();
     const cluster = createCluster();
+    createCapacityProviders();
 
-    this.constructorOpts = opts;
-    this.cluster = cluster;
+    this.cluster = output(cluster);
     this.vpc = vpc;
+
+    function reference() {
+      const ref = args as ClusterRef;
+      const cluster = ecs.Cluster.get(`${name}Cluster`, ref.id, undefined, {
+        parent: self,
+      });
+      const clusterValidated = cluster.tags.apply((tags) => {
+        const refVersion = tags?.["sst:ref:version"]
+          ? parseComponentVersion(tags["sst:ref:version"])
+          : undefined;
+
+        if (refVersion?.minor !== _version.minor) {
+          throw new VisibleError(
+            [
+              `There have been some minor changes to the "Cluster" component that's being referenced by "${name}".\n`,
+              `To update, you'll need to redeploy the stage where the cluster was created. And then redeploy this stage.`,
+            ].join("\n"),
+          );
+        }
+
+        registerVersion(refVersion);
+
+        return cluster;
+      });
+
+      return { cluster: clusterValidated };
+    }
 
     function normalizeVpc() {
       // "vpc" is a Vpc.v1 component
@@ -2504,11 +2555,57 @@ export class Cluster extends Component {
         ...transform(
           args.transform?.cluster,
           `${name}Cluster`,
-          {},
+          {
+            tags: {
+              "sst:ref:version": `${_version.major}.${_version.minor}`,
+            },
+          },
           { parent: self },
         ),
       );
     }
+
+    function registerVersion(overrideVersion?: ComponentVersion) {
+      const newMajorVersion = _version.major;
+      const oldMajorVersion =
+        overrideVersion?.major ?? $cli.state.version[name];
+      self.registerVersion({
+        new: newMajorVersion,
+        old: oldMajorVersion,
+        message: [
+          `There is a new version of "Cluster" that has breaking changes.`,
+          ``,
+          `What changed:`,
+          `  - In the old version, load balancers were deployed in public subnets, and services were deployed in private subnets. The VPC was required to have NAT gateways.`,
+          `  - In the latest version, both the load balancer and the services are deployed in public subnets. The VPC is not required to have NAT gateways. So the new default makes this cheaper to run.`,
+          ``,
+          `To upgrade:`,
+          `  - Set \`forceUpgrade: "v${newMajorVersion}"\` on the "Cluster" component. Learn more https://sst.dev/docs/component/aws/cluster#forceupgrade`,
+          ``,
+          `To continue using v${$cli.state.version[name]}:`,
+          `  - Rename "Cluster" to "Cluster.v${$cli.state.version[name]}". Learn more about versioning - https://sst.dev/docs/components/#versioning`,
+        ].join("\n"),
+        forceUpgrade: args.forceUpgrade,
+      });
+    }
+
+    function createCapacityProviders() {
+      return new ecs.ClusterCapacityProviders(
+        `${name}CapacityProviders`,
+        {
+          clusterName: cluster.name,
+          capacityProviders: ["FARGATE", "FARGATE_SPOT"],
+        },
+        { parent: self },
+      );
+    }
+  }
+
+  /**
+   * The cluster ID.
+   */
+  public get id() {
+    return this.cluster.id;
   }
 
   /**
@@ -2527,7 +2624,8 @@ export class Cluster extends Component {
    * Add a service to the cluster.
    *
    * @param name Name of the service.
-   * @param args Configure the service.
+   * @param args? Configure the service.
+   * @param opts? Resource options.
    *
    * @example
    *
@@ -2579,7 +2677,11 @@ export class Cluster extends Component {
    *
    * This is useful for running sidecar containers.
    */
-  public addService(name: string, args?: ClusterServiceArgs) {
+  public addService(
+    name: string,
+    args?: ClusterServiceArgs,
+    opts?: ComponentResourceOptions,
+  ) {
     // Do not prefix the service to allow `Resource.MyService` to work.
     return new Service(
       name,
@@ -2588,7 +2690,7 @@ export class Cluster extends Component {
         vpc: this.vpc,
         ...args,
       },
-      { provider: this.constructorOpts.provider },
+      { provider: this.constructorOpts.provider, ...opts },
     );
   }
 
@@ -2596,7 +2698,8 @@ export class Cluster extends Component {
    * Add a task to the cluster.
    *
    * @param name Name of the task.
-   * @param args Configure the task.
+   * @param args? Configure the task.
+   * @param opts? Resource options.
    *
    * @example
    *
@@ -2628,7 +2731,11 @@ export class Cluster extends Component {
    *
    * This is useful for running sidecar containers.
    */
-  public addTask(name: string, args?: ClusterTaskArgs) {
+  public addTask(
+    name: string,
+    args?: ClusterTaskArgs,
+    opts?: ComponentResourceOptions,
+  ) {
     // Do not prefix the task to allow `Resource.MyTask` to work.
     return new Task(
       name,
@@ -2637,15 +2744,65 @@ export class Cluster extends Component {
         vpc: this.vpc,
         ...args,
       },
-      { provider: this.constructorOpts.provider },
+      { provider: this.constructorOpts.provider, ...opts },
+    );
+  }
+
+  /**
+   * Reference an existing ECS Cluster with the given ID. This is useful when you
+   * create a cluster in one stage and want to share it in another. It avoids
+   * having to create a new cluster in the other stage.
+   *
+   * :::tip
+   * You can use the `static get` method to share cluster across stages.
+   * :::
+   *
+   * @param name The name of the component.
+   * @param args The arguments to get the cluster.
+   * @param opts? Resource options.
+   *
+   * @example
+   * Imagine you create a cluster in the `dev` stage. And in your personal stage `frank`,
+   * instead of creating a new cluster, you want to share the same cluster from `dev`.
+   *
+   * ```ts title="sst.config.ts"
+   * const cluster = $app.stage === "frank"
+   *   ? sst.aws.Cluster.get("MyCluster", {
+   *       id: "arn:aws:ecs:us-east-1:123456789012:cluster/app-dev-MyCluster",
+   *       vpc,
+   *     })
+   *   : new sst.aws.Cluster("MyCluster", { vpc });
+   * ```
+   *
+   * Here `arn:aws:ecs:us-east-1:123456789012:cluster/app-dev-MyCluster` is the ID of the
+   * cluster created in the `dev` stage. You can find these by outputting the cluster ID
+   * in the `dev` stage.
+   *
+   * ```ts title="sst.config.ts"
+   * return {
+   *   id: cluster.id,
+   * };
+   * ```
+   */
+  public static get(
+    name: string,
+    args: ClusterGetArgs,
+    opts?: ComponentResourceOptions,
+  ) {
+    return new Cluster(
+      name,
+      { ref: true, id: args.id, vpc: args.vpc } as ClusterArgs,
+      opts,
     );
   }
 }
 
+/** @internal */
 export function normalizeArchitecture(args: ClusterTaskArgs) {
   return output(args.architecture ?? "x86_64").apply((v) => v);
 }
 
+/** @internal */
 export function normalizeCpu(args: ClusterTaskArgs) {
   return output(args.cpu ?? "0.25 vCPU").apply((v) => {
     if (!supportedCpus[v]) {
@@ -2659,6 +2816,7 @@ export function normalizeCpu(args: ClusterTaskArgs) {
   });
 }
 
+/** @internal */
 export function normalizeMemory(
   cpu: ReturnType<typeof normalizeCpu>,
   args: ClusterTaskArgs,
@@ -2675,6 +2833,7 @@ export function normalizeMemory(
   });
 }
 
+/** @internal */
 export function normalizeStorage(args: ClusterTaskArgs) {
   return output(args.storage ?? "20 GB").apply((v) => {
     const storage = toGBs(v);
@@ -2686,9 +2845,10 @@ export function normalizeStorage(args: ClusterTaskArgs) {
   });
 }
 
+/** @internal */
 export function normalizeContainers(
   type: "service" | "task",
-  args: ClusterServiceArgs,
+  args: ServiceArgs,
   name: string,
   architecture: ReturnType<typeof normalizeArchitecture>,
 ) {
@@ -2744,9 +2904,9 @@ export function normalizeContainers(
               efs:
                 volume.efs instanceof Efs
                   ? {
-                    fileSystem: volume.efs.id,
-                    accessPoint: volume.efs.accessPoint,
-                  }
+                      fileSystem: volume.efs.id,
+                      accessPoint: volume.efs.accessPoint,
+                    }
                   : volume.efs,
             })),
         );
@@ -2768,15 +2928,20 @@ export function normalizeContainers(
       }
 
       function normalizeLogging() {
-        return output(v.logging).apply((logging) => ({
-          ...logging,
-          retention: logging?.retention ?? "1 month",
-        }));
+        return all([v.logging, args.cluster.nodes.cluster.name]).apply(
+          ([logging, clusterName]) => ({
+            ...logging,
+            retention: logging?.retention ?? "1 month",
+            name:
+              logging?.name ?? `/sst/cluster/${clusterName}/${name}/${v.name}`,
+          }),
+        );
       }
     }),
   );
 }
 
+/** @internal */
 export function createTaskRole(
   name: string,
   args: ClusterTaskArgs,
@@ -2836,6 +3001,7 @@ export function createTaskRole(
   );
 }
 
+/** @internal */
 export function createExecutionRole(
   name: string,
   args: ClusterTaskArgs,
@@ -2888,6 +3054,7 @@ export function createExecutionRole(
   );
 }
 
+/** @internal */
 export function createTaskDefinition(
   name: string,
   args: ServiceArgs,
@@ -3013,7 +3180,7 @@ export function createTaskDefinition(
                 args.transform?.logGroup,
                 `${name}LogGroup${container.name}`,
                 {
-                  name: interpolate`/sst/cluster/${clusterName}/${name}/${container.name}`,
+                  name: container.logging.name,
                   retentionInDays: RETENTION[container.logging.retention],
                 },
                 { parent },

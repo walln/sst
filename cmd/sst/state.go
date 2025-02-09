@@ -1,7 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
+	"strings"
+	"time"
+
 	"github.com/sst/sst/v3/cmd/sst/cli"
 	"github.com/sst/sst/v3/cmd/sst/mosaic/ui"
 	"github.com/sst/sst/v3/internal/util"
@@ -9,10 +14,6 @@ import (
 	"github.com/sst/sst/v3/pkg/process"
 	"github.com/sst/sst/v3/pkg/project/provider"
 	"github.com/sst/sst/v3/pkg/state"
-	"io"
-	"os"
-	"strings"
-	"time"
 )
 
 var CmdState = &cli.Command{
@@ -34,11 +35,7 @@ var CmdState = &cli.Command{
 				}
 				defer p.Cleanup()
 
-				var update provider.Update
-				update.Version = version
-				update.ID = id.Descending()
-				update.TimeStarted = time.Now().UTC().Format(time.RFC3339)
-				err = p.Lock(update.ID, "edit")
+				update, err := p.Lock("edit")
 				if err != nil {
 					return util.NewReadableError(err, "Could not lock state")
 				}
@@ -47,15 +44,16 @@ var CmdState = &cli.Command{
 					update.TimeCompleted = time.Now().UTC().Format(time.RFC3339)
 					provider.PutUpdate(p.Backend(), p.App().Name, p.App().Stage, update)
 				}()
-				workdir, err := p.NewWorkdir()
+				workdir, err := p.NewWorkdir(update.ID)
 				if err != nil {
 					return err
 				}
+				defer workdir.Cleanup()
+
 				path, err := workdir.Pull()
 				if err != nil {
 					return util.NewReadableError(err, "Could not pull state")
 				}
-				defer workdir.Cleanup()
 				editor := os.Getenv("EDITOR")
 				if editor == "" {
 					editor = "vim"
@@ -78,6 +76,15 @@ var CmdState = &cli.Command{
 		},
 		{
 			Name: "export",
+			Flags: []cli.Flag{
+				{
+					Name: "decrypt",
+					Type: "bool",
+					Description: cli.Description{
+						Short: "Decrypt the state",
+					},
+				},
+			},
 			Description: cli.Description{
 				Short: "Prints the state of your app",
 				Long: strings.Join([]string{
@@ -101,21 +108,33 @@ var CmdState = &cli.Command{
 					return err
 				}
 				defer p.Cleanup()
-				workdir, err := p.NewWorkdir()
+				workdir, err := p.NewWorkdir(id.Descending())
 				if err != nil {
 					return err
 				}
-				path, err := workdir.Pull()
+				defer workdir.Cleanup()
+
+				_, err = workdir.Pull()
 				if err != nil {
 					return util.NewReadableError(err, "Could not pull state")
 				}
-				defer workdir.Cleanup()
-				file, err := os.Open(path)
+				exported, err := workdir.Export()
 				if err != nil {
-					return util.NewReadableError(err, "Could not open state file")
+					return err
 				}
-				defer file.Close()
-				_, err = io.Copy(os.Stdout, file)
+				if c.Bool("decrypt") {
+					passphrase, err := provider.Passphrase(p.Backend(), p.App().Name, p.App().Stage)
+					if err != nil {
+						return err
+					}
+					exported, err = state.Decrypt(c.Context, passphrase, exported)
+					if err != nil {
+						return err
+					}
+				}
+				encoder := json.NewEncoder(os.Stdout)
+				encoder.SetIndent("", "  ")
+				encoder.Encode(exported)
 				return err
 			},
 		},
@@ -174,11 +193,7 @@ var CmdState = &cli.Command{
 				}
 				defer p.Cleanup()
 
-				var update provider.Update
-				update.Version = version
-				update.ID = id.Descending()
-				update.TimeStarted = time.Now().UTC().Format(time.RFC3339)
-				err = p.Lock(update.ID, "edit")
+				update, err := p.Lock("edit")
 				if err != nil {
 					return util.NewReadableError(err, "Could not lock state")
 				}
@@ -187,15 +202,16 @@ var CmdState = &cli.Command{
 					update.TimeCompleted = time.Now().UTC().Format(time.RFC3339)
 					provider.PutUpdate(p.Backend(), p.App().Name, p.App().Stage, update)
 				}()
-				workdir, err := p.NewWorkdir()
+				workdir, err := p.NewWorkdir(update.ID)
 				if err != nil {
 					return err
 				}
+				defer workdir.Cleanup()
+
 				_, err = workdir.Pull()
 				if err != nil {
 					return util.NewReadableError(err, "Could not pull state")
 				}
-				defer workdir.Cleanup()
 
 				checkpoint, err := workdir.Export()
 				if err != nil {
@@ -261,11 +277,7 @@ var CmdState = &cli.Command{
 				}
 				defer p.Cleanup()
 
-				var update provider.Update
-				update.Version = version
-				update.ID = id.Descending()
-				update.TimeStarted = time.Now().UTC().Format(time.RFC3339)
-				err = p.Lock(update.ID, "edit")
+				update, err := p.Lock("repair")
 				if err != nil {
 					return util.NewReadableError(err, "Could not lock state")
 				}
@@ -274,15 +286,16 @@ var CmdState = &cli.Command{
 					update.TimeCompleted = time.Now().UTC().Format(time.RFC3339)
 					provider.PutUpdate(p.Backend(), p.App().Name, p.App().Stage, update)
 				}()
-				workdir, err := p.NewWorkdir()
+				workdir, err := p.NewWorkdir(update.ID)
 				if err != nil {
 					return err
 				}
+				defer workdir.Cleanup()
+
 				_, err = workdir.Pull()
 				if err != nil {
 					return util.NewReadableError(err, "Could not pull state")
 				}
-				defer workdir.Cleanup()
 
 				checkpoint, err := workdir.Export()
 				if err != nil {
