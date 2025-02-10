@@ -627,7 +627,7 @@ export class StaticSite extends Component implements Link.Linkable {
     const { sitePath, environment, indexPage } = prepare(args);
     const dev = normalizeDev();
 
-    if (dev) {
+    if (dev.enabled) {
       this.devUrl = dev.url;
       this.registerOutputs({
         _metadata: {
@@ -636,12 +636,7 @@ export class StaticSite extends Component implements Link.Linkable {
           environment,
           url: this.url,
         },
-        _dev: {
-          environment,
-          command: dev.command,
-          directory: dev.directory,
-          autostart: dev.autostart,
-        },
+        _dev: dev.outputs,
       });
       return;
     }
@@ -671,18 +666,23 @@ export class StaticSite extends Component implements Link.Linkable {
         environment,
         url: this.url,
       },
+      _dev: dev.outputs,
     });
 
     function normalizeDev() {
-      if (!$dev) return undefined;
-      if (args.dev === false) return undefined;
+      const enabled = $dev && args.dev !== false;
+      const devArgs = args.dev || {};
 
       return {
-        ...args.dev,
-        url: output(args.dev?.url).apply((v) => v ?? URL_UNAVAILABLE),
-        command: output(args.dev?.command).apply((v) => v ?? "npm run dev"),
-        autostart: output(args.dev?.autostart).apply((v) => v ?? true),
-        directory: output(args.dev?.directory).apply((v) => v ?? sitePath),
+        enabled,
+        url: output(devArgs.url ?? URL_UNAVAILABLE),
+        outputs: {
+          title: devArgs.title,
+          environment,
+          command: output(devArgs.command ?? "npm run dev"),
+          autostart: output(devArgs.autostart ?? true),
+          directory: output(devArgs.directory ?? sitePath),
+        },
       };
     }
 

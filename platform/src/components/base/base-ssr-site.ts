@@ -1,6 +1,5 @@
 import path from "path";
 import fs from "fs";
-import { execSync } from "child_process";
 import { Output, Resource, all, output } from "@pulumi/pulumi";
 import { Prettify } from "../component";
 import { Input } from "../input";

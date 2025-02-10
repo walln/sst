@@ -510,7 +510,7 @@ export class Nextjs extends Component implements Link.Linkable {
     const { sitePath, partition, region } = prepare(parent, args);
     const dev = normalizeDev();
 
-    if (dev) {
+    if (dev.enabled) {
       const server = createDevServer(parent, name, args);
       this.devUrl = dev.url;
       this.registerOutputs({
@@ -520,16 +520,8 @@ export class Nextjs extends Component implements Link.Linkable {
           server: server.arn,
         },
         _dev: {
-          links: output(args.link || [])
-            .apply(Link.build)
-            .apply((links) => links.map((link) => link.name)),
-          aws: {
-            role: server.nodes.role.arn,
-          },
-          environment: args.environment,
-          command: dev.command,
-          directory: dev.directory,
-          autostart: dev.autostart,
+          ...dev.outputs,
+          aws: { role: server.nodes.role.arn },
         },
       });
       return;
@@ -582,18 +574,29 @@ export class Nextjs extends Component implements Link.Linkable {
         edge: plan.edge,
         server: serverFunction.arn,
       },
+      _dev: {
+        ...dev.outputs,
+        aws: { role: serverFunction.nodes.role.arn },
+      },
     });
 
     function normalizeDev() {
-      if (!$dev) return undefined;
-      if (args.dev === false) return undefined;
+      const enabled = $dev && args.dev !== false;
+      const devArgs = args.dev || {};
 
       return {
-        ...args.dev,
-        url: output(args.dev?.url ?? URL_UNAVAILABLE),
-        command: output(args.dev?.command ?? "npm run dev"),
-        autostart: output(args.dev?.autostart ?? true),
-        directory: output(args.dev?.directory ?? sitePath),
+        enabled,
+        url: output(devArgs.url ?? URL_UNAVAILABLE),
+        outputs: {
+          title: devArgs.title,
+          command: output(devArgs.command ?? "npm run dev"),
+          autostart: output(devArgs.autostart ?? true),
+          directory: output(devArgs.directory ?? sitePath),
+          environment: args.environment,
+          links: output(args.link || [])
+            .apply(Link.build)
+            .apply((links) => links.map((link) => link.name)),
+        },
       };
     }
 
