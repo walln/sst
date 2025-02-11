@@ -75,11 +75,18 @@ The count of the active resources in your workspace resets at the start of every
    
    A resource is considered active if the stage it belongs to has been updated during the billing cycle. However, if the only update to a stage was to remove it, the resources in that stage will not be counted as active.
 
-4. Does this apply to SST v2 and v3 apps?
+4. What about PR stages?
+
+  A stage has to be around for at least 2 weeks before it's counted as active. So if a PR stage is created and removed within 2 weeks, its resources are not counted.
+
+  However, if you remove a stage and create a new one with the same name, it does not reset the 2 week initial period.
+
+
+5. Does this apply to SST v2 and v3 apps?
 
    Yes, it applies to any kind of SST app.
 
-5. What if I'm on the old plan?
+6. What if I'm on the old plan?
 
    If you are on the old plan, you don't have to switch and you won't be automatically switched over either.
 
@@ -87,7 +94,7 @@ The count of the active resources in your workspace resets at the start of every
 
    At some point in the future, we'll remove the old plan. But there's no specific timeline for it yet.
 
-6. Are there any volume pricing options?
+7. Are there any volume pricing options?
    
    Yes you can [contact us][contact-us] and we can figure out a pricing plan that works for you.
 

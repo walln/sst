@@ -227,8 +227,12 @@ A couple of things to note.
 - These are calculated for a given workspace every month.
 - A resource is what SST creates in your cloud provider. [Learn more below](#faq).
 - You can always access personal stages, even if you're above the free tier.
-- If you haven't deployed to a stage in a month, its resources won't count as active.
+- A resource is considered active if it comes from a stage:
+  - That has been around for at least 2 weeks.
+  - And, was updated during the month.
 - For volume pricing, feel free to [contact us][contact-us].
+
+[Learn more in the FAQ](#faq).
 
 ---
 
@@ -669,6 +673,12 @@ Here are some frequently asked questions about the Console.
   At the start of every month, or billing cycle, the Console will track the stages that have been updated. All the resources in these stages are considered active for the month.
 
   However, if the only update to a stage in a month was to remove it, the resources in that stage will not be counted as being active.
+
+- What about PR stages?
+
+  A stage has to be around for at least 2 weeks before it's counted as active. So if a PR stage is created and removed within 2 weeks, its resources are not counted.
+
+  However, if you remove a stage and create a new one with the same name, it does not reset the 2 week initial period.
 
 ---
 
