@@ -7,6 +7,10 @@ lastUpdated: 2025-01-23
 pagefind: false
 ---
 
+:::note[Update]
+_Feb 10, 2025: We added a way to handle PR and other epehemeral stages._
+:::
+
 Starting Feb 1, we'll be rolling out a new pricing model for the Console. Currently the pricing is based on the number of times the Lambda functions in your apps are invoked. Moving forward, it'll be based on the **number of active resources** in your apps.
 
 ---
@@ -77,9 +81,9 @@ The count of the active resources in your workspace resets at the start of every
 
 4. What about PR stages?
 
-  A stage has to be around for at least 2 weeks before it's counted as active. So if a PR stage is created and removed within 2 weeks, its resources are not counted.
-
-  However, if you remove a stage and create a new one with the same name, it does not reset the 2 week initial period.
+   A stage has to be around for at least 2 weeks before the resources in it are counted as active. So if a PR stage is created and removed within 2 weeks, they don't count.
+ 
+   However, if you remove a stage and create a new one with the same name, it does not reset the 2 week initial period.
 
 
 5. Does this apply to SST v2 and v3 apps?
