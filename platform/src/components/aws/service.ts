@@ -1279,6 +1279,24 @@ export interface ServiceArgs extends FargateBaseArgs {
    */
   containers?: Input<Prettify<ServiceContainerArgs>>[];
   /**
+   * Configure if `sst deploy` should wait for the service to be stable.
+   *
+   * :::tip
+   * For non-prod environments it might make sense to pass in `false`.
+   * :::
+   *
+   * Waiting for this process to finish ensures that new content will be available after
+   * the deploy finishes. However, this process can sometimes take more than 5 mins.
+   * @default `false`
+   * @example
+   * ```js
+   * {
+   *   wait: true
+   * }
+   * ```
+   */
+  wait?: Input<boolean>;
+  /**
    * [Transform](/docs/components#transform) how this component creates its underlying
    * resources.
    */
@@ -1550,6 +1568,7 @@ export class Service extends Component implements Link.Linkable {
     const clusterName = args.cluster.nodes.cluster.name;
     const region = getRegionOutput({}, opts).name;
     const dev = normalizeDev();
+    const wait = output(args.wait ?? false);
     const architecture = normalizeArchitecture(args);
     const cpu = normalizeCpu(args);
     const memory = normalizeMemory(cpu, args);
@@ -2140,6 +2159,7 @@ export class Service extends Component implements Link.Linkable {
                 ? output(args.serviceRegistry).port
                 : undefined,
             },
+            waitForSteadyState: wait,
           },
           { parent: self },
         ),
