@@ -381,7 +381,7 @@ export class Cluster extends Component {
    */
   public addService(
     name: string,
-    args?: ServiceArgs,
+    args?: Omit<ServiceArgs, "cluster">,
     opts?: ComponentResourceOptions,
   ) {
     // Do not prefix the service to allow `Resource.MyService` to work.
@@ -446,7 +446,7 @@ export class Cluster extends Component {
    */
   public addTask(
     name: string,
-    args?: TaskArgs,
+    args?: Omit<TaskArgs, "cluster">,
     opts?: ComponentResourceOptions,
   ) {
     // Do not prefix the task to allow `Resource.MyTask` to work.
