@@ -25,7 +25,7 @@ export module task {
    * For example, let's say you have a task.
    *
    * ```js title="sst.config.ts"
-   * cluster.addTask("MyTask");
+   * new sst.aws.Task("MyTask", { cluster });
    * ```
    *
    * `Resource.MyTask` will have all the link data.
@@ -185,7 +185,7 @@ export module task {
    * For example, let's say you have defined a task.
    *
    * ```js title="sst.config.ts"
-   * cluster.addTask("MyTask");
+   * new sst.aws.Task("MyTask", { cluster });
    * ```
    *
    * You can then run the task in your application with the SDK.

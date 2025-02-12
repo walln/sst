@@ -76,7 +76,8 @@ Like your API deployed in a container. Or any Lambda functions, Postgres databas
   ```ts title="sst.config.ts"
   const cluster = new sst.aws.Cluster("MyCluster", { vpc });
 
-  cluster.addService("MyService", {
+  new sst.aws.Service("MyService", {
+    cluster,
     loadBalancer: {
       ports: [{ listen: "80/http" }]
     }
@@ -196,7 +197,8 @@ const bucket = new sst.aws.Bucket("MyBucket");
 
 const cluster = new sst.aws.Cluster("MyCluster", { vpc });
 
-cluster.addService("MyService", {
+new sst.aws.Service("MyService", {
+  cluster,
   link: [bucket],
   loadBalancer: {
     ports: [{ listen: "80/http" }]

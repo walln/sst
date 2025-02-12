@@ -7,7 +7,7 @@ lastUpdated: 2025-01-13
 pagefind: false
 ---
 
-import { YouTube } from '@astro-community/astro-embed-youtube';
+import { YouTube } from "@astro-community/astro-embed-youtube";
 
 We are adding support for using Spot instances when you create a Fargate service with the [`Cluster`](/docs/component/aws/cluster) component through the [`capacity`](/docs/component/aws/cluster#capacity) prop. Spot instances can be around 50% cheaper and we talk about how they work here.
 
@@ -23,18 +23,19 @@ Spot instances are spare capacity that AWS has and it's available at a discounte
 
 ---
 
-## Spot 
+## Spot
 
 You can enable this using the new [`capacity`](/docs/component/aws/cluster#capacity) prop.
 
-```ts title="sst.config.ts" {7}
-new sst.aws.Cluster("MyCluster", { vpc });
+```ts title="sst.config.ts" {8}
+const cluster = new sst.aws.Cluster("MyCluster", { vpc });
 
-cluster.addService("MyService", {
+new sst.aws.Service("MyService", {
+  cluster,
   loadBalancer: {
     ports: [{ listen: "80/http" }],
   },
-  capacity: "spot"
+  capacity: "spot",
 });
 ```
 
@@ -61,7 +62,7 @@ There are a couple of caveats.
 This makes Fargate Spot a good option for dev or PR environments.
 
 ```ts title="sst.config.ts"
-capacity: $app.stage === "production" ? undefined : "spot"
+capacity: $app.stage === "production" ? undefined : "spot";
 ```
 
 ---

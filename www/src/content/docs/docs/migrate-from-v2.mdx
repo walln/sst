@@ -762,7 +762,8 @@ The `Task` component that replaces `Job` is based on AWS Fargate. It runs a cont
   ```ts title="sst.config.ts"
   const cluster = new sst.aws.Cluster("MyCluster", { vpc });
 
-  cluster.addTask("MyTask", {
+  new sst.aws.Task("MyTask", {
+    cluster,
     image: {
       context: "./src",
       dockerfile: "Dockerfile"
@@ -1039,7 +1040,8 @@ In your function you'd access this using.
     }
   });
 
-  cluster.addService("MyService", {
+  new sst.aws.Service("MyService", {
+    cluster,
     loadBalancer: {
       domain: "my-app.com",
       ports: [

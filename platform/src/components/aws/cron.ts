@@ -80,7 +80,7 @@ export interface CronArgs {
    *
    * ```js title="sst.config.ts"
    * const myCluster = new sst.aws.Cluster("MyCluster");
-   * const myTask = myCluster.addTask("MyTask");
+   * const myTask = new sst.aws.Task("MyTask", { cluster: myCluster });
    * ```
    *
    * You can then pass in the task to the cron job.
@@ -202,7 +202,7 @@ export interface CronArgs {
  *
  * ```ts title="sst.config.ts" {5}
  * const myCluster = new sst.aws.Cluster("MyCluster");
- * const myTask = myCluster.addTask("MyTask");
+ * const myTask = new sst.aws.Task("MyTask", { cluster: myCluster });
  *
  * new sst.aws.Cron("MyCronJob", {
  *   task: myTask,

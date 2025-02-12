@@ -66,8 +66,9 @@ Creates a hit counter app with Astro and Redis.
 
 This deploys Astro as a Fargate service to ECS and it's linked to Redis.
 
-```ts title="sst.config.ts" {2}
-cluster.addService("MyService", {
+```ts title="sst.config.ts" {3}
+new sst.aws.Service("MyService", {
+  cluster,
   link: [redis],
   loadBalancer: {
     ports: [{ listen: "80/http", forward: "3000/http" }],
@@ -103,7 +104,8 @@ const vpc = new sst.aws.Vpc("MyVpc", { bastion: true });
 const redis = new sst.aws.Redis("MyRedis", { vpc });
 const cluster = new sst.aws.Cluster("MyCluster", { vpc });
 
-cluster.addService("MyService", {
+new sst.aws.Service("MyService", {
+  cluster,
   link: [redis],
   loadBalancer: {
     ports: [{ listen: "80/http", forward: "4321/http" }],
@@ -642,7 +644,8 @@ bunx sst init
 Now you can add a service.
 
 ```ts title="sst.config.ts"
-cluster.addService("MyService", {
+new sst.aws.Service("MyService", {
+  cluster,
   loadBalancer: {
     ports: [{ listen: "80/http", forward: "3000/http" }],
   },
@@ -671,7 +674,8 @@ const bucket = new sst.aws.Bucket("MyBucket");
 const vpc = new sst.aws.Vpc("MyVpc");
 
 const cluster = new sst.aws.Cluster("MyCluster", { vpc });
-cluster.addService("MyService", {
+new sst.aws.Service("MyService", {
+  cluster,
   loadBalancer: {
     ports: [{ listen: "80/http", forward: "3000/http" }],
   },
@@ -692,8 +696,9 @@ Creates a hit counter app with Bun and Redis.
 
 This deploys Bun as a Fargate service to ECS and it's linked to Redis.
 
-```ts title="sst.config.ts" {8}
-cluster.addService("MyService", {
+```ts title="sst.config.ts" {9}
+new sst.aws.Service("MyService", {
+  cluster,
   loadBalancer: {
     ports: [{ listen: "80/http", forward: "3000/http" }],
   },
@@ -741,7 +746,8 @@ const vpc = new sst.aws.Vpc("MyVpc", { bastion: true });
 const redis = new sst.aws.Redis("MyRedis", { vpc });
 const cluster = new sst.aws.Cluster("MyCluster", { vpc });
 
-cluster.addService("MyService", {
+new sst.aws.Service("MyService", {
+  cluster,
   link: [redis],
   loadBalancer: {
     ports: [{ listen: "80/http", forward: "3000/http" }],
@@ -766,7 +772,8 @@ This allows you to create internal services that can only be accessed inside a V
 const vpc = new sst.aws.Vpc("MyVpc", { bastion: true });
 
 const cluster = new sst.aws.Cluster("MyCluster", { vpc });
-cluster.addService("MyService", {
+new sst.aws.Service("MyService", {
+  cluster,
   loadBalancer: {
     public: false,
     ports: [{ listen: "80/http" }],
@@ -788,7 +795,8 @@ about the [`capacity`](/docs/component/aws/cluster#capacity) prop.
 const vpc = new sst.aws.Vpc("MyVpc");
 
 const cluster = new sst.aws.Cluster("MyCluster", { vpc });
-cluster.addService("MyService", {
+new sst.aws.Service("MyService", {
+  cluster,
   loadBalancer: {
     ports: [{ listen: "80/http" }],
   },
@@ -809,8 +817,9 @@ works out a lot cheaper for services that don't get a lot of traffic.
 
 You need to specify which port in your service will be exposed through API Gateway.
 
-```ts title="sst.config.ts" {3}
-const service = cluster.addService("MyService", {
+```ts title="sst.config.ts" {4}
+const service = new sst.aws.Service("MyService", {
+  cluster,
   serviceRegistry: {
     port: 80,
   },
@@ -821,7 +830,8 @@ Your API Gateway HTTP API also needs to be in the same VPC as the service.
 ```ts title="sst.config.ts"
 const vpc = new sst.aws.Vpc("MyVpc");
 const cluster = new sst.aws.Cluster("MyCluster", { vpc });
-const service = cluster.addService("MyService", {
+const service = new sst.aws.Service("MyService", {
+  cluster,
   serviceRegistry: {
     port: 80,
   },
@@ -872,8 +882,9 @@ Creates a hit counter app with Deno and Redis.
 
 This deploys Deno as a Fargate service to ECS and it's linked to Redis.
 
-```ts title="sst.config.ts" {2}
-cluster.addService("MyService", {
+```ts title="sst.config.ts" {3}
+new sst.aws.Service("MyService", {
+  cluster,
   link: [redis],
   loadBalancer: {
     ports: [{ listen: "80/http", forward: "8000/http" }],
@@ -909,7 +920,8 @@ const vpc = new sst.aws.Vpc("MyVpc", { bastion: true });
 const redis = new sst.aws.Redis("MyRedis", { vpc });
 const cluster = new sst.aws.Cluster("MyCluster", { vpc });
 
-cluster.addService("MyService", {
+new sst.aws.Service("MyService", {
+  cluster,
   link: [redis],
   loadBalancer: {
     ports: [{ listen: "80/http", forward: "8000/http" }],
@@ -1064,7 +1076,8 @@ We use the SurrealDB docker image to run a server in a container and use EFS as 
 system.
 
 ```ts title="sst.config.ts"
-const server = cluster.addService("MyService", {
+const server = new sst.aws.Service("MyService", {
+  cluster,
   architecture: "arm64",
   image: "surrealdb/surrealdb:v2.0.2",
   // ...
@@ -1111,7 +1124,8 @@ const efs = new sst.aws.Efs("MyEfs", { vpc });
 
 // Run SurrealDB server in a container
 const cluster = new sst.aws.Cluster("MyCluster", { vpc });
-const server = cluster.addService("MyService", {
+const server = new sst.aws.Service("MyService", {
+  cluster,
   architecture: "arm64",
   image: "surrealdb/surrealdb:v2.0.2",
   command: [
@@ -1127,9 +1141,7 @@ const server = cluster.addService("MyService", {
     "surrealkv://data/data.skv",
     "--allow-scripting",
   ],
-  volumes: [
-    { efs, path: "/data" },
-  ],
+  volumes: [{ efs, path: "/data" }],
 });
 
 // Lambda client to connect to SurrealDB
@@ -1188,7 +1200,8 @@ new sst.aws.Function("MyFunction", {
 
 // Create a service that increments the same counter
 const cluster = new sst.aws.Cluster("MyCluster", { vpc });
-cluster.addService("MyService", {
+new sst.aws.Service("MyService", {
+  cluster,
   loadBalancer: {
     ports: [{ listen: "80/http" }],
   },
@@ -1211,8 +1224,9 @@ Creates a hit counter app with Express and Redis.
 
 This deploys Express as a Fargate service to ECS and it's linked to Redis.
 
-```ts title="sst.config.ts" {8}
-cluster.addService("MyService", {
+```ts title="sst.config.ts" {9}
+new sst.aws.Service("MyService", {
+  cluster,
   loadBalancer: {
     ports: [{ listen: "80/http" }],
   },
@@ -1248,7 +1262,8 @@ const vpc = new sst.aws.Vpc("MyVpc", { bastion: true });
 const redis = new sst.aws.Redis("MyRedis", { vpc });
 const cluster = new sst.aws.Cluster("MyCluster", { vpc });
 
-cluster.addService("MyService", {
+new sst.aws.Service("MyService", {
+  cluster,
   link: [redis],
   loadBalancer: {
     ports: [{ listen: "80/http" }],
@@ -1465,7 +1480,8 @@ Creates a hit counter app with Hono and Redis.
 This deploys Hono API as a Fargate service to ECS and it's linked to Redis.
 
 ```ts title="sst.config.ts" {2}
-cluster.addService("MyService", {
+new sst.aws.Service("MyService", {
+  cluster,
   link: [redis],
   loadBalancer: {
     ports: [{ listen: "80/http", forward: "3000/http" }],
@@ -1530,7 +1546,8 @@ const vpc = new sst.aws.Vpc("MyVpc", { bastion: true });
 const redis = new sst.aws.Redis("MyRedis", { vpc });
 const cluster = new sst.aws.Cluster("MyCluster", { vpc });
 
-cluster.addService("MyService", {
+new sst.aws.Service("MyService", {
+  cluster,
   link: [redis],
   loadBalancer: {
     ports: [{ listen: "80/http", forward: "3000/http" }],
@@ -2202,8 +2219,9 @@ This'll allow NestJS to import the SST SDK.
 
 This deploys NestJS as a Fargate service to ECS and it's linked to Redis.
 
-```ts title="sst.config.ts" {2}
-cluster.addService("MyService", {
+```ts title="sst.config.ts" {3}
+new sst.aws.Service("MyService", {
+  cluster,
   link: [redis],
   loadBalancer: {
     ports: [{ listen: "80/http", forward: "3000/http" }],
@@ -2235,6 +2253,20 @@ Now if you go to `http://localhost:3000` you’ll see a counter update as you re
 Finally, you can deploy it using `npx sst deploy --stage production` using a `Dockerfile`
 that's included in the example.
 ```ts title="sst.config.ts"
+const vpc = new sst.aws.Vpc('MyVpc', { bastion: true });
+const redis = new sst.aws.Redis('MyRedis', { vpc });
+const cluster = new sst.aws.Cluster('MyCluster', { vpc });
+
+new sst.aws.Service('MyService', {
+  cluster,
+  link: [redis],
+  loadBalancer: {
+    ports: [{ listen: '80/http', forward: '3000/http' }],
+  },
+  dev: {
+    command: 'npm run start:dev',
+  },
+});
 ```
 
 View the [full example](https://github.com/sst/sst/tree/dev/examples/aws-nestjs-redis).
@@ -2389,8 +2421,9 @@ Creates a hit counter app with Next.js and Redis.
 
 This deploys Next.js as a Fargate service to ECS and it's linked to Redis.
 
-```ts title="sst.config.ts" {2}
-cluster.addService("MyService", {
+```ts title="sst.config.ts" {3}
+new sst.aws.Service("MyService", {
+  cluster,
   link: [redis],
   loadBalancer: {
     ports: [{ listen: "80/http", forward: "3000/http" }],
@@ -2429,7 +2462,8 @@ const vpc = new sst.aws.Vpc("MyVpc", { bastion: true });
 const redis = new sst.aws.Redis("MyRedis", { vpc });
 const cluster = new sst.aws.Cluster("MyCluster", { vpc });
 
-cluster.addService("MyService", {
+new sst.aws.Service("MyService", {
+  cluster,
   link: [redis],
   loadBalancer: {
     ports: [{ listen: "80/http", forward: "3000/http" }],
@@ -2527,7 +2561,7 @@ dev: {
 By providing the `dev` prop for Postgres, SST will use the local Postgres instance and
 not deploy a new RDS database when running `sst dev`.
 
-It also allows us to access the database through a Reosurce `link` without having to
+It also allows us to access the database through a Resource `link` without having to
 conditionally check if we are running locally.
 
 ```ts title="index.ts"
@@ -2867,8 +2901,9 @@ Creates a hit counter app with Remix and Redis.
 
 This deploys Remix as a Fargate service to ECS and it's linked to Redis.
 
-```ts title="sst.config.ts" {2}
-cluster.addService("MyService", {
+```ts title="sst.config.ts" {3}
+new sst.aws.Service("MyService", {
+  cluster,
   link: [redis],
   loadBalancer: {
     ports: [{ listen: "80/http", forward: "3000/http" }],
@@ -2904,7 +2939,8 @@ const vpc = new sst.aws.Vpc("MyVpc", { bastion: true });
 const redis = new sst.aws.Redis("MyRedis", { vpc });
 const cluster = new sst.aws.Cluster("MyCluster", { vpc });
 
-cluster.addService("MyService", {
+new sst.aws.Service("MyService", {
+  cluster,
   link: [redis],
   loadBalancer: {
     ports: [{ listen: "80/http", forward: "3000/http" }],
@@ -3044,7 +3080,7 @@ deployed to the same VPC.
 const vpc = new sst.aws.Vpc("MyVpc", { nat: "ec2" });
 
 const cluster = new sst.aws.Cluster("MyCluster", { vpc });
-const service = cluster.addService("MyService");
+const service = new sst.aws.Service("MyService", { cluster });
 
 new sst.aws.Function("MyFunction", {
   vpc,
@@ -3133,7 +3169,8 @@ Once deployed you can test the `/ws` endpoint and it'll send a message back afte
 const vpc = new sst.aws.Vpc("MyVpc", { bastion: true });
 const cluster = new sst.aws.Cluster("MyCluster", { vpc });
 
-cluster.addService("MyService", {
+new sst.aws.Service("MyService", {
+  cluster,
   loadBalancer: {
     ports: [{ listen: "80/http", forward: "3000/http" }],
   },
@@ -3239,8 +3276,9 @@ Creates a hit counter app with SvelteKit and Redis.
 
 This deploys SvelteKit as a Fargate service to ECS and it's linked to Redis.
 
-```ts title="sst.config.ts" {2}
-cluster.addService("MyService", {
+```ts title="sst.config.ts" {3}
+new sst.aws.Service("MyService", {
+  cluster,
   link: [redis],
   loadBalancer: {
     ports: [{ listen: "80/http", forward: "3000/http" }],
@@ -3276,7 +3314,8 @@ const vpc = new sst.aws.Vpc("MyVpc", { bastion: true });
 const redis = new sst.aws.Redis("MyRedis", { vpc });
 const cluster = new sst.aws.Cluster("MyCluster", { vpc });
 
-cluster.addService("MyService", {
+new sst.aws.Service("MyService", {
+  cluster,
   link: [redis],
   loadBalancer: {
     ports: [{ listen: "80/http", forward: "3000/http" }],
@@ -3491,7 +3530,8 @@ const bucket = new sst.aws.Bucket("MyBucket");
 const vpc = new sst.aws.Vpc("MyVpc");
 
 const cluster = new sst.aws.Cluster("MyCluster", { vpc });
-const task = cluster.addTask("MyTask", {
+const task = new sst.aws.Task("MyTask", {
+  cluster,
   link: [bucket],
   dev: {
     command: "node index.mjs",
@@ -3546,7 +3586,8 @@ const vpc = new sst.aws.Vpc("MyVpc", { nat: "ec2" });
 
 const cluster = new sst.aws.Cluster("MyCluster", { vpc });
 
-const task = cluster.addTask("MyTask", {
+const task = new sst.aws.Task("MyTask", {
+  cluster,
   link: [bucket],
   image: {
     context: "image",

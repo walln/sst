@@ -12,7 +12,8 @@ export default $config({
     const vpc = new sst.aws.Vpc("MyVpc");
 
     const cluster = new sst.aws.Cluster("MyCluster", { vpc });
-    cluster.addService("MyService", {
+    new sst.aws.Service("MyService", {
+      cluster,
       transform: {
         taskDefinition: (args) => {
           // "containerDefinitions" is a JSON string, parse first
