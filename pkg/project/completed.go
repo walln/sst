@@ -116,11 +116,14 @@ func getCompletedEvent(ctx context.Context, passphrase string, workdir *PulumiWo
 				Include:    []common.LinkInclude{},
 			}
 			if outputs["include"] != nil {
-				for _, include := range outputs["include"].([]interface{}) {
-					link.Include = append(link.Include, common.LinkInclude{
-						Type:  include.(map[string]interface{})["type"].(string),
-						Other: include.(map[string]interface{}),
-					})
+				include, ok := outputs["include"].([]interface{})
+				if ok {
+					for _, include := range include {
+						link.Include = append(link.Include, common.LinkInclude{
+							Type:  include.(map[string]interface{})["type"].(string),
+							Other: include.(map[string]interface{}),
+						})
+					}
 				}
 			}
 			complete.Links[outputs["target"].(string)] = link
