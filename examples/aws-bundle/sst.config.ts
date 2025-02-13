@@ -3,10 +3,16 @@
 export default $config({
   app(input) {
     return {
-      name: "base-ts",
+      name: "aws-bundle",
       removal: input?.stage === "production" ? "retain" : "remove",
       home: "aws",
     };
   },
-  async run() {},
+  async run() {
+    new sst.aws.Function("Function", {
+      bundle: "./src",
+      handler: "index.handler",
+      url: true,
+    });
+  },
 });
