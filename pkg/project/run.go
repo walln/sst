@@ -26,6 +26,7 @@ import (
 	"github.com/sst/sst/v3/pkg/project/provider"
 	"github.com/sst/sst/v3/pkg/telemetry"
 	"github.com/sst/sst/v3/pkg/types"
+	"golang.org/x/exp/slices"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -317,6 +318,20 @@ func (p *Project) RunNext(ctx context.Context, input *StackInput) error {
 	case "remove":
 		args = append([]string{"destroy", "--yes", "-f"}, args...)
 	}
+
+	if input.Target != nil {
+		for _, item := range input.Target {
+			index := slices.IndexFunc(completed.Resources, func(res apitype.ResourceV3) bool {
+				return res.URN.Name() == item
+			})
+			if index == -1 {
+				return fmt.Errorf("Target not found: %v", item)
+			}
+			args = append(args, "--target", string(completed.Resources[index].URN))
+		}
+		args = append(args, "--target-dependents")
+	}
+
 	cmd := process.Command(filepath.Join(pulumiPath, "bin/pulumi"), args...)
 	process.Detach(cmd)
 	cmd.Env = env
