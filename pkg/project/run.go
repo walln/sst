@@ -330,7 +330,9 @@ func (p *Project) RunNext(ctx context.Context, input *StackInput) error {
 			}
 			args = append(args, "--target", string(completed.Resources[index].URN))
 		}
-		args = append(args, "--target-dependents")
+		if len(input.Target) > 0 {
+			args = append(args, "--target-dependents")
+		}
 	}
 
 	cmd := process.Command(filepath.Join(pulumiPath, "bin/pulumi"), args...)
