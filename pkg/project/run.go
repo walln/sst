@@ -201,13 +201,14 @@ func (p *Project) RunNext(ctx context.Context, input *StackInput) error {
 		return nil
 	}
 
-	var meta = map[string]interface{}{}
+	var meta = js.Metafile{}
 	err = json.Unmarshal([]byte(buildResult.Metafile), &meta)
 	if err != nil {
 		return err
 	}
 	files := []string{}
-	for key := range meta["inputs"].(map[string]interface{}) {
+
+	for key := range meta.Inputs {
 		absPath, err := filepath.Abs(key)
 		if err != nil {
 			continue
