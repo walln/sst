@@ -228,8 +228,7 @@ export default $config({
     }
 
     function addService() {
-      return new sst.aws.Service("MyService", {
-        cluster,
+      return cluster.addService("MyService", {
         loadBalancer: {
           ports: [
             { listen: "80/http" },
