@@ -121,6 +121,11 @@ export interface BusSubscriberArgs {
   };
 }
 
+interface BusRef {
+  ref: true;
+  busName: Input<string>;
+}
+
 /**
  * The `Bus` component lets you add an [Amazon EventBridge Event Bus](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-event-bus.html) to your app.
  *
@@ -187,18 +192,35 @@ export class Bus extends Component implements Link.Linkable {
     opts: ComponentResourceOptions = {},
   ) {
     super(__pulumiType, name, args, opts);
-
-    const parent = this;
-
-    const bus = createBus();
-
+    const self = this;
     this.constructorName = name;
     this.constructorOpts = opts;
+
+    if (args && "ref" in args) {
+      const ref = reference();
+      this.bus = ref.bus;
+      return;
+    }
+
+    const bus = createBus();
     this.bus = bus;
+
+    function reference() {
+      const ref = args as BusRef;
+      const bus = cloudwatch.EventBus.get(
+        `${name}Bus`,
+        ref.busName,
+        undefined,
+        {
+          parent: self,
+        },
+      );
+      return { bus };
+    }
 
     function createBus() {
       return new cloudwatch.EventBus(
-        ...transform(args.transform?.bus, `${name}Bus`, {}, { parent }),
+        ...transform(args.transform?.bus, `${name}Bus`, {}, { parent: self }),
       );
     }
   }
@@ -500,6 +522,51 @@ export class Bus extends Component implements Link.Linkable {
         }),
       ],
     };
+  }
+
+  /**
+   * Reference an existing EventBus with its ARN. This is useful when you create a
+   * bus in one stage and want to share it in another stage. It avoids having to create
+   * a new bus in the other stage.
+   *
+   * :::tip
+   * You can use the `static get` method to share EventBus across stages.
+   * :::
+   *
+   * @param name The name of the component.
+   * @param busName The name of the existing EventBus.
+   * @param opts? Resource options.
+   *
+   * @example
+   * Imagine you create a bus in the `dev` stage. And in your personal stage `frank`,
+   * instead of creating a new bus, you want to share the bus from `dev`.
+   *
+   * ```ts title="sst.config.ts"
+   * const bus = $app.stage === "frank"
+   *   ? sst.aws.Bus.get("MyBus", "app-dev-MyBus")
+   *   : new sst.aws.Bus("MyBus");
+   * ```
+   *
+   * Here `app-dev-MyBus` is the name of the bus created in the `dev` stage. You can find
+   * this by outputting the bus name in the `dev` stage.
+   *
+   * ```ts title="sst.config.ts"
+   * return bus.name;
+   * ```
+   */
+  public static get(
+    name: string,
+    busName: Input<string>,
+    opts?: ComponentResourceOptions,
+  ) {
+    return new Bus(
+      name,
+      {
+        ref: true,
+        busName,
+      } as BusArgs,
+      opts,
+    );
   }
 }
 
